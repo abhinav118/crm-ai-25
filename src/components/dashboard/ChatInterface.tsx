@@ -1,7 +1,9 @@
+
 import React, { useState } from 'react';
 import Avatar from '@/components/dashboard/Avatar';
 import { Button } from '@/components/ui/button';
 import UserProfile from './UserProfile';
+import { Contact } from './ContactsTable';
 import {
   MessageSquare,
   MessageCircle,
@@ -29,13 +31,7 @@ type Message = {
 };
 
 type ChatInterfaceProps = {
-  contact: {
-    id: string;
-    name: string;
-    phone?: string;
-    email: string;
-    status?: string;
-  };
+  contact: Contact;
   onClose: () => void;
 };
 

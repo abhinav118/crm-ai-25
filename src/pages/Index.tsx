@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Sidebar from '@/components/dashboard/Sidebar';
 import TopBar from '@/components/dashboard/TopBar';
@@ -26,7 +25,6 @@ const Index = () => {
   
   const { toast } = useToast();
   
-  // Simulate loading
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsLoading(false);
@@ -35,7 +33,6 @@ const Index = () => {
     return () => clearTimeout(timer);
   }, []);
   
-  // Filter contacts based on search query
   useEffect(() => {
     if (searchQuery.trim() === '') {
       setFilteredContacts(contacts);
@@ -59,7 +56,6 @@ const Index = () => {
   
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
-    // Scroll to top of table
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
   
@@ -96,7 +92,6 @@ const Index = () => {
     }
   };
   
-  // Calculate pagination
   const totalPages = Math.ceil(filteredContacts.length / pageSize);
   const startIndex = (currentPage - 1) * pageSize;
   const endIndex = startIndex + pageSize;
