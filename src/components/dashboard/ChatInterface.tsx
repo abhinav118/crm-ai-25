@@ -1,7 +1,7 @@
-
 import React, { useState } from 'react';
 import Avatar from '@/components/dashboard/Avatar';
 import { Button } from '@/components/ui/button';
+import UserProfile from './UserProfile';
 import {
   MessageSquare,
   MessageCircle,
@@ -95,7 +95,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-lg w-full max-w-3xl h-[80vh] flex flex-col">
+      <div className="bg-white rounded-lg shadow-lg w-full max-w-5xl h-[90vh] flex flex-col">
         {/* Header */}
         <div className="p-4 border-b flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -113,90 +113,101 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
           </Button>
         </div>
         
-        {/* Channel Tabs */}
-        <Tabs defaultValue="sms" className="w-full" onValueChange={setActiveChannel}>
-          <div className="px-4 pt-4">
-            <TabsList className="grid grid-cols-3 w-full">
-              <TabsTrigger value="sms" className="flex items-center gap-2">
-                <MessageSquare size={16} />
-                <span>SMS</span>
-              </TabsTrigger>
-              <TabsTrigger value="whatsapp" className="flex items-center gap-2">
-                <MessageCircle size={16} />
-                <span>WhatsApp</span>
-              </TabsTrigger>
-              <TabsTrigger value="internal" className="flex items-center gap-2">
-                <PenSquare size={16} />
-                <span>Internal</span>
-              </TabsTrigger>
-            </TabsList>
+        {/* Split View: Profile and Chat */}
+        <div className="flex flex-1 overflow-hidden">
+          {/* Left Side - Profile */}
+          <div className="w-1/3 border-r p-4 overflow-y-auto">
+            <UserProfile contact={contact} />
           </div>
 
-          {/* Messages Container */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            <TabsContent value="sms" className="mt-0 space-y-4">
-              {messages
-                .filter(msg => msg.channel === 'sms')
-                .map(message => (
-                  <div key={message.id} className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[70%] p-3 rounded-lg ${message.sender === 'user' ? 'bg-primary text-white' : 'bg-gray-100'}`}>
-                      <p className="text-sm">{message.text}</p>
-                      <p className={`text-xs mt-1 ${message.sender === 'user' ? 'text-primary-foreground/70' : 'text-gray-500'}`}>
-                        {formatTime(message.timestamp)}
-                      </p>
-                    </div>
+          {/* Right Side - Chat */}
+          <div className="w-2/3 flex flex-col">
+            {/* Channel Tabs */}
+            <Tabs defaultValue="sms" className="flex-1 flex flex-col">
+              <div className="px-4 pt-4">
+                <TabsList className="grid grid-cols-3 w-full">
+                  <TabsTrigger value="sms" className="flex items-center gap-2">
+                    <MessageSquare size={16} />
+                    <span>SMS</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="whatsapp" className="flex items-center gap-2">
+                    <MessageCircle size={16} />
+                    <span>WhatsApp</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="internal" className="flex items-center gap-2">
+                    <PenSquare size={16} />
+                    <span>Internal</span>
+                  </TabsTrigger>
+                </TabsList>
+              </div>
+
+              {/* Messages Container */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                <TabsContent value="sms" className="mt-0 space-y-4">
+                  {messages
+                    .filter(msg => msg.channel === 'sms')
+                    .map(message => (
+                      <div key={message.id} className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[70%] p-3 rounded-lg ${message.sender === 'user' ? 'bg-primary text-white' : 'bg-gray-100'}`}>
+                          <p className="text-sm">{message.text}</p>
+                          <p className={`text-xs mt-1 ${message.sender === 'user' ? 'text-primary-foreground/70' : 'text-gray-500'}`}>
+                            {formatTime(message.timestamp)}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                </TabsContent>
+                
+                <TabsContent value="whatsapp" className="mt-0 h-full flex items-center justify-center">
+                  <div className="text-center text-gray-500">
+                    <MessageCircle className="mx-auto mb-2" />
+                    <p>No WhatsApp messages yet</p>
                   </div>
-                ))}
-            </TabsContent>
-            
-            <TabsContent value="whatsapp" className="mt-0 h-full flex items-center justify-center">
-              <div className="text-center text-gray-500">
-                <MessageCircle className="mx-auto mb-2" />
-                <p>No WhatsApp messages yet</p>
+                </TabsContent>
+                
+                <TabsContent value="internal" className="mt-0 h-full flex items-center justify-center">
+                  <div className="text-center text-gray-500">
+                    <PenSquare className="mx-auto mb-2" />
+                    <p>No internal comments yet</p>
+                  </div>
+                </TabsContent>
               </div>
-            </TabsContent>
-            
-            <TabsContent value="internal" className="mt-0 h-full flex items-center justify-center">
-              <div className="text-center text-gray-500">
-                <PenSquare className="mx-auto mb-2" />
-                <p>No internal comments yet</p>
-              </div>
-            </TabsContent>
-          </div>
 
-          {/* Message Input */}
-          <div className="p-4 border-t">
-            <div className="flex items-center gap-2 mb-2">
-              <Button variant="ghost" size="sm">
-                <Smile size={18} />
-              </Button>
-              <Button variant="ghost" size="sm">
-                <Link size={18} />
-              </Button>
-              <Button variant="ghost" size="sm">
-                <FileText size={18} />
-              </Button>
-            </div>
-            <div className="flex gap-2">
-              <textarea
-                className="flex-1 border rounded-md p-2 text-sm resize-none h-[60px]"
-                placeholder={`Type your ${activeChannel === 'internal' ? 'comment' : 'message'}...`}
-                value={messageText}
-                onChange={(e) => setMessageText(e.target.value)}
-                onKeyDown={handleKeyPress}
-              />
-              <div className="flex flex-col gap-2">
-                <Button variant="outline" size="sm" className="px-3" disabled={!messageText.trim()}>
-                  Clear
-                </Button>
-                <Button size="sm" className="px-3" onClick={handleSend} disabled={!messageText.trim()}>
-                  <Send size={14} className="mr-1" />
-                  Send
-                </Button>
+              {/* Message Input */}
+              <div className="p-4 border-t">
+                <div className="flex items-center gap-2 mb-2">
+                  <Button variant="ghost" size="sm">
+                    <Smile size={18} />
+                  </Button>
+                  <Button variant="ghost" size="sm">
+                    <Link size={18} />
+                  </Button>
+                  <Button variant="ghost" size="sm">
+                    <FileText size={18} />
+                  </Button>
+                </div>
+                <div className="flex gap-2">
+                  <textarea
+                    className="flex-1 border rounded-md p-2 text-sm resize-none h-[60px]"
+                    placeholder={`Type your ${activeChannel === 'internal' ? 'comment' : 'message'}...`}
+                    value={messageText}
+                    onChange={(e) => setMessageText(e.target.value)}
+                    onKeyDown={handleKeyPress}
+                  />
+                  <div className="flex flex-col gap-2">
+                    <Button variant="outline" size="sm" className="px-3" disabled={!messageText.trim()}>
+                      Clear
+                    </Button>
+                    <Button size="sm" className="px-3" onClick={handleSend} disabled={!messageText.trim()}>
+                      <Send size={14} className="mr-1" />
+                      Send
+                    </Button>
+                  </div>
+                </div>
               </div>
-            </div>
+            </Tabs>
           </div>
-        </Tabs>
+        </div>
       </div>
     </div>
   );

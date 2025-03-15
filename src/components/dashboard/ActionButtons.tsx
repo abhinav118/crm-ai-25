@@ -1,5 +1,4 @@
-
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Plus, 
   Filter, 
@@ -18,6 +17,7 @@ import {
   TooltipTrigger 
 } from '@/components/ui/tooltip';
 import { useToast } from '@/components/ui/use-toast';
+import AddContactForm from './AddContactForm';
 
 type ActionButtonsProps = {
   selectedCount: number;
@@ -26,6 +26,7 @@ type ActionButtonsProps = {
 const ActionButtons: React.FC<ActionButtonsProps> = ({ selectedCount }) => {
   const hasSelection = selectedCount > 0;
   const { toast } = useToast();
+  const [showAddContact, setShowAddContact] = useState(false);
   
   const handleAction = (action: string) => {
     if (hasSelection) {
@@ -37,46 +38,73 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({ selectedCount }) => {
     }
   };
   
+  const handleAddContact = (data: any) => {
+    toast({
+      title: "Contact Added",
+      description: "New contact has been created successfully",
+    });
+    setShowAddContact(false);
+  };
+  
   return (
-    <div className="flex items-center gap-2 overflow-x-auto pb-2 hide-scrollbar">
-      <ActionButton icon={<Plus size={18} />} label="New" />
-      <ActionButton icon={<Filter size={18} />} label="Filter" />
-      <ActionButton icon={<UserPlus size={18} />} label="Add Contact" primary onClick={() => handleAction('Add Contact')} />
-      
-      <div className="h-6 w-px bg-gray-300 mx-1"></div>
-      
-      <ActionButton 
-        icon={<Mail size={18} />} 
-        label="Email" 
-        disabled={!hasSelection} 
-        onClick={() => handleAction('Email')}
-      />
-      <ActionButton 
-        icon={<Tag size={18} />} 
-        label="Tag" 
-        disabled={!hasSelection} 
-        onClick={() => handleAction('Tag')}
-      />
-      <ActionButton 
-        icon={<Trash size={18} />} 
-        label="Delete" 
-        disabled={!hasSelection} 
-        danger 
-        onClick={() => handleAction('Delete')}
-      />
-      
-      <div className="h-6 w-px bg-gray-300 mx-1"></div>
-      
-      <ActionButton icon={<Upload size={18} />} label="Import" onClick={() => handleAction('Import')} />
-      <ActionButton icon={<Download size={18} />} label="Export" onClick={() => handleAction('Export')} />
-      <ActionButton icon={<MoreHorizontal size={18} />} label="More" />
-      
-      {hasSelection && (
-        <div className="ml-4 px-2.5 py-1 rounded-md bg-primary/10 text-primary text-sm font-medium">
-          {selectedCount} selected
+    <>
+      <div className="flex items-center gap-2 overflow-x-auto pb-2 hide-scrollbar">
+        <div className="flex-none flex items-center gap-2">
+          <ActionButton icon={<Plus size={18} />} label="New" />
+          <ActionButton icon={<Filter size={18} />} label="Filter" />
+          <ActionButton 
+            icon={<UserPlus size={18} />} 
+            label="Add Contact" 
+            primary 
+            onClick={() => setShowAddContact(true)} 
+          />
         </div>
-      )}
-    </div>
+        
+        <div className="flex-none h-6 w-px bg-gray-300 mx-1"></div>
+        
+        <div className="flex-none flex items-center gap-2">
+          <ActionButton 
+            icon={<Mail size={18} />} 
+            label="Email" 
+            disabled={!hasSelection} 
+            onClick={() => handleAction('Email')}
+          />
+          <ActionButton 
+            icon={<Tag size={18} />} 
+            label="Tag" 
+            disabled={!hasSelection} 
+            onClick={() => handleAction('Tag')}
+          />
+          <ActionButton 
+            icon={<Trash size={18} />} 
+            label="Delete" 
+            disabled={!hasSelection} 
+            danger 
+            onClick={() => handleAction('Delete')}
+          />
+        </div>
+        
+        <div className="flex-none h-6 w-px bg-gray-300 mx-1"></div>
+        
+        <div className="flex-none flex items-center gap-2">
+          <ActionButton icon={<Upload size={18} />} label="Import" onClick={() => handleAction('Import')} />
+          <ActionButton icon={<Download size={18} />} label="Export" onClick={() => handleAction('Export')} />
+          <ActionButton icon={<MoreHorizontal size={18} />} label="More" />
+        </div>
+        
+        {hasSelection && (
+          <div className="flex-none ml-4 px-2.5 py-1 rounded-md bg-primary/10 text-primary text-sm font-medium">
+            {selectedCount} selected
+          </div>
+        )}
+      </div>
+
+      <AddContactForm 
+        open={showAddContact}
+        onClose={() => setShowAddContact(false)}
+        onSubmit={handleAddContact}
+      />
+    </>
   );
 };
 
