@@ -1,0 +1,120 @@
+
+import React from 'react';
+import { cn } from '@/lib/utils';
+import { Link } from 'react-router-dom';
+import { 
+  LayoutDashboard, 
+  Users, 
+  MessageSquare, 
+  Calendar, 
+  BarChart3, 
+  CreditCard, 
+  Settings, 
+  PanelLeft,
+  ChevronRight
+} from 'lucide-react';
+
+type SidebarProps = {
+  collapsed?: boolean;
+  onToggle?: () => void;
+};
+
+const Sidebar: React.FC<SidebarProps> = ({ 
+  collapsed = false, 
+  onToggle 
+}) => {
+  return (
+    <aside className={cn(
+      "h-screen bg-navy fixed top-0 left-0 z-30 flex flex-col transition-all duration-300 ease-in-out",
+      collapsed ? "w-[70px]" : "w-[240px]"
+    )}>
+      <div className="flex items-center h-16 px-3 border-b border-sidebar-border">
+        <div className={cn(
+          "flex items-center transition-all duration-300",
+          collapsed ? "justify-center w-full" : "justify-between w-full"
+        )}>
+          {!collapsed && (
+            <div className="flex items-center">
+              <div className="text-white font-semibold tracking-tight text-xl">Lumen CRM</div>
+            </div>
+          )}
+          {collapsed && (
+            <div className="flex items-center justify-center">
+              <div className="text-white text-xl font-bold">L</div>
+            </div>
+          )}
+          <button 
+            onClick={onToggle}
+            className="w-8 h-8 flex items-center justify-center text-white/60 hover:text-white rounded-md hover:bg-sidebar-accent transition-colors"
+          >
+            {collapsed ? <ChevronRight size={18} /> : <PanelLeft size={18} />}
+          </button>
+        </div>
+      </div>
+      
+      <div className="flex flex-col flex-1 py-4 overflow-y-auto">
+        <nav className="px-2 space-y-1">
+          <SidebarItem icon={<LayoutDashboard size={20} />} label="Dashboard" to="/" active={true} collapsed={collapsed} />
+          <SidebarItem icon={<Users size={20} />} label="Contacts" to="/contacts" collapsed={collapsed} />
+          <SidebarItem icon={<MessageSquare size={20} />} label="Conversations" to="/conversations" collapsed={collapsed} />
+          <SidebarItem icon={<Calendar size={20} />} label="Calendar" to="/calendar" collapsed={collapsed} />
+          <SidebarItem icon={<BarChart3 size={20} />} label="Analytics" to="/analytics" collapsed={collapsed} />
+          <SidebarItem icon={<CreditCard size={20} />} label="Payments" to="/payments" collapsed={collapsed} />
+        </nav>
+        
+        <div className="mt-auto px-2">
+          <SidebarItem icon={<Settings size={20} />} label="Settings" to="/settings" collapsed={collapsed} />
+        </div>
+      </div>
+      
+      <div className="p-4 border-t border-sidebar-border">
+        <div className={cn(
+          "flex items-center",
+          collapsed ? "justify-center" : "space-x-3"
+        )}>
+          <div className="avatar-base bg-avatar-purple">
+            JD
+          </div>
+          {!collapsed && (
+            <div className="flex flex-col">
+              <span className="text-white text-sm font-medium">John Doe</span>
+              <span className="text-white/60 text-xs">Admin</span>
+            </div>
+          )}
+        </div>
+      </div>
+    </aside>
+  );
+};
+
+type SidebarItemProps = {
+  icon: React.ReactNode;
+  label: string;
+  to: string;
+  active?: boolean;
+  collapsed?: boolean;
+};
+
+const SidebarItem: React.FC<SidebarItemProps> = ({ 
+  icon, 
+  label, 
+  to, 
+  active = false,
+  collapsed = false
+}) => {
+  return (
+    <Link 
+      to={to} 
+      className={cn(
+        "sidebar-item",
+        active && "active",
+        collapsed && "justify-center px-2"
+      )}
+    >
+      <span className="text-xl">{icon}</span>
+      {!collapsed && <span className="text-sm font-medium">{label}</span>}
+    </Link>
+  );
+};
+
+export default Sidebar;
