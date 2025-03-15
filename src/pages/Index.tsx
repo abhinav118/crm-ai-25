@@ -5,85 +5,12 @@ import TopBar from '@/components/dashboard/TopBar';
 import SearchBar from '@/components/dashboard/SearchBar';
 import ActionButtons from '@/components/dashboard/ActionButtons';
 import ContactsTable, { Contact } from '@/components/dashboard/ContactsTable';
+import BulkActionsTable from '@/components/dashboard/BulkActionsTable';
+import ChatInterface from '@/components/dashboard/ChatInterface';
 import Pagination from '@/components/dashboard/Pagination';
 import { useToast } from '@/components/ui/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-
-// Sample data
-const SAMPLE_CONTACTS: Contact[] = [
-  {
-    id: '1',
-    name: 'Alex Brown',
-    email: 'alex.brown@example.com',
-    phone: '(415) 439-0377',
-    company: 'Acme Inc',
-    status: 'active',
-    lastActivity: '2023-06-15T14:30:00',
-    tags: ['Customer', 'Enterprise'],
-    createdAt: '2023-01-15T09:30:00',
-  },
-  {
-    id: '2',
-    name: 'Traniece Naira',
-    email: 'traniece.n@example.com',
-    company: 'Global Tech',
-    status: 'active',
-    lastActivity: '2023-06-14T11:20:00',
-    tags: ['Prospect'],
-    createdAt: '2023-02-10T15:45:00',
-  },
-  {
-    id: '3',
-    name: 'Vicky Lu',
-    email: 'vicky.lu@highland-hospital.org',
-    phone: '(510) 304-5259',
-    company: 'Highland Hospital',
-    status: 'inactive',
-    lastActivity: '2023-06-10T09:15:00',
-    tags: ['Healthcare', 'Lead'],
-    createdAt: '2023-03-05T10:20:00',
-  },
-  {
-    id: '4',
-    name: 'Vicky Low',
-    email: 'vicky.low@example.com',
-    company: 'Tech Solutions',
-    status: 'inactive',
-    createdAt: '2023-03-22T14:10:00',
-  },
-  {
-    id: '5',
-    name: 'Trang Nguyen',
-    email: 'trang.nguyen@example.com',
-    phone: '(650) 555-1234',
-    company: 'Startup XYZ',
-    status: 'active',
-    lastActivity: '2023-06-16T16:45:00',
-    tags: ['Partner', 'Tech'],
-    createdAt: '2023-04-12T11:30:00',
-  },
-  {
-    id: '6',
-    name: 'John Smith',
-    email: 'john.smith@example.com',
-    phone: '(408) 555-6789',
-    company: 'ABC Corporation',
-    status: 'active',
-    lastActivity: '2023-06-15T10:15:00',
-    tags: ['Customer', 'Finance'],
-    createdAt: '2023-01-20T13:45:00',
-  },
-  {
-    id: '7',
-    name: 'Sarah Johnson',
-    email: 'sarah.j@example.com',
-    company: 'Design Studio',
-    status: 'active',
-    lastActivity: '2023-06-14T15:30:00',
-    tags: ['Creative', 'Lead'],
-    createdAt: '2023-02-15T09:20:00',
-  },
-];
+import { SAMPLE_CONTACTS } from '@/data/sampleContacts';
 
 const Index = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -93,6 +20,9 @@ const Index = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const [selectedCount, setSelectedCount] = useState(0);
+  const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   
   const { toast } = useToast();
   
@@ -138,6 +68,34 @@ const Index = () => {
     setCurrentPage(1);
   };
   
+  const handleRowClick = (contact: Contact) => {
+    setSelectedContact(contact);
+  };
+  
+  const handleSelectRow = (id: string, isSelected: boolean) => {
+    const newSelectedRows = new Set(selectedRows);
+    
+    if (isSelected) {
+      newSelectedRows.add(id);
+    } else {
+      newSelectedRows.delete(id);
+    }
+    
+    setSelectedRows(newSelectedRows);
+    setSelectedCount(newSelectedRows.size);
+  };
+  
+  const handleSelectAll = (isSelected: boolean) => {
+    if (isSelected) {
+      const allIds = new Set(displayedContacts.map(contact => contact.id));
+      setSelectedRows(allIds);
+      setSelectedCount(allIds.size);
+    } else {
+      setSelectedRows(new Set());
+      setSelectedCount(0);
+    }
+  };
+  
   // Calculate pagination
   const totalPages = Math.ceil(filteredContacts.length / pageSize);
   const startIndex = (currentPage - 1) * pageSize;
@@ -181,7 +139,7 @@ const Index = () => {
           
           <div className="mb-6 flex flex-col md:flex-row gap-4 md:items-center justify-between">
             <SearchBar onSearch={handleSearch} className="md:max-w-md" />
-            <ActionButtons selectedCount={0} />
+            <ActionButtons selectedCount={selectedCount} />
           </div>
           
           <Tabs defaultValue="all" className="w-full mb-6">
@@ -190,9 +148,17 @@ const Index = () => {
               <TabsTrigger value="recent">Recent</TabsTrigger>
               <TabsTrigger value="active">Active</TabsTrigger>
               <TabsTrigger value="inactive">Inactive</TabsTrigger>
+              <TabsTrigger value="bulk-actions">Bulk Actions</TabsTrigger>
             </TabsList>
             <TabsContent value="all" className="pt-4">
-              <ContactsTable contacts={displayedContacts} />
+              <ContactsTable 
+                contacts={displayedContacts} 
+                onRowClick={handleRowClick}
+                isSelectable={true}
+                selectedRows={selectedRows}
+                onSelectRow={handleSelectRow}
+                onSelectAll={handleSelectAll}
+              />
               
               <div className="mt-4">
                 <Pagination
@@ -220,9 +186,19 @@ const Index = () => {
                 <p className="text-gray-500">Inactive contacts view coming soon</p>
               </div>
             </TabsContent>
+            <TabsContent value="bulk-actions" className="pt-4">
+              <BulkActionsTable />
+            </TabsContent>
           </Tabs>
         </main>
       </div>
+      
+      {selectedContact && (
+        <ChatInterface 
+          contact={selectedContact} 
+          onClose={() => setSelectedContact(null)}
+        />
+      )}
     </div>
   );
 };
