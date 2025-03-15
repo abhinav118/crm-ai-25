@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Avatar } from '@/components/dashboard/Avatar';
+import Avatar from '@/components/dashboard/Avatar';
 import { Button } from '@/components/ui/button';
 import {
   MessageSquare,

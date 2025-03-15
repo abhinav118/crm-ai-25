@@ -21,30 +21,50 @@ export type Contact = {
 type ContactsTableProps = {
   contacts: Contact[];
   className?: string;
+  onRowClick?: (contact: Contact) => void;
+  isSelectable?: boolean;
+  selectedRows?: Set<string>;
+  onSelectRow?: (id: string, isSelected: boolean) => void;
+  onSelectAll?: (isSelected: boolean) => void;
 };
 
 const ContactsTable: React.FC<ContactsTableProps> = ({ 
   contacts,
-  className
+  className,
+  onRowClick,
+  isSelectable = false,
+  selectedRows = new Set(),
+  onSelectRow,
+  onSelectAll
 }) => {
-  const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
-  
   const handleSelectRow = (id: string, isSelected: boolean) => {
-    const newSelectedRows = new Set(selectedRows);
-    if (isSelected) {
-      newSelectedRows.add(id);
+    if (onSelectRow) {
+      onSelectRow(id, isSelected);
     } else {
-      newSelectedRows.delete(id);
+      const newSelectedRows = new Set(selectedRows);
+      if (isSelected) {
+        newSelectedRows.add(id);
+      } else {
+        newSelectedRows.delete(id);
+      }
+      setSelectedRows(newSelectedRows);
     }
-    setSelectedRows(newSelectedRows);
   };
   
+  const [localSelectedRows, setSelectedRows] = useState<Set<string>>(new Set());
+  
+  const effectiveSelectedRows = onSelectRow ? selectedRows : localSelectedRows;
+  
   const handleSelectAll = (isSelected: boolean) => {
-    if (isSelected) {
-      const allIds = contacts.map(contact => contact.id);
-      setSelectedRows(new Set(allIds));
+    if (onSelectAll) {
+      onSelectAll(isSelected);
     } else {
-      setSelectedRows(new Set());
+      if (isSelected) {
+        const allIds = contacts.map(contact => contact.id);
+        setSelectedRows(new Set(allIds));
+      } else {
+        setSelectedRows(new Set());
+      }
     }
   };
   
@@ -153,11 +173,11 @@ const ContactsTable: React.FC<ContactsTableProps> = ({
       <DataTable
         data={contacts}
         columns={columns}
-        isSelectable={true}
-        selectedRows={selectedRows}
+        isSelectable={isSelectable}
+        selectedRows={effectiveSelectedRows}
         onSelectRow={handleSelectRow}
         onSelectAll={handleSelectAll}
-        onRowClick={(row) => console.log('Clicked row:', row)}
+        onRowClick={onRowClick}
       />
     </div>
   );
