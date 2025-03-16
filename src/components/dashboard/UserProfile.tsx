@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -34,66 +33,32 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
     setIsLoading(true);
     
     try {
-      // Verify we have a valid user_id that exists in the database
-      const { data: existingContacts, error: fetchError } = await supabase
-        .from('contacts')
-        .select('user_id')
-        .limit(1);
+      // For this update operation, we don't need to fetch the user
+      // Just use the existing contact's user_id to satisfy RLS policies
       
-      if (fetchError) {
-        console.error('Error fetching existing contacts:', fetchError);
-        throw fetchError;
-      }
-      
-      // Get current user from Supabase
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      
-      if (userError) {
-        console.error('User authentication error:', userError);
-      }
-      
-      // Ensure we have a valid user_id from an existing contact
-      let validUserId = contact.user_id;
-      
-      if (!validUserId && existingContacts && existingContacts.length > 0) {
-        console.log('Using existing user_id for contact update:', existingContacts[0].user_id);
-        validUserId = existingContacts[0].user_id;
-      } else if (!validUserId && user?.id) {
-        validUserId = user.id;
-      }
-      
-      if (!validUserId) {
-        throw new Error('No valid user_id available - cannot update contact');
-      }
-      
-      // Prepare contact data for upsert
-      const contactData: ContactData = {
-        user_id: validUserId,
+      // Skip the auth check since we're working with existing contacts
+      // and just need to maintain the original user_id
+
+      // Prepare contact data for update
+      const updateData = {
+        id: contact.id,
         name: formData.name,
         email: formData.email || null,
         phone: formData.phone || null,
         company: formData.company || null,
         status: formData.status,
         tags: formData.tags || [],
-        id: contact.id // Include ID for update
+        updated_at: new Date().toISOString(),
+        user_id: contact.user_id // Keep the same user_id
       };
       
-      console.log('Upserting contact data:', contactData);
+      console.log('Updating contact data:', updateData);
       
-      // Update contact in Supabase - using upsert
+      // Update contact in Supabase using update instead of upsert
       const { data, error } = await supabase
         .from('contacts')
-        .upsert({
-          id: contact.id,
-          name: formData.name,
-          email: formData.email || null,
-          phone: formData.phone || null,
-          company: formData.company || null,
-          status: formData.status,
-          tags: formData.tags || [],
-          updated_at: new Date().toISOString(),
-          user_id: validUserId
-        })
+        .update(updateData)
+        .eq('id', contact.id) // Only update this specific contact
         .select()
         .single();
       
@@ -116,7 +81,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
       console.error('Error updating contact:', error);
       toast({
         title: 'Error',
-        description: 'Failed to update contact',
+        description: 'Failed to update contact. Please ensure you have permission to edit this contact.',
         variant: 'destructive'
       });
     } finally {
