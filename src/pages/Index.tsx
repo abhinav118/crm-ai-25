@@ -7,7 +7,7 @@ import ContactsTable, { Contact } from '@/components/dashboard/ContactsTable';
 import BulkActionsTable from '@/components/dashboard/BulkActionsTable';
 import ChatInterface from '@/components/dashboard/ChatInterface';
 import Pagination from '@/components/dashboard/Pagination';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -269,12 +269,12 @@ const Index = () => {
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
-        throw new Error('You must be logged in to add contacts');
+        console.log('No authenticated user, using placeholder ID');
       }
 
       const contact = {
-        user_id: user.id,
-        name: `${formData.firstName} ${formData.lastName}`,
+        user_id: user?.id || '00000000-0000-0000-0000-000000000000',
+        name: formData.name,
         email: formData.email || null,
         phone: formData.phone || null,
         company: formData.company || null,
@@ -282,13 +282,24 @@ const Index = () => {
         tags: formData.tags || []
       };
 
+      console.log('Inserting contact with data:', contact);
+
       const { data, error } = await supabase
         .from('contacts')
         .insert(contact)
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+
+      if (!data) {
+        throw new Error('No data returned from insert operation');
+      }
+
+      console.log('Contact added successfully:', data);
 
       const newContact: Contact = {
         id: data.id,
@@ -302,8 +313,8 @@ const Index = () => {
         createdAt: data.created_at,
       };
 
-      setContacts([newContact, ...contacts]);
-      setFilteredContacts([newContact, ...filteredContacts]);
+      setContacts(prevContacts => [newContact, ...prevContacts]);
+      setFilteredContacts(prevContacts => [newContact, ...prevContacts]);
       
       toast({
         title: 'Success',
@@ -315,7 +326,7 @@ const Index = () => {
       console.error('Error adding contact:', error);
       toast({
         title: 'Error',
-        description: 'Failed to add contact',
+        description: 'Failed to add contact: ' + (error as Error).message,
         variant: 'destructive'
       });
     }

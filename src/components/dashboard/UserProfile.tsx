@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Edit2, Calendar, Phone, Mail, User, MapPin, Award, AtSign } from 'lucide-react';
 import { Contact } from './ContactsTable';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface UserProfileProps {
   contact: Contact;
@@ -15,6 +17,7 @@ interface UserProfileProps {
 const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState(contact);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -25,12 +28,56 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (onSave) {
-      onSave(formData);
+    setIsLoading(true);
+    
+    try {
+      // Update contact in Supabase
+      const { error } = await supabase
+        .from('contacts')
+        .update({
+          name: formData.name,
+          email: formData.email || null,
+          phone: formData.phone || null,
+          company: formData.company || null,
+          status: formData.status,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', contact.id);
+      
+      if (error) throw error;
+      
+      // Update UI state
+      if (onSave) {
+        onSave(formData);
+      }
+      
+      toast({
+        title: 'Success',
+        description: 'Contact updated successfully',
+      });
+      
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Error updating contact:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update contact',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsLoading(false);
     }
-    setIsEditing(false);
+  };
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'Not available';
+    try {
+      return new Date(dateString).toLocaleString();
+    } catch (e) {
+      return dateString;
+    }
   };
 
   return (
@@ -41,6 +88,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
           variant="ghost" 
           size="sm" 
           onClick={() => setIsEditing(!isEditing)}
+          disabled={isLoading}
         >
           <Edit2 size={16} className="mr-1" />
           {isEditing ? 'Cancel' : 'Edit'}
@@ -56,6 +104,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
               name="name"
               value={formData.name} 
               onChange={handleChange} 
+              required
             />
           </div>
           <div>
@@ -101,7 +150,9 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
             </Select>
           </div>
           <div className="mt-4">
-            <Button type="submit" className="w-full">Save Changes</Button>
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? 'Saving...' : 'Save Changes'}
+            </Button>
           </div>
         </form>
       ) : (
@@ -111,9 +162,9 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
             <ProfileItem icon={<Mail />} label="Email" value={contact.email || 'Not provided'} />
             <ProfileItem icon={<Phone />} label="Phone" value={contact.phone || 'Not provided'} />
             <ProfileItem icon={<Award />} label="Company" value={contact.company || 'Not provided'} />
-            <ProfileItem icon={<Calendar />} label="Last Activity" value={contact.lastActivity || 'No activity'} />
+            <ProfileItem icon={<Calendar />} label="Last Activity" value={formatDate(contact.lastActivity)} />
             <ProfileItem icon={<MapPin />} label="Status" value={contact.status} />
-            <ProfileItem icon={<AtSign />} label="Created" value={contact.createdAt} />
+            <ProfileItem icon={<AtSign />} label="Created" value={formatDate(contact.createdAt)} />
           </div>
         </div>
       )}

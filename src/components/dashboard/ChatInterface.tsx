@@ -1,11 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import Avatar from '@/components/dashboard/Avatar';
 import { Button } from '@/components/ui/button';
 import UserProfile from './UserProfile';
 import { Contact } from './ContactsTable';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import {
   MessageSquare,
   MessageCircle,
@@ -43,6 +42,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
   const [messageText, setMessageText] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [updatedContact, setUpdatedContact] = useState<Contact>(contact);
   const { toast } = useToast();
 
   // Fetch messages from Supabase when contact changes
@@ -106,20 +106,22 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
       // Get the current user
       const { data: { user } } = await supabase.auth.getUser();
       
-      if (!user) {
-        throw new Error('You must be logged in to send messages');
-      }
+      const userId = user?.id || '00000000-0000-0000-0000-000000000000';
       
       // If it's an SMS, send it via Twilio
-      if (activeChannel === 'sms' && contact.phone) {
+      if (activeChannel === 'sms' && updatedContact.phone) {
+        console.log('Sending SMS via Supabase Edge Function');
+        
         // Call our Supabase Edge Function to send SMS
         const { data: twilioResponse, error: twilioError } = await supabase.functions.invoke('send-sms', {
           body: {
-            to: contact.phone,
+            to: updatedContact.phone,
             message: messageText,
-            contactId: contact.id
+            contactId: updatedContact.id
           }
         });
+        
+        console.log('Twilio response:', twilioResponse);
         
         if (twilioError) {
           throw new Error(`Failed to send SMS: ${twilioError.message}`);
@@ -134,11 +136,11 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
       const { data, error } = await supabase
         .from('messages')
         .insert({
-          contact_id: contact.id,
+          contact_id: updatedContact.id,
           content: messageText,
           sender: 'user',
           channel: activeChannel,
-          user_id: user.id
+          user_id: userId
         })
         .select()
         .single();
@@ -162,6 +164,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
         )
       );
       
+      // Update contact's last_activity in Supabase
+      await supabase
+        .from('contacts')
+        .update({ last_activity: new Date().toISOString() })
+        .eq('id', updatedContact.id);
+      
       toast({
         title: 'Message sent',
         description: activeChannel === 'sms' 
@@ -176,7 +184,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
       
       toast({
         title: 'Error',
-        description: error.message || 'Failed to send message',
+        description: (error as Error).message || 'Failed to send message',
         variant: 'destructive'
       });
     } finally {
@@ -196,18 +204,22 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
+  const handleContactUpdate = (updatedContactData: Contact) => {
+    setUpdatedContact(updatedContactData);
+  };
+
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-lg w-full max-w-5xl h-[90vh] flex flex-col">
         {/* Header */}
         <div className="p-4 border-b flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Avatar name={contact.name} status={contact.status as any} />
+            <Avatar name={updatedContact.name} status={updatedContact.status as any} />
             <div>
-              <h3 className="font-medium text-gray-900">{contact.name}</h3>
+              <h3 className="font-medium text-gray-900">{updatedContact.name}</h3>
               <div className="text-sm text-gray-500 flex items-center gap-2">
                 <Phone size={14} />
-                {contact.phone || 'No phone number'}
+                {updatedContact.phone || 'No phone number'}
               </div>
             </div>
           </div>
@@ -221,35 +233,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
           {/* Left Side - Profile */}
           <div className="w-1/3 border-r p-4 overflow-y-auto">
             <UserProfile 
-              contact={contact} 
-              onSave={async (updatedContact) => {
-                try {
-                  const { error } = await supabase
-                    .from('contacts')
-                    .update({
-                      name: updatedContact.name,
-                      email: updatedContact.email,
-                      phone: updatedContact.phone,
-                      company: updatedContact.company,
-                      status: updatedContact.status
-                    })
-                    .eq('id', contact.id);
-                  
-                  if (error) throw error;
-                  
-                  toast({
-                    title: 'Success',
-                    description: 'Contact updated successfully',
-                  });
-                } catch (error) {
-                  console.error('Error updating contact:', error);
-                  toast({
-                    title: 'Error',
-                    description: 'Failed to update contact',
-                    variant: 'destructive'
-                  });
-                }
-              }}
+              contact={updatedContact}
+              onSave={handleContactUpdate}
             />
           </div>
 
@@ -366,7 +351,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
                     value={messageText}
                     onChange={(e) => setMessageText(e.target.value)}
                     onKeyDown={handleKeyPress}
-                    disabled={activeChannel === 'sms' && !contact.phone}
+                    disabled={activeChannel === 'sms' && !updatedContact.phone}
                   />
                   <div className="flex flex-col gap-2">
                     <Button 
@@ -382,11 +367,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
                       size="sm" 
                       className="px-3" 
                       onClick={handleSend} 
-                      disabled={!messageText.trim() || (activeChannel === 'sms' && !contact.phone)}
-                      isLoading={isLoading}
+                      disabled={!messageText.trim() || (activeChannel === 'sms' && !updatedContact.phone) || isLoading}
                     >
                       <Send size={14} className="mr-1" />
-                      Send
+                      {isLoading ? 'Sending...' : 'Send'}
                     </Button>
                   </div>
                 </div>

@@ -29,7 +29,8 @@ serve(async (req) => {
     }
 
     // Get the request body
-    const { to, message, contactId } = await req.json() as SMSRequest
+    const requestBody = await req.json()
+    const { to, message, contactId } = requestBody as SMSRequest
 
     if (!to || !message || !contactId) {
       throw new Error('Missing required parameters: to, message, or contactId')
