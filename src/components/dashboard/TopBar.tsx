@@ -7,12 +7,12 @@ import {
   Upload, 
   Download, 
   Bell, 
-  Search, 
   Menu,
   UserCircle,
   MessageSquare,
   Calendar
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 type TopBarProps = {
   sidebarCollapsed: boolean;
@@ -25,36 +25,35 @@ const TopBar: React.FC<TopBarProps> = ({
 }) => {
   return (
     <header className={cn(
-      "h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 sticky top-0 z-20 transition-all duration-300",
-      sidebarCollapsed ? "ml-[70px]" : "ml-[240px]"
+      "h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 sticky top-0 z-20 transition-all duration-300"
     )}>
       <div className="flex items-center gap-2">
         <button
           onClick={onMenuClick}
-          className="lg:hidden p-2 rounded-md hover:bg-gray-100 transition-colors"
+          className="md:hidden p-2 rounded-md hover:bg-gray-100 transition-colors"
         >
           <Menu size={20} />
         </button>
         
-        <div className="flex space-x-1">
-          <NavItem active label="Contacts" icon={<UserCircle size={16} />} />
-          <NavItem label="Conversations" icon={<MessageSquare size={16} />} />
-          <NavItem label="Calendar" icon={<Calendar size={16} />} />
+        <div className="flex space-x-1 overflow-x-auto hide-scrollbar">
+          <NavItem to="/contacts" active label="Contacts" icon={<UserCircle size={16} />} />
+          <NavItem to="/conversations" label="Conversations" icon={<MessageSquare size={16} />} />
+          <NavItem to="/calendar" label="Calendar" icon={<Calendar size={16} />} />
         </div>
       </div>
       
-      <div className="flex items-center space-x-3">
-        <Button size="sm" variant="outline" className="text-xs flex items-center gap-1.5">
+      <div className="flex items-center space-x-2 sm:space-x-3">
+        <Button size="sm" variant="outline" className="text-xs h-8 flex items-center gap-1.5">
           <UserPlus size={16} />
           <span className="hidden sm:inline">Add Contact</span>
         </Button>
         
-        <Button size="sm" variant="outline" className="text-xs flex items-center gap-1.5">
+        <Button size="sm" variant="outline" className="text-xs h-8 flex items-center gap-1.5">
           <Upload size={16} />
           <span className="hidden sm:inline">Import</span>
         </Button>
         
-        <Button size="sm" variant="outline" className="text-xs flex items-center gap-1.5">
+        <Button size="sm" variant="outline" className="text-xs h-8 flex items-center gap-1.5">
           <Download size={16} />
           <span className="hidden sm:inline">Export</span>
         </Button>
@@ -78,11 +77,13 @@ type NavItemProps = {
   label: string;
   active?: boolean;
   icon?: React.ReactNode;
+  to: string;
 };
 
-const NavItem: React.FC<NavItemProps> = ({ label, active = false, icon }) => {
+const NavItem: React.FC<NavItemProps> = ({ label, active = false, icon, to }) => {
   return (
-    <button 
+    <Link 
+      to={to}
       className={cn(
         "px-3 py-1.5 text-sm font-medium rounded-md flex items-center gap-1.5 transition-colors",
         active 
@@ -92,7 +93,7 @@ const NavItem: React.FC<NavItemProps> = ({ label, active = false, icon }) => {
     >
       {icon}
       {label}
-    </button>
+    </Link>
   );
 };
 

@@ -25,10 +25,10 @@ const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   return (
     <aside className={cn(
-      "h-screen bg-navy fixed top-0 left-0 z-30 flex flex-col transition-all duration-300 ease-in-out",
+      "h-screen fixed top-0 left-0 z-30 flex flex-col transition-all duration-300 ease-in-out bg-[#69e2c7] text-white",
       collapsed ? "w-[70px]" : "w-[240px]"
     )}>
-      <div className="flex items-center h-16 px-3 border-b border-sidebar-border">
+      <div className="flex items-center h-16 px-3 border-b border-white/20">
         <div className={cn(
           "flex items-center transition-all duration-300",
           collapsed ? "justify-center w-full" : "justify-between w-full"
@@ -45,7 +45,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           )}
           <button 
             onClick={onToggle}
-            className="w-8 h-8 flex items-center justify-center text-white/60 hover:text-white rounded-md hover:bg-sidebar-accent transition-colors"
+            className="w-8 h-8 flex items-center justify-center text-white/80 hover:text-white rounded-md hover:bg-white/10 transition-colors"
           >
             {collapsed ? <ChevronRight size={18} /> : <PanelLeft size={18} />}
           </button>
@@ -54,8 +54,8 @@ const Sidebar: React.FC<SidebarProps> = ({
       
       <div className="flex flex-col flex-1 py-4 overflow-y-auto">
         <nav className="px-2 space-y-1">
-          <SidebarItem icon={<LayoutDashboard size={20} />} label="Dashboard" to="/" active={true} collapsed={collapsed} />
-          <SidebarItem icon={<Users size={20} />} label="Contacts" to="/contacts" collapsed={collapsed} />
+          <SidebarItem icon={<LayoutDashboard size={20} />} label="Dashboard" to="/" collapsed={collapsed} />
+          <SidebarItem icon={<Users size={20} />} label="Contacts" to="/contacts" active={true} collapsed={collapsed} />
           <SidebarItem icon={<MessageSquare size={20} />} label="Conversations" to="/conversations" collapsed={collapsed} />
           <SidebarItem icon={<Calendar size={20} />} label="Calendar" to="/calendar" collapsed={collapsed} />
           <SidebarItem icon={<BarChart3 size={20} />} label="Analytics" to="/analytics" collapsed={collapsed} />
@@ -67,18 +67,18 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </div>
       
-      <div className="p-4 border-t border-sidebar-border">
+      <div className="p-4 border-t border-white/20">
         <div className={cn(
           "flex items-center",
           collapsed ? "justify-center" : "space-x-3"
         )}>
-          <div className="avatar-base bg-avatar-purple">
+          <div className="avatar-base bg-white/20 text-white">
             JD
           </div>
           {!collapsed && (
             <div className="flex flex-col">
               <span className="text-white text-sm font-medium">John Doe</span>
-              <span className="text-white/60 text-xs">Admin</span>
+              <span className="text-white/70 text-xs">Admin</span>
             </div>
           )}
         </div>
@@ -106,9 +106,9 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
     <Link 
       to={to} 
       className={cn(
-        "sidebar-item",
-        active && "active",
-        collapsed && "justify-center px-2"
+        "flex items-center px-3 py-2 rounded-md text-white/80 hover:text-white hover:bg-white/10 transition-colors",
+        active && "bg-white/20 text-white font-medium",
+        collapsed ? "justify-center" : "space-x-3"
       )}
     >
       <span className="text-xl">{icon}</span>

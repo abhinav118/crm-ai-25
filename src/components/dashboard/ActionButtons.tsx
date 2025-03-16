@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { 
   Plus, 
@@ -48,35 +49,35 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({ selectedCount }) => {
   
   return (
     <>
-      <div className="flex items-center gap-2 overflow-x-auto pb-2 hide-scrollbar">
-        <div className="flex-none flex items-center gap-2">
-          <ActionButton icon={<Plus size={18} />} label="New" />
-          <ActionButton icon={<Filter size={18} />} label="Filter" />
+      <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
+        <div className="flex items-center gap-1 sm:gap-2">
+          <ActionButton icon={<Plus size={16} />} label="New" />
+          <ActionButton icon={<Filter size={16} />} label="Filter" />
           <ActionButton 
-            icon={<UserPlus size={18} />} 
+            icon={<UserPlus size={16} />} 
             label="Add Contact" 
             primary 
             onClick={() => setShowAddContact(true)} 
           />
         </div>
         
-        <div className="flex-none h-6 w-px bg-gray-300 mx-1"></div>
+        <div className="hidden sm:block h-6 w-px bg-gray-300 mx-1"></div>
         
-        <div className="flex-none flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2">
           <ActionButton 
-            icon={<Mail size={18} />} 
+            icon={<Mail size={16} />} 
             label="Email" 
             disabled={!hasSelection} 
             onClick={() => handleAction('Email')}
           />
           <ActionButton 
-            icon={<Tag size={18} />} 
+            icon={<Tag size={16} />} 
             label="Tag" 
             disabled={!hasSelection} 
             onClick={() => handleAction('Tag')}
           />
           <ActionButton 
-            icon={<Trash size={18} />} 
+            icon={<Trash size={16} />} 
             label="Delete" 
             disabled={!hasSelection} 
             danger 
@@ -84,16 +85,16 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({ selectedCount }) => {
           />
         </div>
         
-        <div className="flex-none h-6 w-px bg-gray-300 mx-1"></div>
+        <div className="hidden sm:block h-6 w-px bg-gray-300 mx-1"></div>
         
-        <div className="flex-none flex items-center gap-2">
-          <ActionButton icon={<Upload size={18} />} label="Import" onClick={() => handleAction('Import')} />
-          <ActionButton icon={<Download size={18} />} label="Export" onClick={() => handleAction('Export')} />
-          <ActionButton icon={<MoreHorizontal size={18} />} label="More" />
+        <div className="flex items-center gap-1 sm:gap-2">
+          <ActionButton icon={<Upload size={16} />} label="Import" onClick={() => handleAction('Import')} />
+          <ActionButton icon={<Download size={16} />} label="Export" onClick={() => handleAction('Export')} />
+          <ActionButton icon={<MoreHorizontal size={16} />} label="More" />
         </div>
         
         {hasSelection && (
-          <div className="flex-none ml-4 px-2.5 py-1 rounded-md bg-primary/10 text-primary text-sm font-medium">
+          <div className="ml-2 px-2 py-1 rounded-md bg-primary/10 text-primary text-xs font-medium">
             {selectedCount} selected
           </div>
         )}
@@ -139,10 +140,10 @@ const ActionButton: React.FC<ActionButtonProps> = ({
           <button
             onClick={onClick}
             disabled={disabled}
-            className={`action-button flex items-center justify-center h-9 px-3 rounded-md ${className} transition-all duration-200`}
+            className={`action-button flex items-center h-8 px-2 sm:px-2.5 rounded-md ${className} transition-all duration-200 text-xs sm:text-sm`}
           >
             {icon}
-            <span className="ml-2 text-sm whitespace-nowrap">{label}</span>
+            <span className="ml-1 sm:ml-1.5 whitespace-nowrap hidden xs:inline">{label}</span>
           </button>
         </TooltipTrigger>
         <TooltipContent>

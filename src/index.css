@@ -27,6 +27,14 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 221.2 83.2% 53.3%;
     --radius: 0.5rem;
+    --sidebar-background: 164 72% 65%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 0 0% 100%;
+    --sidebar-primary-foreground: 164 72% 65%;
+    --sidebar-accent: 255 255 255 / 0.1;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 255 255 255 / 0.2;
+    --sidebar-ring: 0 0% 100%;
   }
 
   .dark {
@@ -65,7 +73,7 @@
 
 @layer components {
   .action-button {
-    @apply flex items-center justify-center rounded-md h-9 font-medium transition-all;
+    @apply flex items-center justify-center rounded-md h-8 font-medium transition-all;
   }
   
   .table-header {
@@ -106,6 +114,25 @@
   }
   
   .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Extra small screens */
+@media (min-width: 475px) {
+  .xs\:inline {
+    display: inline;
+  }
+  
+  .xs\:block {
+    display: block;
+  }
+  
+  .xs\:flex {
+    display: flex;
+  }
+  
+  .xs\:hidden {
     display: none;
   }
 }

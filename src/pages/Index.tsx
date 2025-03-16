@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Sidebar from '@/components/dashboard/Sidebar';
 import TopBar from '@/components/dashboard/TopBar';
@@ -10,6 +11,7 @@ import Pagination from '@/components/dashboard/Pagination';
 import { useToast } from '@/components/ui/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SAMPLE_CONTACTS } from '@/data/sampleContacts';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const Index = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -22,8 +24,11 @@ const Index = () => {
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [selectedCount, setSelectedCount] = useState(0);
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
+  const [activeTab, setActiveTab] = useState('all');
   
   const { toast } = useToast();
+  const location = useLocation();
+  const navigate = useNavigate();
   
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -32,6 +37,14 @@ const Index = () => {
     
     return () => clearTimeout(timer);
   }, []);
+  
+  useEffect(() => {
+    // Check if the URL has a hash for tabs
+    const hash = location.hash.replace('#', '');
+    if (hash && ['all', 'recent', 'active', 'inactive', 'bulk-actions'].includes(hash)) {
+      setActiveTab(hash);
+    }
+  }, [location]);
   
   useEffect(() => {
     if (searchQuery.trim() === '') {
@@ -92,6 +105,11 @@ const Index = () => {
     }
   };
   
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    navigate(`/#${value}`);
+  };
+  
   const totalPages = Math.ceil(filteredContacts.length / pageSize);
   const startIndex = (currentPage - 1) * pageSize;
   const endIndex = startIndex + pageSize;
@@ -126,19 +144,19 @@ const Index = () => {
           onMenuClick={toggleSidebar} 
         />
         
-        <main className="p-6">
+        <main className="p-4 sm:p-6">
           <div className="mb-6">
             <h1 className="text-2xl font-semibold text-gray-900 mb-1">Contacts</h1>
             <p className="text-gray-500">Manage and organize your contacts efficiently</p>
           </div>
           
-          <div className="mb-6 flex flex-col md:flex-row gap-4 md:items-center justify-between">
+          <div className="mb-6 flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
             <SearchBar onSearch={handleSearch} className="md:max-w-md" />
             <ActionButtons selectedCount={selectedCount} />
           </div>
           
-          <Tabs defaultValue="all" className="w-full mb-6">
-            <TabsList>
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full mb-6">
+            <TabsList className="mb-2 w-full sm:w-auto overflow-x-auto hide-scrollbar">
               <TabsTrigger value="all">All Contacts</TabsTrigger>
               <TabsTrigger value="recent">Recent</TabsTrigger>
               <TabsTrigger value="active">Active</TabsTrigger>
