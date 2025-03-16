@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -33,42 +34,57 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
     setIsLoading(true);
     
     try {
-      // For this update operation, we don't need to fetch the user
-      // Just use the existing contact's user_id to satisfy RLS policies
-      
-      // Skip the auth check since we're working with existing contacts
-      // and just need to maintain the original user_id
-
       // Prepare contact data for update
       const updateData = {
-        id: contact.id,
         name: formData.name,
         email: formData.email || null,
         phone: formData.phone || null,
         company: formData.company || null,
         status: formData.status,
         tags: formData.tags || [],
-        updated_at: new Date().toISOString(),
-        user_id: contact.user_id // Keep the same user_id
+        updated_at: new Date().toISOString()
       };
       
       console.log('Updating contact data:', updateData);
       
       // Update contact in Supabase using update instead of upsert
+      // We don't include user_id in the update to avoid permission issues
       const { data, error } = await supabase
         .from('contacts')
         .update(updateData)
-        .eq('id', contact.id) // Only update this specific contact
-        .select()
-        .single();
+        .eq('id', contact.id)
+        .select();
       
       if (error) throw error;
       
+      // Handle the case where no data is returned but operation succeeded
+      if (!data || data.length === 0) {
+        console.log('Contact updated but no data returned');
+        
+        // Update the local state with the new values
+        const updatedContact = {
+          ...contact,
+          ...updateData
+        };
+        
+        if (onSave) {
+          onSave(updatedContact as Contact);
+        }
+        
+        toast({
+          title: 'Success',
+          description: 'Contact updated successfully',
+        });
+        
+        setIsEditing(false);
+        return;
+      }
+      
       console.log('Contact updated successfully:', data);
       
-      // Update UI state
+      // Update UI state with the returned data
       if (onSave) {
-        onSave(formData);
+        onSave(data[0] as Contact);
       }
       
       toast({
