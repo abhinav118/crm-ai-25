@@ -10,14 +10,14 @@ import ChatInterface from '@/components/dashboard/ChatInterface';
 import Pagination from '@/components/dashboard/Pagination';
 import { useToast } from '@/components/ui/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { SAMPLE_CONTACTS } from '@/data/sampleContacts';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [contacts, setContacts] = useState<Contact[]>(SAMPLE_CONTACTS);
-  const [filteredContacts, setFilteredContacts] = useState<Contact[]>(SAMPLE_CONTACTS);
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [filteredContacts, setFilteredContacts] = useState<Contact[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [isLoading, setIsLoading] = useState(true);
@@ -25,18 +25,66 @@ const Index = () => {
   const [selectedCount, setSelectedCount] = useState(0);
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState('all');
+  const [totalCount, setTotalCount] = useState(0);
   
   const { toast } = useToast();
   const location = useLocation();
   const navigate = useNavigate();
   
+  // Fetch contacts from Supabase
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 1000);
+    const fetchContacts = async () => {
+      setIsLoading(true);
+      try {
+        // Get the total count first
+        const { count, error: countError } = await supabase
+          .from('contacts')
+          .select('*', { count: 'exact', head: true });
+        
+        if (countError) throw countError;
+        setTotalCount(count || 0);
+        
+        // Then fetch the paginated data
+        const from = (currentPage - 1) * pageSize;
+        const to = from + pageSize - 1;
+        
+        const { data, error } = await supabase
+          .from('contacts')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .range(from, to);
+        
+        if (error) throw error;
+        
+        // Format the data to match our Contact type
+        const formattedContacts = data.map(contact => ({
+          id: contact.id,
+          name: contact.name,
+          email: contact.email || '',
+          phone: contact.phone || '',
+          company: contact.company || '',
+          status: contact.status as 'active' | 'inactive',
+          tags: contact.tags || [],
+          lastActivity: contact.last_activity || '',
+          createdAt: new Date(contact.created_at).toLocaleDateString(),
+        }));
+        
+        setContacts(formattedContacts);
+        setFilteredContacts(formattedContacts);
+      } catch (error) {
+        console.error('Error fetching contacts:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load contacts',
+          variant: 'destructive'
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
     
-    return () => clearTimeout(timer);
-  }, []);
+    fetchContacts();
+  }, [currentPage, pageSize, toast]);
   
   useEffect(() => {
     // Check if the URL has a hash for tabs
@@ -54,7 +102,7 @@ const Index = () => {
       const filtered = contacts.filter(
         contact =>
           contact.name.toLowerCase().includes(query) ||
-          contact.email.toLowerCase().includes(query) ||
+          (contact.email && contact.email.toLowerCase().includes(query)) ||
           (contact.phone && contact.phone.includes(query)) ||
           (contact.company && contact.company.toLowerCase().includes(query))
       );
@@ -96,7 +144,7 @@ const Index = () => {
   
   const handleSelectAll = (isSelected: boolean) => {
     if (isSelected) {
-      const allIds = new Set(displayedContacts.map(contact => contact.id));
+      const allIds = new Set(filteredContacts.map(contact => contact.id));
       setSelectedRows(allIds);
       setSelectedCount(allIds.size);
     } else {
@@ -110,10 +158,7 @@ const Index = () => {
     navigate(`/#${value}`);
   };
   
-  const totalPages = Math.ceil(filteredContacts.length / pageSize);
-  const startIndex = (currentPage - 1) * pageSize;
-  const endIndex = startIndex + pageSize;
-  const displayedContacts = filteredContacts.slice(startIndex, endIndex);
+  const totalPages = Math.ceil(totalCount / pageSize);
   
   const toggleSidebar = () => {
     setSidebarCollapsed(!sidebarCollapsed);
@@ -165,7 +210,7 @@ const Index = () => {
             </TabsList>
             <TabsContent value="all" className="pt-4">
               <ContactsTable 
-                contacts={displayedContacts} 
+                contacts={filteredContacts} 
                 onRowClick={handleRowClick}
                 isSelectable={true}
                 selectedRows={selectedRows}
@@ -178,7 +223,7 @@ const Index = () => {
                   currentPage={currentPage}
                   totalPages={totalPages}
                   onPageChange={handlePageChange}
-                  totalRecords={filteredContacts.length}
+                  totalRecords={totalCount}
                   pageSize={pageSize}
                   onPageSizeChange={handlePageSizeChange}
                 />

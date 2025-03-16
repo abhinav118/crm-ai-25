@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Edit2, Calendar, Phone, Mail, User, MapPin, Award, AtSign } from 'lucide-react';
 import { Contact } from './ContactsTable';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface UserProfileProps {
   contact: Contact;
@@ -17,6 +18,10 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSelectChange = (name: string, value: string) => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
@@ -44,32 +49,21 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
 
       {isEditing ? (
         <form onSubmit={handleSubmit} className="space-y-3 flex-1">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label htmlFor="firstName">First Name</Label>
-              <Input 
-                id="firstName" 
-                name="firstName"
-                value={formData.name.split(' ')[0]} 
-                onChange={handleChange} 
-              />
-            </div>
-            <div>
-              <Label htmlFor="lastName">Last Name</Label>
-              <Input 
-                id="lastName" 
-                name="lastName"
-                value={formData.name.split(' ').slice(1).join(' ')} 
-                onChange={handleChange} 
-              />
-            </div>
+          <div>
+            <Label htmlFor="name">Full Name</Label>
+            <Input 
+              id="name" 
+              name="name"
+              value={formData.name} 
+              onChange={handleChange} 
+            />
           </div>
           <div>
             <Label htmlFor="email">Email</Label>
             <Input 
               id="email" 
               name="email"
-              value={formData.email} 
+              value={formData.email || ''} 
               onChange={handleChange} 
             />
           </div>
@@ -92,13 +86,19 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
             />
           </div>
           <div>
-            <Label htmlFor="source">Contact Source</Label>
-            <Input 
-              id="source" 
-              name="source"
-              placeholder="Website/Referral/Other" 
-              onChange={handleChange} 
-            />
+            <Label htmlFor="status">Status</Label>
+            <Select 
+              value={formData.status} 
+              onValueChange={(value) => handleSelectChange('status', value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="mt-4">
             <Button type="submit" className="w-full">Save Changes</Button>
@@ -108,7 +108,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
         <div className="space-y-4 flex-1">
           <div className="grid grid-cols-1 gap-3">
             <ProfileItem icon={<User />} label="Name" value={contact.name} />
-            <ProfileItem icon={<Mail />} label="Email" value={contact.email} />
+            <ProfileItem icon={<Mail />} label="Email" value={contact.email || 'Not provided'} />
             <ProfileItem icon={<Phone />} label="Phone" value={contact.phone || 'Not provided'} />
             <ProfileItem icon={<Award />} label="Company" value={contact.company || 'Not provided'} />
             <ProfileItem icon={<Calendar />} label="Last Activity" value={contact.lastActivity || 'No activity'} />

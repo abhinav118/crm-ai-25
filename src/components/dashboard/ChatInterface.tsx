@@ -1,9 +1,11 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Avatar from '@/components/dashboard/Avatar';
 import { Button } from '@/components/ui/button';
 import UserProfile from './UserProfile';
 import { Contact } from './ContactsTable';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/components/ui/use-toast';
 import {
   MessageSquare,
   MessageCircle,
@@ -13,7 +15,8 @@ import {
   Link,
   FileText,
   Send,
-  Phone
+  Phone,
+  AlertTriangle
 } from 'lucide-react';
 import {
   Tabs,
@@ -38,43 +41,139 @@ type ChatInterfaceProps = {
 const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
   const [activeChannel, setActiveChannel] = useState<string>('sms');
   const [messageText, setMessageText] = useState('');
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      text: 'Hello! I wanted to follow up on your recent purchase.',
-      sender: 'user',
-      timestamp: new Date(Date.now() - 3600000).toISOString(),
-      channel: 'sms'
-    },
-    {
-      id: '2',
-      text: 'Thank you for reaching out. Everything is working great!',
-      sender: 'contact',
-      timestamp: new Date(Date.now() - 1800000).toISOString(),
-      channel: 'sms'
-    },
-    {
-      id: '3',
-      text: 'Great! Let me know if you need anything else.',
-      sender: 'user',
-      timestamp: new Date(Date.now() - 900000).toISOString(),
-      channel: 'sms'
-    }
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
 
-  const handleSend = () => {
+  // Fetch messages from Supabase when contact changes
+  useEffect(() => {
+    const fetchMessages = async () => {
+      if (!contact?.id) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('messages')
+          .select('*')
+          .eq('contact_id', contact.id)
+          .order('sent_at', { ascending: true });
+        
+        if (error) {
+          throw error;
+        }
+        
+        if (data) {
+          const formattedMessages = data.map(msg => ({
+            id: msg.id,
+            text: msg.content,
+            sender: msg.sender as 'user' | 'contact',
+            timestamp: msg.sent_at,
+            channel: msg.channel as 'sms' | 'whatsapp' | 'internal'
+          }));
+          
+          setMessages(formattedMessages);
+        }
+      } catch (error) {
+        console.error('Error fetching messages:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load messages',
+          variant: 'destructive'
+        });
+      }
+    };
+    
+    fetchMessages();
+  }, [contact, toast]);
+
+  const handleSend = async () => {
     if (!messageText.trim()) return;
     
+    // First, create a temporary message to show in the UI
+    const tempId = Date.now().toString();
     const newMessage: Message = {
-      id: Date.now().toString(),
+      id: tempId,
       text: messageText,
       sender: 'user',
       timestamp: new Date().toISOString(),
       channel: activeChannel as 'sms' | 'whatsapp' | 'internal'
     };
     
-    setMessages([...messages, newMessage]);
+    setMessages(prev => [...prev, newMessage]);
     setMessageText('');
+    setIsLoading(true);
+    
+    try {
+      // If it's an SMS, send it via Twilio
+      if (activeChannel === 'sms' && contact.phone) {
+        // Call our Supabase Edge Function to send SMS
+        const { data: twilioResponse, error: twilioError } = await supabase.functions.invoke('send-sms', {
+          body: {
+            to: contact.phone,
+            message: messageText,
+            contactId: contact.id
+          }
+        });
+        
+        if (twilioError) {
+          throw new Error(`Failed to send SMS: ${twilioError.message}`);
+        }
+        
+        if (!twilioResponse.success) {
+          throw new Error(`Twilio error: ${twilioResponse.error}`);
+        }
+      }
+      
+      // Store the message in Supabase
+      const { data, error } = await supabase
+        .from('messages')
+        .insert({
+          contact_id: contact.id,
+          content: messageText,
+          sender: 'user',
+          channel: activeChannel
+        })
+        .select()
+        .single();
+      
+      if (error) {
+        throw error;
+      }
+      
+      // Replace the temporary message with the one from the database
+      setMessages(prev => 
+        prev.map(msg => 
+          msg.id === tempId
+            ? {
+                id: data.id,
+                text: data.content,
+                sender: data.sender as 'user' | 'contact',
+                timestamp: data.sent_at,
+                channel: data.channel as 'sms' | 'whatsapp' | 'internal'
+              }
+            : msg
+        )
+      );
+      
+      toast({
+        title: 'Message sent',
+        description: activeChannel === 'sms' 
+          ? 'SMS sent successfully' 
+          : 'Message saved successfully',
+      });
+    } catch (error) {
+      console.error('Error sending message:', error);
+      
+      // Remove the temporary message on failure
+      setMessages(prev => prev.filter(msg => msg.id !== tempId));
+      
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to send message',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -113,13 +212,47 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
         <div className="flex flex-1 overflow-hidden">
           {/* Left Side - Profile */}
           <div className="w-1/3 border-r p-4 overflow-y-auto">
-            <UserProfile contact={contact} />
+            <UserProfile 
+              contact={contact} 
+              onSave={async (updatedContact) => {
+                try {
+                  const { error } = await supabase
+                    .from('contacts')
+                    .update({
+                      name: updatedContact.name,
+                      email: updatedContact.email,
+                      phone: updatedContact.phone,
+                      company: updatedContact.company,
+                      status: updatedContact.status
+                    })
+                    .eq('id', contact.id);
+                  
+                  if (error) throw error;
+                  
+                  toast({
+                    title: 'Success',
+                    description: 'Contact updated successfully',
+                  });
+                } catch (error) {
+                  console.error('Error updating contact:', error);
+                  toast({
+                    title: 'Error',
+                    description: 'Failed to update contact',
+                    variant: 'destructive'
+                  });
+                }
+              }}
+            />
           </div>
 
           {/* Right Side - Chat */}
           <div className="w-2/3 flex flex-col">
             {/* Channel Tabs */}
-            <Tabs defaultValue="sms" className="flex-1 flex flex-col">
+            <Tabs 
+              defaultValue="sms" 
+              className="flex-1 flex flex-col"
+              onValueChange={value => setActiveChannel(value)}
+            >
               <div className="px-4 pt-4">
                 <TabsList className="grid grid-cols-3 w-full">
                   <TabsTrigger value="sms" className="flex items-center gap-2">
@@ -139,7 +272,27 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
 
               {/* Messages Container */}
               <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                <TabsContent value="sms" className="mt-0 space-y-4">
+                <TabsContent value="sms" className="mt-0 space-y-4 h-full">
+                  {!contact.phone && (
+                    <div className="flex items-center justify-center h-full">
+                      <div className="text-center text-gray-500 bg-yellow-50 p-4 rounded-lg">
+                        <AlertTriangle className="mx-auto mb-2 text-yellow-500" />
+                        <p className="font-medium">No phone number available</p>
+                        <p className="text-sm">Add a phone number to the contact profile to enable SMS.</p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {contact.phone && messages.filter(msg => msg.channel === 'sms').length === 0 && (
+                    <div className="flex items-center justify-center h-full">
+                      <div className="text-center text-gray-500">
+                        <MessageSquare className="mx-auto mb-2" />
+                        <p>No SMS messages yet</p>
+                        <p className="text-sm">Send a message to start the conversation</p>
+                      </div>
+                    </div>
+                  )}
+                  
                   {messages
                     .filter(msg => msg.channel === 'sms')
                     .map(message => (
@@ -157,15 +310,31 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
                 <TabsContent value="whatsapp" className="mt-0 h-full flex items-center justify-center">
                   <div className="text-center text-gray-500">
                     <MessageCircle className="mx-auto mb-2" />
-                    <p>No WhatsApp messages yet</p>
+                    <p>WhatsApp integration coming soon</p>
                   </div>
                 </TabsContent>
                 
                 <TabsContent value="internal" className="mt-0 h-full flex items-center justify-center">
-                  <div className="text-center text-gray-500">
-                    <PenSquare className="mx-auto mb-2" />
-                    <p>No internal comments yet</p>
-                  </div>
+                  {messages.filter(msg => msg.channel === 'internal').length === 0 ? (
+                    <div className="text-center text-gray-500">
+                      <PenSquare className="mx-auto mb-2" />
+                      <p>No internal comments yet</p>
+                      <p className="text-sm">Add notes about this contact for your team</p>
+                    </div>
+                  ) : (
+                    <div className="w-full space-y-4">
+                      {messages
+                        .filter(msg => msg.channel === 'internal')
+                        .map(message => (
+                          <div key={message.id} className="p-3 bg-gray-50 rounded-lg border">
+                            <p className="text-sm">{message.text}</p>
+                            <p className="text-xs mt-1 text-gray-500">
+                              {new Date(message.timestamp).toLocaleString()}
+                            </p>
+                          </div>
+                        ))}
+                    </div>
+                  )}
                 </TabsContent>
               </div>
 
@@ -189,12 +358,25 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
                     value={messageText}
                     onChange={(e) => setMessageText(e.target.value)}
                     onKeyDown={handleKeyPress}
+                    disabled={activeChannel === 'sms' && !contact.phone}
                   />
                   <div className="flex flex-col gap-2">
-                    <Button variant="outline" size="sm" className="px-3" disabled={!messageText.trim()}>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="px-3" 
+                      onClick={() => setMessageText('')}
+                      disabled={!messageText.trim()}
+                    >
                       Clear
                     </Button>
-                    <Button size="sm" className="px-3" onClick={handleSend} disabled={!messageText.trim()}>
+                    <Button 
+                      size="sm" 
+                      className="px-3" 
+                      onClick={handleSend} 
+                      disabled={!messageText.trim() || (activeChannel === 'sms' && !contact.phone)}
+                      isLoading={isLoading}
+                    >
                       <Send size={14} className="mr-1" />
                       Send
                     </Button>
