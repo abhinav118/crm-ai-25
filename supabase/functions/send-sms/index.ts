@@ -37,11 +37,17 @@ serve(async (req) => {
 
     console.log(`Sending SMS to ${to}: ${message}`)
 
+    // Format phone number if needed
+    let formattedPhone = to
+    if (!to.startsWith('+')) {
+      formattedPhone = `+${to.replace(/\D/g, '')}`
+    }
+
     // Make request to Twilio API to send SMS
     const twilioEndpoint = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`
     
     const formData = new URLSearchParams()
-    formData.append('To', to)
+    formData.append('To', formattedPhone)
     formData.append('From', TWILIO_PHONE_NUMBER)
     formData.append('Body', message)
 
@@ -57,8 +63,12 @@ serve(async (req) => {
     const twilioData = await twilioResponse.json()
 
     if (!twilioResponse.ok) {
+      console.error('Twilio API error:', JSON.stringify(twilioData))
       throw new Error(`Twilio API error: ${JSON.stringify(twilioData)}`)
     }
+
+    // Log success
+    console.log('SMS sent successfully:', twilioData.sid)
 
     return new Response(
       JSON.stringify({ success: true, data: twilioData }),

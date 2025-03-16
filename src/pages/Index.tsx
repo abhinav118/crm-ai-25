@@ -12,6 +12,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import AddContactForm from '@/components/dashboard/AddContactForm';
 
 const Index = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -26,63 +27,64 @@ const Index = () => {
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState('all');
   const [totalCount, setTotalCount] = useState(0);
+  const [isAddContactModalOpen, setIsAddContactModalOpen] = useState(false);
   
   const { toast } = useToast();
   const location = useLocation();
   const navigate = useNavigate();
   
   // Fetch contacts from Supabase
+  const fetchContacts = async () => {
+    setIsLoading(true);
+    try {
+      // Get the total count first
+      const { count, error: countError } = await supabase
+        .from('contacts')
+        .select('*', { count: 'exact', head: true });
+      
+      if (countError) throw countError;
+      setTotalCount(count || 0);
+      
+      // Then fetch the paginated data
+      const from = (currentPage - 1) * pageSize;
+      const to = from + pageSize - 1;
+      
+      const { data, error } = await supabase
+        .from('contacts')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .range(from, to);
+      
+      if (error) throw error;
+      
+      // Format the data to match our Contact type
+      const formattedContacts = data.map(contact => ({
+        id: contact.id,
+        name: contact.name,
+        email: contact.email || '',
+        phone: contact.phone || '',
+        company: contact.company || '',
+        status: contact.status as 'active' | 'inactive',
+        tags: contact.tags || [],
+        lastActivity: contact.last_activity || '',
+        createdAt: contact.created_at,
+      }));
+      
+      setContacts(formattedContacts);
+      setFilteredContacts(formattedContacts);
+    } catch (error) {
+      console.error('Error fetching contacts:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load contacts',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
   useEffect(() => {
-    const fetchContacts = async () => {
-      setIsLoading(true);
-      try {
-        // Get the total count first
-        const { count, error: countError } = await supabase
-          .from('contacts')
-          .select('*', { count: 'exact', head: true });
-        
-        if (countError) throw countError;
-        setTotalCount(count || 0);
-        
-        // Then fetch the paginated data
-        const from = (currentPage - 1) * pageSize;
-        const to = from + pageSize - 1;
-        
-        const { data, error } = await supabase
-          .from('contacts')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .range(from, to);
-        
-        if (error) throw error;
-        
-        // Format the data to match our Contact type
-        const formattedContacts = data.map(contact => ({
-          id: contact.id,
-          name: contact.name,
-          email: contact.email || '',
-          phone: contact.phone || '',
-          company: contact.company || '',
-          status: contact.status as 'active' | 'inactive',
-          tags: contact.tags || [],
-          lastActivity: contact.last_activity || '',
-          createdAt: new Date(contact.created_at).toLocaleDateString(),
-        }));
-        
-        setContacts(formattedContacts);
-        setFilteredContacts(formattedContacts);
-      } catch (error) {
-        console.error('Error fetching contacts:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load contacts',
-          variant: 'destructive'
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
     fetchContacts();
   }, [currentPage, pageSize, toast]);
   
@@ -163,6 +165,71 @@ const Index = () => {
   const toggleSidebar = () => {
     setSidebarCollapsed(!sidebarCollapsed);
   };
+
+  const handleAddContact = async (formData: any) => {
+    try {
+      // Get the current user
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        throw new Error('You must be logged in to add contacts');
+      }
+
+      // Format the data for insertion
+      const contact = {
+        user_id: user.id,
+        name: `${formData.firstName} ${formData.lastName}`,
+        email: formData.email || null,
+        phone: formData.phone || null,
+        company: formData.company || null,
+        status: 'active',
+        tags: formData.tags || []
+      };
+
+      // Insert the new contact
+      const { data, error } = await supabase
+        .from('contacts')
+        .insert(contact)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Format the new contact for the UI
+      const newContact: Contact = {
+        id: data.id,
+        name: data.name,
+        email: data.email || '',
+        phone: data.phone || '',
+        company: data.company || '',
+        status: data.status as 'active' | 'inactive',
+        tags: data.tags || [],
+        lastActivity: data.last_activity || '',
+        createdAt: data.created_at,
+      };
+
+      // Add the new contact to the beginning of the contacts list
+      setContacts([newContact, ...contacts]);
+      
+      toast({
+        title: 'Success',
+        description: 'Contact added successfully',
+      });
+      
+      // Close the modal
+      setIsAddContactModalOpen(false);
+      
+      // Refresh the contacts list to show the new contact
+      fetchContacts();
+    } catch (error) {
+      console.error('Error adding contact:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to add contact',
+        variant: 'destructive'
+      });
+    }
+  };
   
   if (isLoading) {
     return (
@@ -197,7 +264,12 @@ const Index = () => {
           
           <div className="mb-6 flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
             <SearchBar onSearch={handleSearch} className="md:max-w-md" />
-            <ActionButtons selectedCount={selectedCount} />
+            <div className="flex gap-2">
+              <ActionButtons 
+                selectedCount={selectedCount} 
+                onAddContact={() => setIsAddContactModalOpen(true)}
+              />
+            </div>
           </div>
           
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full mb-6">
@@ -257,6 +329,12 @@ const Index = () => {
           onClose={() => setSelectedContact(null)}
         />
       )}
+
+      <AddContactForm 
+        open={isAddContactModalOpen} 
+        onClose={() => setIsAddContactModalOpen(false)} 
+        onSubmit={handleAddContact}
+      />
     </div>
   );
 };

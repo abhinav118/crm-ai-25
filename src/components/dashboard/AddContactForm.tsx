@@ -15,6 +15,15 @@ interface AddContactFormProps {
 }
 
 const AddContactForm: React.FC<AddContactFormProps> = ({ open, onClose, onSubmit }) => {
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    company: '',
+    tags: []
+  });
+  const [isLoading, setIsLoading] = useState(false);
   const [phones, setPhones] = useState([{ type: 'mobile', number: '' }]);
   const [emails, setEmails] = useState(['']);
 
@@ -26,10 +35,42 @@ const AddContactForm: React.FC<AddContactFormProps> = ({ open, onClose, onSubmit
     setEmails([...emails, '']);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const formData = new FormData(e.target as HTMLFormElement);
-    onSubmit(Object.fromEntries(formData));
+    setIsLoading(true);
+    
+    try {
+      // Prepare submission data
+      const submissionData = {
+        ...formData,
+        email: emails[0], // Use the first email as the primary
+        phone: phones[0]?.number, // Use the first phone as the primary
+        phonetype: phones[0]?.type
+      };
+      
+      await onSubmit(submissionData);
+      
+      // Reset form
+      setFormData({
+        firstName: '',
+        lastName: '',
+        email: '',
+        phone: '',
+        company: '',
+        tags: []
+      });
+      setPhones([{ type: 'mobile', number: '' }]);
+      setEmails(['']);
+    } catch (error) {
+      console.error('Error submitting form:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -57,12 +98,34 @@ const AddContactForm: React.FC<AddContactFormProps> = ({ open, onClose, onSubmit
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="firstName">First Name*</Label>
-              <Input required id="firstName" name="firstName" />
+              <Input 
+                required 
+                id="firstName" 
+                name="firstName" 
+                value={formData.firstName}
+                onChange={handleInputChange}
+              />
             </div>
             <div>
               <Label htmlFor="lastName">Last Name*</Label>
-              <Input required id="lastName" name="lastName" />
+              <Input 
+                required 
+                id="lastName" 
+                name="lastName" 
+                value={formData.lastName}
+                onChange={handleInputChange}
+              />
             </div>
+          </div>
+
+          <div>
+            <Label htmlFor="company">Company</Label>
+            <Input 
+              id="company" 
+              name="company" 
+              value={formData.company}
+              onChange={handleInputChange}
+            />
           </div>
 
           {/* Email Addresses */}
@@ -189,7 +252,9 @@ const AddContactForm: React.FC<AddContactFormProps> = ({ open, onClose, onSubmit
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit">Create Contact</Button>
+            <Button type="submit" isLoading={isLoading}>
+              Create Contact
+            </Button>
           </div>
         </form>
       </DialogContent>
