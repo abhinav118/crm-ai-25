@@ -268,16 +268,37 @@ const Index = () => {
 
   const handleAddContact = async (formData: ContactData): Promise<void> => {
     try {
+      const { data: existingContacts, error: fetchError } = await supabase
+        .from('contacts')
+        .select('user_id')
+        .limit(1);
+      
+      if (fetchError) {
+        console.error('Error fetching existing contacts:', fetchError);
+        throw fetchError;
+      }
+      
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       
       if (userError) {
         console.error('User authentication error:', userError);
       }
       
-      const userId = user?.id || '00000000-0000-0000-0000-000000000000';
+      let validUserId;
+      
+      if (existingContacts && existingContacts.length > 0) {
+        console.log('Using existing user_id for contact:', existingContacts[0].user_id);
+        validUserId = existingContacts[0].user_id;
+      } else if (user?.id) {
+        validUserId = user.id;
+      } else {
+        throw new Error('No valid user_id available - cannot create contact');
+      }
+      
+      console.log('Submitting contact with user_id:', validUserId);
       
       const contact = {
-        user_id: userId,
+        user_id: validUserId,
         name: formData.name,
         email: formData.email,
         phone: formData.phone,
@@ -315,6 +336,7 @@ const Index = () => {
         tags: data.tags || [],
         lastActivity: data.last_activity || '',
         createdAt: data.created_at,
+        user_id: data.user_id,
       };
 
       setContacts(prevContacts => [newContact, ...prevContacts]);

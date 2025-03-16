@@ -34,7 +34,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
     setIsLoading(true);
     
     try {
-      // Fetch an existing valid user_id if needed
+      // Verify we have a valid user_id that exists in the database
       const { data: existingContacts, error: fetchError } = await supabase
         .from('contacts')
         .select('user_id')
@@ -52,9 +52,23 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
         console.error('User authentication error:', userError);
       }
       
+      // Ensure we have a valid user_id from an existing contact
+      let validUserId = contact.user_id;
+      
+      if (!validUserId && existingContacts && existingContacts.length > 0) {
+        console.log('Using existing user_id for contact update:', existingContacts[0].user_id);
+        validUserId = existingContacts[0].user_id;
+      } else if (!validUserId && user?.id) {
+        validUserId = user.id;
+      }
+      
+      if (!validUserId) {
+        throw new Error('No valid user_id available - cannot update contact');
+      }
+      
       // Prepare contact data for upsert
       const contactData: ContactData = {
-        user_id: user?.id || contact.user_id || existingContacts[0]?.user_id,
+        user_id: validUserId,
         name: formData.name,
         email: formData.email || null,
         phone: formData.phone || null,
@@ -78,7 +92,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
           status: formData.status,
           tags: formData.tags || [],
           updated_at: new Date().toISOString(),
-          user_id: contactData.user_id
+          user_id: validUserId
         })
         .select()
         .single();
