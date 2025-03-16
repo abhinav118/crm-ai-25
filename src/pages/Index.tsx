@@ -83,6 +83,7 @@ const Index = () => {
           tags: contact.tags || [],
           lastActivity: contact.last_activity || '',
           createdAt: contact.created_at,
+          user_id: contact.user_id,
         }));
         
         setContacts(formattedContacts);

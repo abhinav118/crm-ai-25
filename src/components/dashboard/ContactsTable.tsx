@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { cn } from '@/lib/utils';
 import Avatar from './Avatar';
@@ -16,6 +15,7 @@ export type Contact = {
   status: 'active' | 'inactive';
   tags?: string[];
   createdAt: string;
+  user_id?: string; // Added to match database schema
 };
 
 type ContactsTableProps = {

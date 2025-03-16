@@ -54,7 +54,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
       
       // Prepare contact data for upsert
       const contactData: ContactData = {
-        user_id: user?.id || formData.user_id || existingContacts[0]?.user_id,
+        user_id: user?.id || contact.user_id || existingContacts[0]?.user_id,
         name: formData.name,
         email: formData.email || null,
         phone: formData.phone || null,
