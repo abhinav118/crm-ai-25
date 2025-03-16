@@ -20,4 +20,5 @@ export interface ContactData {
   company: string | null;
   status: string;
   tags: string[];
+  id?: string; // Optional for updating existing contacts
 }

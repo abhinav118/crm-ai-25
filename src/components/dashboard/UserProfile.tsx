@@ -8,6 +8,7 @@ import { Contact } from './ContactsTable';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { ContactData } from './ContactForm/types';
 
 interface UserProfileProps {
   contact: Contact;
@@ -33,20 +34,47 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
     setIsLoading(true);
     
     try {
-      // Update contact in Supabase
-      const { error } = await supabase
+      // Get current user from Supabase
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError) {
+        console.error('User authentication error:', userError);
+      }
+      
+      // Prepare contact data for upsert
+      const contactData: ContactData = {
+        user_id: user?.id || formData.id.split('-')[0], // Fallback to using part of the contact ID if no user
+        name: formData.name,
+        email: formData.email || null,
+        phone: formData.phone || null,
+        company: formData.company || null,
+        status: formData.status,
+        tags: formData.tags || [],
+        id: contact.id // Include ID for update
+      };
+      
+      console.log('Upserting contact data:', contactData);
+      
+      // Update contact in Supabase - using upsert
+      const { data, error } = await supabase
         .from('contacts')
-        .update({
+        .upsert({
+          id: contact.id,
           name: formData.name,
           email: formData.email || null,
           phone: formData.phone || null,
           company: formData.company || null,
           status: formData.status,
-          updated_at: new Date().toISOString()
+          tags: formData.tags || [],
+          updated_at: new Date().toISOString(),
+          user_id: contactData.user_id
         })
-        .eq('id', contact.id);
+        .select()
+        .single();
       
       if (error) throw error;
+      
+      console.log('Contact updated successfully:', data);
       
       // Update UI state
       if (onSave) {

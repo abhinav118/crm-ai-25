@@ -10,6 +10,8 @@ import DndPreferenceSection from './ContactForm/DndPreferenceSection';
 import FormActions from './ContactForm/FormActions';
 import { useContactForm } from './ContactForm/useContactForm';
 import { ContactData } from './ContactForm/types';
+import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AddContactFormProps {
   open: boolean;
@@ -30,7 +32,34 @@ const AddContactForm: React.FC<AddContactFormProps> = ({ open, onClose, onSubmit
     removePhone,
     removeEmail,
     handleFormSubmit
-  } = useContactForm({ onSubmit, onClose });
+  } = useContactForm({ 
+    onSubmit: async (data) => {
+      try {
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        
+        if (userError) {
+          console.error('User authentication error:', userError);
+          // If no authenticated user, generate a guest user ID
+          const guestUserId = crypto.randomUUID();
+          data.user_id = guestUserId;
+        } else {
+          data.user_id = user?.id || crypto.randomUUID();
+        }
+        
+        console.log('Submitting contact with user_id:', data.user_id);
+        await onSubmit(data);
+      } catch (error) {
+        console.error('Error in contact submission:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to add contact',
+          variant: 'destructive'
+        });
+        throw error;
+      }
+    }, 
+    onClose 
+  });
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
