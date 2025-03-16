@@ -15,9 +15,7 @@ import {
   Link,
   FileText,
   Send,
-  Phone,
-  AlertTriangle,
-  Lock
+  Phone
 } from 'lucide-react';
 import {
   Tabs,
@@ -46,29 +44,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(true);
   const [updatedContact, setUpdatedContact] = useState<Contact>(contact);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const { toast } = useToast();
-
-  // Check auth status on component mount
-  useEffect(() => {
-    const checkAuthStatus = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setIsAuthenticated(!!session);
-      
-      // Setup auth state change listener
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(
-        (_event, session) => {
-          setIsAuthenticated(!!session);
-        }
-      );
-      
-      return () => {
-        subscription.unsubscribe();
-      };
-    };
-    
-    checkAuthStatus();
-  }, []);
 
   // Fetch messages from Supabase when contact changes
   useEffect(() => {
@@ -77,19 +53,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
       
       setIsFetching(true);
       try {
-        // Check auth before making request
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (!session) {
-          toast({
-            title: 'Authentication Required',
-            description: 'Please sign in to view messages',
-            variant: 'destructive'
-          });
-          setIsFetching(false);
-          return;
-        }
-        
         const { data, error } = await supabase
           .from('messages')
           .select('*')
@@ -124,18 +87,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
     };
     
     fetchMessages();
-  }, [contact, toast, isAuthenticated]);
+  }, [contact, toast]);
 
   const handleSend = async () => {
     if (!messageText.trim()) return;
-    if (!isAuthenticated) {
-      toast({
-        title: 'Authentication Required',
-        description: 'Please sign in to send messages',
-        variant: 'destructive'
-      });
-      return;
-    }
     
     // First, create a temporary message to show in the UI
     const tempId = Date.now().toString();
@@ -152,14 +107,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
     setIsLoading(true);
     
     try {
-      // Get the current user
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      
-      if (userError) throw userError;
-      
-      if (!user) {
-        throw new Error('You must be logged in to send messages');
-      }
+      // Generate a random user_id for demo purposes
+      // In a real app, this would be the authenticated user's ID
+      const demoUserId = updatedContact.user_id || 'demo-user-id';
       
       // First, store the message in Supabase
       const { data: messageData, error: messageError } = await supabase
@@ -169,7 +119,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
           content: messageText,
           sender: 'user',
           channel: activeChannel,
-          user_id: user.id // Ensure we're using the authenticated user's ID
+          user_id: demoUserId // Use the contact's user_id or fallback to demo ID
         })
         .select();
       
@@ -264,22 +214,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
     setUpdatedContact(updatedContactData);
   };
 
-  // Show authentication required screen if not authenticated
-  if (!isAuthenticated) {
-    return (
-      <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6 text-center">
-          <Lock className="h-12 w-12 text-primary mx-auto mb-4" />
-          <h2 className="text-xl font-semibold mb-2">Authentication Required</h2>
-          <p className="text-gray-600 mb-4">
-            You need to be signed in to view and send messages.
-          </p>
-          <Button onClick={onClose}>Close</Button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-lg w-full max-w-5xl h-[90vh] flex flex-col">
@@ -341,7 +275,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
                   {!contact.phone && (
                     <div className="flex items-center justify-center h-full">
                       <div className="text-center text-gray-500 bg-yellow-50 p-4 rounded-lg">
-                        <AlertTriangle className="mx-auto mb-2 text-yellow-500" />
                         <p className="font-medium">No phone number available</p>
                         <p className="text-sm">Add a phone number to the contact profile to enable SMS.</p>
                       </div>
@@ -388,12 +321,14 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
                   </div>
                 </TabsContent>
                 
-                <TabsContent value="internal" className="mt-0 h-full flex items-center justify-center">
+                <TabsContent value="internal" className="mt-0 h-full">
                   {messages.filter(msg => msg.channel === 'internal').length === 0 ? (
-                    <div className="text-center text-gray-500">
-                      <PenSquare className="mx-auto mb-2" />
-                      <p>No internal comments yet</p>
-                      <p className="text-sm">Add notes about this contact for your team</p>
+                    <div className="text-center text-gray-500 h-full flex items-center justify-center">
+                      <div>
+                        <PenSquare className="mx-auto mb-2" />
+                        <p>No internal comments yet</p>
+                        <p className="text-sm">Add notes about this contact for your team</p>
+                      </div>
                     </div>
                   ) : (
                     <div className="w-full space-y-4">

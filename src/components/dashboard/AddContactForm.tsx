@@ -12,8 +12,6 @@ import { useContactForm } from './ContactForm/useContactForm';
 import { ContactData } from './ContactForm/types';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle } from 'lucide-react';
 
 interface AddContactFormProps {
   open: boolean;
@@ -53,27 +51,12 @@ const AddContactForm: React.FC<AddContactFormProps> = ({ open, onClose, onSubmit
           throw fetchError;
         }
         
-        // Try to use authenticated user, fall back to an existing user_id from the database
-        const { data: { user }, error: userError } = await supabase.auth.getUser();
-        
-        if (userError) {
-          console.error('User authentication error:', userError);
-          
-          // Use an existing user_id from the database if available
-          if (existingContacts && existingContacts.length > 0) {
-            data.user_id = existingContacts[0].user_id;
-            console.log('Using existing user_id for contact:', data.user_id);
-          } else {
-            // If no contacts exist yet, we can't create a new one without a valid user
-            toast({
-              title: 'Authentication Required',
-              description: 'Please sign in to add contacts or contact your administrator',
-              variant: 'destructive'
-            });
-            throw new Error('No valid user_id available');
-          }
+        // Use an existing user_id from the database if available, or generate a demo one
+        if (existingContacts && existingContacts.length > 0) {
+          data.user_id = existingContacts[0].user_id;
         } else {
-          data.user_id = user?.id || existingContacts[0]?.user_id;
+          // Generate a random UUID for demo purposes
+          data.user_id = crypto.randomUUID();
         }
         
         console.log('Submitting contact with user_id:', data.user_id);
