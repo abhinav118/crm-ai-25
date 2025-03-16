@@ -82,9 +82,23 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
       
       console.log('Contact updated successfully:', data);
       
-      // Update UI state with the returned data
+      // Transform the data from snake_case to camelCase to match Contact type
+      const transformedContact: Contact = {
+        id: data[0].id,
+        name: data[0].name,
+        email: data[0].email || '',
+        phone: data[0].phone || '',
+        company: data[0].company || '',
+        lastActivity: data[0].last_activity || '',
+        status: data[0].status as 'active' | 'inactive',
+        tags: data[0].tags || [],
+        createdAt: data[0].created_at,
+        user_id: data[0].user_id
+      };
+      
+      // Update UI state with the transformed data
       if (onSave) {
-        onSave(data[0] as Contact);
+        onSave(transformedContact);
       }
       
       toast({
