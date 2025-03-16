@@ -266,14 +266,16 @@ const Index = () => {
 
   const handleAddContact = async (formData: any) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
       
-      if (!user) {
-        console.log('No authenticated user, using placeholder ID');
+      if (userError) {
+        console.error('User authentication error:', userError);
       }
-
+      
+      const userId = user?.id || '00000000-0000-0000-0000-000000000000';
+      
       const contact = {
-        user_id: user?.id || '00000000-0000-0000-0000-000000000000',
+        user_id: userId,
         name: formData.name,
         email: formData.email || null,
         phone: formData.phone || null,
@@ -291,7 +293,7 @@ const Index = () => {
         .single();
 
       if (error) {
-        console.error('Supabase error:', error);
+        console.error('Supabase error during contact creation:', error);
         throw error;
       }
 
@@ -322,11 +324,13 @@ const Index = () => {
       });
       
       setIsAddContactModalOpen(false);
+      
+      fetchContacts();
     } catch (error) {
       console.error('Error adding contact:', error);
       toast({
         title: 'Error',
-        description: 'Failed to add contact: ' + (error as Error).message,
+        description: `Failed to add contact: ${(error as Error).message}`,
         variant: 'destructive'
       });
     }

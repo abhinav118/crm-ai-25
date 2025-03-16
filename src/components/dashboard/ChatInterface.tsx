@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Avatar from '@/components/dashboard/Avatar';
 import { Button } from '@/components/ui/button';
@@ -42,6 +43,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
   const [messageText, setMessageText] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isFetching, setIsFetching] = useState(true);
   const [updatedContact, setUpdatedContact] = useState<Contact>(contact);
   const { toast } = useToast();
 
@@ -50,6 +52,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
     const fetchMessages = async () => {
       if (!contact?.id) return;
       
+      setIsFetching(true);
       try {
         const { data, error } = await supabase
           .from('messages')
@@ -79,6 +82,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
           description: 'Failed to load messages',
           variant: 'destructive'
         });
+      } finally {
+        setIsFetching(false);
       }
     };
     
@@ -106,9 +111,27 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
       // Get the current user
       const { data: { user } } = await supabase.auth.getUser();
       
+      // Use a placeholder or actual user ID
       const userId = user?.id || '00000000-0000-0000-0000-000000000000';
       
-      // If it's an SMS, send it via Twilio
+      // First, store the message in Supabase
+      const { data: messageData, error: messageError } = await supabase
+        .from('messages')
+        .insert({
+          contact_id: updatedContact.id,
+          content: messageText,
+          sender: 'user',
+          channel: activeChannel,
+          user_id: userId
+        })
+        .select()
+        .single();
+      
+      if (messageError) {
+        throw messageError;
+      }
+      
+      // If it's an SMS, send it via Twilio after successfully storing in DB
       if (activeChannel === 'sms' && updatedContact.phone) {
         console.log('Sending SMS via Supabase Edge Function');
         
@@ -128,25 +151,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
         }
         
         if (!twilioResponse.success) {
-          throw new Error(`Twilio error: ${twilioResponse.error}`);
+          throw new Error(`Twilio error: ${twilioResponse.error || 'Unknown error'}`);
         }
-      }
-      
-      // Store the message in Supabase
-      const { data, error } = await supabase
-        .from('messages')
-        .insert({
-          contact_id: updatedContact.id,
-          content: messageText,
-          sender: 'user',
-          channel: activeChannel,
-          user_id: userId
-        })
-        .select()
-        .single();
-      
-      if (error) {
-        throw error;
       }
       
       // Replace the temporary message with the one from the database
@@ -154,11 +160,11 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
         prev.map(msg => 
           msg.id === tempId
             ? {
-                id: data.id,
-                text: data.content,
-                sender: data.sender as 'user' | 'contact',
-                timestamp: data.sent_at,
-                channel: data.channel as 'sms' | 'whatsapp' | 'internal'
+                id: messageData.id,
+                text: messageData.content,
+                sender: messageData.sender as 'user' | 'contact',
+                timestamp: messageData.sent_at,
+                channel: messageData.channel as 'sms' | 'whatsapp' | 'internal'
               }
             : msg
         )
@@ -276,7 +282,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
                     </div>
                   )}
                   
-                  {contact.phone && messages.filter(msg => msg.channel === 'sms').length === 0 && (
+                  {contact.phone && messages.filter(msg => msg.channel === 'sms').length === 0 && !isFetching && (
                     <div className="flex items-center justify-center h-full">
                       <div className="text-center text-gray-500">
                         <MessageSquare className="mx-auto mb-2" />
@@ -285,8 +291,17 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
                       </div>
                     </div>
                   )}
+
+                  {isFetching && (
+                    <div className="flex items-center justify-center h-20">
+                      <div className="text-center">
+                        <div className="animate-spin rounded-full h-6 w-6 border-2 border-primary border-t-transparent mx-auto"></div>
+                        <p className="text-sm text-gray-500 mt-2">Loading messages...</p>
+                      </div>
+                    </div>
+                  )}
                   
-                  {messages
+                  {!isFetching && messages
                     .filter(msg => msg.channel === 'sms')
                     .map(message => (
                       <div key={message.id} className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -351,7 +366,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
                     value={messageText}
                     onChange={(e) => setMessageText(e.target.value)}
                     onKeyDown={handleKeyPress}
-                    disabled={activeChannel === 'sms' && !updatedContact.phone}
+                    disabled={activeChannel === 'sms' && !updatedContact.phone || isLoading}
                   />
                   <div className="flex flex-col gap-2">
                     <Button 
@@ -359,7 +374,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
                       size="sm" 
                       className="px-3" 
                       onClick={() => setMessageText('')}
-                      disabled={!messageText.trim()}
+                      disabled={!messageText.trim() || isLoading}
                     >
                       Clear
                     </Button>

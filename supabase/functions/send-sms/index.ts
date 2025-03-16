@@ -71,8 +71,13 @@ serve(async (req) => {
     // Log success
     console.log('SMS sent successfully:', twilioData.sid)
 
+    // Return success response with CORS headers
     return new Response(
-      JSON.stringify({ success: true, data: twilioData }),
+      JSON.stringify({ 
+        success: true, 
+        data: twilioData,
+        message: 'SMS sent successfully'
+      }),
       { 
         headers: { 
           ...corsHeaders,
@@ -84,7 +89,11 @@ serve(async (req) => {
     console.error('Error sending SMS:', error.message)
     
     return new Response(
-      JSON.stringify({ success: false, error: error.message }),
+      JSON.stringify({ 
+        success: false, 
+        error: error.message,
+        message: 'Failed to send SMS'
+      }),
       { 
         status: 400, 
         headers: { 
