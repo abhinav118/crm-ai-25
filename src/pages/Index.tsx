@@ -37,6 +37,7 @@ const Index = () => {
   const fetchContacts = async () => {
     setIsLoading(true);
     try {
+      console.log('Fetching contacts from Supabase...');
       // Get the total count first
       const { count, error: countError } = await supabase
         .from('contacts')
@@ -56,6 +57,8 @@ const Index = () => {
         .range(from, to);
       
       if (error) throw error;
+      
+      console.log('Contacts data received:', data);
       
       // Format the data to match our Contact type
       const formattedContacts = data.map(contact => ({
@@ -86,7 +89,7 @@ const Index = () => {
   
   useEffect(() => {
     fetchContacts();
-  }, [currentPage, pageSize, toast]);
+  }, [currentPage, pageSize]);
   
   useEffect(() => {
     // Check if the URL has a hash for tabs
@@ -164,6 +167,17 @@ const Index = () => {
   
   const toggleSidebar = () => {
     setSidebarCollapsed(!sidebarCollapsed);
+  };
+
+  const handleSendMessage = () => {
+    // If multiple contacts are selected, open the first one in chat interface
+    if (selectedRows.size > 0) {
+      const firstSelectedId = Array.from(selectedRows)[0];
+      const contact = contacts.find(c => c.id === firstSelectedId);
+      if (contact) {
+        setSelectedContact(contact);
+      }
+    }
   };
 
   const handleAddContact = async (formData: any) => {
@@ -268,6 +282,7 @@ const Index = () => {
               <ActionButtons 
                 selectedCount={selectedCount} 
                 onAddContact={() => setIsAddContactModalOpen(true)}
+                onSendMessage={handleSendMessage}
               />
             </div>
           </div>

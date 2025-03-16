@@ -13,12 +13,14 @@ type ActionButtonsProps = {
   selectedCount?: number;
   className?: string;
   onAddContact?: () => void;
+  onSendMessage?: () => void;
 };
 
 const ActionButtons: React.FC<ActionButtonsProps> = ({ 
   selectedCount = 0,
   className = '',
-  onAddContact
+  onAddContact,
+  onSendMessage
 }) => {
   return (
     <div className={`space-x-2 flex ${className}`}>
@@ -37,6 +39,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
             size="sm"
             variant="outline" 
             className="gap-1"
+            onClick={onSendMessage}
           >
             <Send size={16} />
             Send Message
