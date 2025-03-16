@@ -13,6 +13,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import AddContactForm from '@/components/dashboard/AddContactForm';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
+import { UserPlus } from 'lucide-react';
 
 const Index = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
