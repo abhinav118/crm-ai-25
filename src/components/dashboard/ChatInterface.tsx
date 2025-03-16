@@ -109,10 +109,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
     
     try {
       // Get the current user
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
       
-      // Use a placeholder or actual user ID
-      const userId = user?.id || '00000000-0000-0000-0000-000000000000';
+      if (userError) throw userError;
+      
+      if (!user) {
+        throw new Error('You must be logged in to send messages');
+      }
       
       // First, store the message in Supabase
       const { data: messageData, error: messageError } = await supabase
@@ -122,10 +125,11 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
           content: messageText,
           sender: 'user',
           channel: activeChannel,
-          user_id: userId
+          user_id: user.id // Ensure we're using the authenticated user's ID
         })
-        .select()
-        .single();
+        .select();
+      
+      console.log('Insert response:', messageData, messageError);
       
       if (messageError) {
         throw messageError;
@@ -150,25 +154,27 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
           throw new Error(`Failed to send SMS: ${twilioError.message}`);
         }
         
-        if (!twilioResponse.success) {
+        if (twilioResponse && !twilioResponse.success) {
           throw new Error(`Twilio error: ${twilioResponse.error || 'Unknown error'}`);
         }
       }
       
       // Replace the temporary message with the one from the database
-      setMessages(prev => 
-        prev.map(msg => 
-          msg.id === tempId
-            ? {
-                id: messageData.id,
-                text: messageData.content,
-                sender: messageData.sender as 'user' | 'contact',
-                timestamp: messageData.sent_at,
-                channel: messageData.channel as 'sms' | 'whatsapp' | 'internal'
-              }
-            : msg
-        )
-      );
+      if (messageData && messageData.length > 0) {
+        setMessages(prev => 
+          prev.map(msg => 
+            msg.id === tempId
+              ? {
+                  id: messageData[0].id,
+                  text: messageData[0].content,
+                  sender: messageData[0].sender as 'user' | 'contact',
+                  timestamp: messageData[0].sent_at,
+                  channel: messageData[0].channel as 'sms' | 'whatsapp' | 'internal'
+                }
+              : msg
+          )
+        );
+      }
       
       // Update contact's last_activity in Supabase
       await supabase
