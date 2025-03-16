@@ -15,6 +15,7 @@ import AddContactForm from '@/components/dashboard/AddContactForm';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { UserPlus } from 'lucide-react';
+import { ContactData } from '@/components/dashboard/ContactForm/types';
 
 const Index = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -264,7 +265,7 @@ const Index = () => {
     }
   };
 
-  const handleAddContact = async (formData: any) => {
+  const handleAddContact = async (formData: ContactData): Promise<void> => {
     try {
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       
@@ -277,9 +278,9 @@ const Index = () => {
       const contact = {
         user_id: userId,
         name: formData.name,
-        email: formData.email || null,
-        phone: formData.phone || null,
-        company: formData.company || null,
+        email: formData.email,
+        phone: formData.phone,
+        company: formData.company,
         status: 'active',
         tags: formData.tags || []
       };
@@ -333,6 +334,7 @@ const Index = () => {
         description: `Failed to add contact: ${(error as Error).message}`,
         variant: 'destructive'
       });
+      throw error;
     }
   };
   

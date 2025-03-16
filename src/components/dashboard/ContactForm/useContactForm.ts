@@ -1,7 +1,6 @@
 
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { ContactFormValues, PhoneEntry, ContactData } from './types';
 
@@ -67,22 +66,18 @@ export const useContactForm = ({ onSubmit, onClose }: UseContactFormProps) => {
     setIsLoading(true);
     
     try {
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      // Use a placeholder user ID for development
-      const userId = user?.id || '00000000-0000-0000-0000-000000000000';
-      
-      // Prepare submission data
-      const submissionData = {
-        user_id: userId,
+      // Format data for submission
+      const submissionData: ContactData = {
+        user_id: '00000000-0000-0000-0000-000000000000', // This will be replaced by the backend
         name: `${values.firstName} ${values.lastName}`.trim(),
-        email: emails[0] || null, // Use the first email as the primary
-        phone: phones[0]?.number || null, // Use the first phone as the primary
+        email: emails[0] && emails[0].trim() !== '' ? emails[0] : null,
+        phone: phones[0]?.number && phones[0].number.trim() !== '' ? phones[0].number : null,
         company: values.company || null,
         status: 'active',
         tags: values.tags || []
       };
+      
+      console.log('Submitting contact data:', submissionData);
       
       // Submit data to parent component
       await onSubmit(submissionData);

@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { cn } from '@/lib/utils';
-import { Menu } from 'lucide-react';
+import { Menu, Bell, User } from 'lucide-react';
 
 type TopBarProps = {
   sidebarCollapsed: boolean;
@@ -20,8 +20,19 @@ const TopBar: React.FC<TopBarProps> = ({
         <button
           onClick={onMenuClick}
           className="md:hidden p-2 rounded-md hover:bg-gray-100 transition-colors"
+          aria-label="Toggle sidebar"
         >
           <Menu size={20} />
+        </button>
+        <div className="ml-2 font-semibold text-gray-800">Dashboard</div>
+      </div>
+      
+      <div className="flex items-center gap-4">
+        <button className="p-2 rounded-md hover:bg-gray-100 transition-colors" aria-label="Notifications">
+          <Bell size={20} />
+        </button>
+        <button className="p-2 rounded-md hover:bg-gray-100 transition-colors" aria-label="User profile">
+          <User size={20} />
         </button>
       </div>
     </header>
