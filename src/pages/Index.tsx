@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Sidebar from '@/components/dashboard/Sidebar';
 import TopBar from '@/components/dashboard/TopBar';
@@ -13,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import AddContactForm from '@/components/dashboard/AddContactForm';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const Index = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -33,20 +33,29 @@ const Index = () => {
   const location = useLocation();
   const navigate = useNavigate();
   
-  // Fetch contacts from Supabase
   const fetchContacts = async () => {
     setIsLoading(true);
     try {
       console.log('Fetching contacts from Supabase...');
-      // Get the total count first
-      const { count, error: countError } = await supabase
+      
+      const { count: existingCount, error: countError } = await supabase
         .from('contacts')
         .select('*', { count: 'exact', head: true });
       
       if (countError) throw countError;
+      
+      if (existingCount === 0) {
+        console.log('No contacts found. Seeding sample data...');
+        await seedSampleContacts();
+      }
+      
+      const { count, error: totalCountError } = await supabase
+        .from('contacts')
+        .select('*', { count: 'exact', head: true });
+      
+      if (totalCountError) throw totalCountError;
       setTotalCount(count || 0);
       
-      // Then fetch the paginated data
       const from = (currentPage - 1) * pageSize;
       const to = from + pageSize - 1;
       
@@ -60,21 +69,26 @@ const Index = () => {
       
       console.log('Contacts data received:', data);
       
-      // Format the data to match our Contact type
-      const formattedContacts = data.map(contact => ({
-        id: contact.id,
-        name: contact.name,
-        email: contact.email || '',
-        phone: contact.phone || '',
-        company: contact.company || '',
-        status: contact.status as 'active' | 'inactive',
-        tags: contact.tags || [],
-        lastActivity: contact.last_activity || '',
-        createdAt: contact.created_at,
-      }));
-      
-      setContacts(formattedContacts);
-      setFilteredContacts(formattedContacts);
+      if (data && data.length > 0) {
+        const formattedContacts = data.map(contact => ({
+          id: contact.id,
+          name: contact.name,
+          email: contact.email || '',
+          phone: contact.phone || '',
+          company: contact.company || '',
+          status: contact.status as 'active' | 'inactive',
+          tags: contact.tags || [],
+          lastActivity: contact.last_activity || '',
+          createdAt: contact.created_at,
+        }));
+        
+        setContacts(formattedContacts);
+        setFilteredContacts(formattedContacts);
+      } else {
+        console.log('No contacts data returned from Supabase');
+        setContacts([]);
+        setFilteredContacts([]);
+      }
     } catch (error) {
       console.error('Error fetching contacts:', error);
       toast({
@@ -82,8 +96,78 @@ const Index = () => {
         description: 'Failed to load contacts',
         variant: 'destructive'
       });
+      setContacts([]);
+      setFilteredContacts([]);
     } finally {
       setIsLoading(false);
+    }
+  };
+  
+  const seedSampleContacts = async () => {
+    try {
+      const sampleNames = [
+        'John Smith', 'Emma Johnson', 'Michael Williams', 'Olivia Brown', 'William Jones',
+        'Sophia Miller', 'James Davis', 'Charlotte Wilson', 'Benjamin Moore', 'Amelia Taylor',
+        'Alexander Anderson', 'Harper Thomas', 'Daniel Jackson', 'Abigail White', 'Matthew Harris',
+        'Emily Martin', 'Joseph Thompson', 'Elizabeth Garcia', 'David Martinez', 'Sofia Robinson'
+      ];
+      
+      const sampleEmails = [
+        'john@example.com', 'emma@example.com', 'michael@example.com', 'olivia@example.com', 'william@example.com',
+        'sophia@example.com', 'james@example.com', 'charlotte@example.com', 'benjamin@example.com', 'amelia@example.com',
+        'alexander@example.com', 'harper@example.com', 'daniel@example.com', 'abigail@example.com', 'matthew@example.com',
+        'emily@example.com', 'joseph@example.com', 'elizabeth@example.com', 'david@example.com', 'sofia@example.com'
+      ];
+      
+      const sampleCompanies = [
+        'Tech Solutions', 'Global Innovations', 'Digital Dynamics', 'Modern Systems', 'Future Technologies',
+        'Smart Enterprises', 'Peak Performance', 'Bright Ideas', 'Strategic Solutions', 'Advanced Technologies',
+        'Creative Concepts', 'Innovative Designs', 'Premium Products', 'Elite Services', 'Precise Engineering',
+        'Quality Assurance', 'Infinite Possibilities', 'Prime Solutions', 'Universal Systems', 'Progressive Innovations'
+      ];
+      
+      const samplePhones = [
+        '+1 (555) 123-4567', '+1 (555) 234-5678', '+1 (555) 345-6789', '+1 (555) 456-7890', '+1 (555) 567-8901',
+        '+1 (555) 678-9012', '+1 (555) 789-0123', '+1 (555) 890-1234', '+1 (555) 901-2345', '+1 (555) 012-3456',
+        '+1 (555) 112-2334', '+1 (555) 223-3445', '+1 (555) 334-4556', '+1 (555) 445-5667', '+1 (555) 556-6778',
+        '+1 (555) 667-7889', '+1 (555) 778-8990', '+1 (555) 889-9001', '+1 (555) 990-0112', '+1 (555) 001-1223'
+      ];
+      
+      const sampleTags = [
+        ['client', 'active'], ['prospect', 'interested'], ['client', 'premium'], ['lead', 'new'], ['client', 'inactive'],
+        ['partner', 'active'], ['vendor', 'regular'], ['client', 'vip'], ['lead', 'warm'], ['client', 'standard'],
+        ['prospect', 'cold'], ['client', 'priority'], ['vendor', 'preferred'], ['lead', 'hot'], ['client', 'potential'],
+        ['partner', 'new'], ['prospect', 'qualified'], ['client', 'returning'], ['lead', 'unqualified'], ['partner', 'strategic']
+      ];
+      
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      const sampleContacts = [];
+      
+      for (let i = 0; i < 20; i++) {
+        sampleContacts.push({
+          name: sampleNames[i],
+          email: sampleEmails[i],
+          phone: samplePhones[i],
+          company: sampleCompanies[i],
+          status: i % 5 === 0 ? 'inactive' : 'active',
+          tags: sampleTags[i],
+          user_id: user?.id || '00000000-0000-0000-0000-000000000000'
+        });
+      }
+      
+      const { error } = await supabase.from('contacts').insert(sampleContacts);
+      
+      if (error) throw error;
+      
+      console.log('Sample contacts seeded successfully');
+    } catch (error) {
+      console.error('Error seeding sample contacts:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to seed sample contacts',
+        variant: 'destructive'
+      });
     }
   };
   
@@ -92,7 +176,6 @@ const Index = () => {
   }, [currentPage, pageSize]);
   
   useEffect(() => {
-    // Check if the URL has a hash for tabs
     const hash = location.hash.replace('#', '');
     if (hash && ['all', 'recent', 'active', 'inactive', 'bulk-actions'].includes(hash)) {
       setActiveTab(hash);
@@ -170,7 +253,6 @@ const Index = () => {
   };
 
   const handleSendMessage = () => {
-    // If multiple contacts are selected, open the first one in chat interface
     if (selectedRows.size > 0) {
       const firstSelectedId = Array.from(selectedRows)[0];
       const contact = contacts.find(c => c.id === firstSelectedId);
@@ -182,14 +264,12 @@ const Index = () => {
 
   const handleAddContact = async (formData: any) => {
     try {
-      // Get the current user
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
         throw new Error('You must be logged in to add contacts');
       }
 
-      // Format the data for insertion
       const contact = {
         user_id: user.id,
         name: `${formData.firstName} ${formData.lastName}`,
@@ -200,7 +280,6 @@ const Index = () => {
         tags: formData.tags || []
       };
 
-      // Insert the new contact
       const { data, error } = await supabase
         .from('contacts')
         .insert(contact)
@@ -209,7 +288,6 @@ const Index = () => {
 
       if (error) throw error;
 
-      // Format the new contact for the UI
       const newContact: Contact = {
         id: data.id,
         name: data.name,
@@ -222,19 +300,15 @@ const Index = () => {
         createdAt: data.created_at,
       };
 
-      // Add the new contact to the beginning of the contacts list
       setContacts([newContact, ...contacts]);
+      setFilteredContacts([newContact, ...filteredContacts]);
       
       toast({
         title: 'Success',
         description: 'Contact added successfully',
       });
       
-      // Close the modal
       setIsAddContactModalOpen(false);
-      
-      // Refresh the contacts list to show the new contact
-      fetchContacts();
     } catch (error) {
       console.error('Error adding contact:', error);
       toast({
@@ -296,25 +370,53 @@ const Index = () => {
               <TabsTrigger value="bulk-actions">Bulk Actions</TabsTrigger>
             </TabsList>
             <TabsContent value="all" className="pt-4">
-              <ContactsTable 
-                contacts={filteredContacts} 
-                onRowClick={handleRowClick}
-                isSelectable={true}
-                selectedRows={selectedRows}
-                onSelectRow={handleSelectRow}
-                onSelectAll={handleSelectAll}
-              />
-              
-              <div className="mt-4">
-                <Pagination
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  onPageChange={handlePageChange}
-                  totalRecords={totalCount}
-                  pageSize={pageSize}
-                  onPageSizeChange={handlePageSizeChange}
+              {isLoading ? (
+                <div className="space-y-4">
+                  {Array.from({ length: 5 }).map((_, index) => (
+                    <div key={index} className="flex items-center space-x-4">
+                      <Skeleton className="h-12 w-12 rounded-full" />
+                      <div className="space-y-2">
+                        <Skeleton className="h-4 w-[250px]" />
+                        <Skeleton className="h-4 w-[200px]" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : contacts.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-60 bg-white rounded-lg border border-gray-200">
+                  <p className="text-gray-500 mb-4">No contacts found</p>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setIsAddContactModalOpen(true)}
+                    className="gap-2"
+                  >
+                    <UserPlus size={16} />
+                    Add your first contact
+                  </Button>
+                </div>
+              ) : (
+                <ContactsTable 
+                  contacts={filteredContacts} 
+                  onRowClick={handleRowClick}
+                  isSelectable={true}
+                  selectedRows={selectedRows}
+                  onSelectRow={handleSelectRow}
+                  onSelectAll={handleSelectAll}
                 />
-              </div>
+              )}
+              
+              {contacts.length > 0 && (
+                <div className="mt-4">
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={handlePageChange}
+                    totalRecords={totalCount}
+                    pageSize={pageSize}
+                    onPageSizeChange={handlePageSizeChange}
+                  />
+                </div>
+              )}
             </TabsContent>
             <TabsContent value="recent">
               <div className="flex items-center justify-center h-60 bg-white rounded-lg border border-gray-200">
