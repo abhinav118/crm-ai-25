@@ -34,6 +34,17 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
     setIsLoading(true);
     
     try {
+      // Fetch an existing valid user_id if needed
+      const { data: existingContacts, error: fetchError } = await supabase
+        .from('contacts')
+        .select('user_id')
+        .limit(1);
+      
+      if (fetchError) {
+        console.error('Error fetching existing contacts:', fetchError);
+        throw fetchError;
+      }
+      
       // Get current user from Supabase
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       
@@ -43,7 +54,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
       
       // Prepare contact data for upsert
       const contactData: ContactData = {
-        user_id: user?.id || formData.id.split('-')[0], // Fallback to using part of the contact ID if no user
+        user_id: user?.id || formData.user_id || existingContacts[0]?.user_id,
         name: formData.name,
         email: formData.email || null,
         phone: formData.phone || null,

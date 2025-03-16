@@ -20,5 +20,6 @@ export interface ContactData {
   company: string | null;
   status: string;
   tags: string[];
+  last_activity?: string | null; // Added to match database schema
   id?: string; // Optional for updating existing contacts
 }
