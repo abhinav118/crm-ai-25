@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ImagePlus, Plus, Trash } from 'lucide-react';
 import { useForm } from 'react-hook-form';
@@ -57,7 +57,7 @@ const AddContactForm: React.FC<AddContactFormProps> = ({ open, onClose, onSubmit
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       
-      // If no user is logged in, use a placeholder ID for development
+      // Use a placeholder user ID for development
       const userId = user?.id || '00000000-0000-0000-0000-000000000000';
       
       // Prepare submission data
@@ -71,12 +71,22 @@ const AddContactForm: React.FC<AddContactFormProps> = ({ open, onClose, onSubmit
         tags: values.tags || []
       };
       
+      // Submit data to parent component
       await onSubmit(submissionData);
       
       // Reset form
       form.reset();
       setPhones([{ type: 'mobile', number: '' }]);
       setEmails(['']);
+      
+      // Display success message
+      toast({
+        title: 'Success',
+        description: 'Contact added successfully',
+      });
+      
+      // Close the form
+      onClose();
       
     } catch (error) {
       console.error('Error submitting form:', error);
@@ -125,6 +135,9 @@ const AddContactForm: React.FC<AddContactFormProps> = ({ open, onClose, onSubmit
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add New Contact</DialogTitle>
+          <DialogDescription>
+            Fill in the details to add a new contact to your database.
+          </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
