@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Avatar from '@/components/dashboard/Avatar';
 import { Button } from '@/components/ui/button';
@@ -103,6 +102,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
     setIsLoading(true);
     
     try {
+      // Get the current user
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        throw new Error('You must be logged in to send messages');
+      }
+      
       // If it's an SMS, send it via Twilio
       if (activeChannel === 'sms' && contact.phone) {
         // Call our Supabase Edge Function to send SMS
@@ -130,7 +136,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
           contact_id: contact.id,
           content: messageText,
           sender: 'user',
-          channel: activeChannel
+          channel: activeChannel,
+          user_id: user.id
         })
         .select()
         .single();
