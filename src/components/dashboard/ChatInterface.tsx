@@ -107,20 +107,23 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
     setIsLoading(true);
     
     try {
-      // Generate a random user_id for demo purposes
-      // In a real app, this would be the authenticated user's ID
-      const demoUserId = updatedContact.user_id || 'demo-user-id';
+      // Generate a random user_id for demo purposes if none exists
+      const demoUserId = updatedContact.user_id || crypto.randomUUID();
       
       // First, store the message in Supabase
+      const messageInsert = {
+        contact_id: updatedContact.id,
+        content: messageText,
+        sender: 'user',
+        channel: activeChannel,
+        user_id: demoUserId
+      };
+      
+      console.log('Inserting message:', messageInsert);
+      
       const { data: messageData, error: messageError } = await supabase
         .from('messages')
-        .insert({
-          contact_id: updatedContact.id,
-          content: messageText,
-          sender: 'user',
-          channel: activeChannel,
-          user_id: demoUserId // Use the contact's user_id or fallback to demo ID
-        })
+        .insert(messageInsert)
         .select();
       
       console.log('Insert response:', messageData, messageError);

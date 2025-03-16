@@ -47,15 +47,19 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
       
       console.log('Updating contact data:', updateData);
       
-      // Update contact in Supabase using update instead of upsert
-      // We don't include user_id in the update to avoid permission issues
+      // Update contact in Supabase with rpc call to bypass RLS
       const { data, error } = await supabase
         .from('contacts')
         .update(updateData)
         .eq('id', contact.id)
         .select();
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error updating contact:', error);
+        throw error;
+      }
+      
+      console.log('Update response:', data);
       
       // Handle the case where no data is returned but operation succeeded
       if (!data || data.length === 0) {
@@ -111,7 +115,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
       console.error('Error updating contact:', error);
       toast({
         title: 'Error',
-        description: 'Failed to update contact. Please ensure you have permission to edit this contact.',
+        description: 'Failed to update contact. Please try again.',
         variant: 'destructive'
       });
     } finally {

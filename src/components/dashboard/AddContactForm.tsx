@@ -52,12 +52,18 @@ const AddContactForm: React.FC<AddContactFormProps> = ({ open, onClose, onSubmit
         }
         
         // Use an existing user_id from the database if available, or generate a demo one
+        let userId;
         if (existingContacts && existingContacts.length > 0) {
-          data.user_id = existingContacts[0].user_id;
+          userId = existingContacts[0].user_id;
+          console.log('Using existing user_id:', userId);
         } else {
           // Generate a random UUID for demo purposes
-          data.user_id = crypto.randomUUID();
+          userId = crypto.randomUUID();
+          console.log('Generated new user_id:', userId);
         }
+        
+        // Ensure user_id is set
+        data.user_id = userId;
         
         console.log('Submitting contact with user_id:', data.user_id);
         await onSubmit(data);
