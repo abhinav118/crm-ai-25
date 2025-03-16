@@ -14,7 +14,7 @@ import { ContactData } from './ContactForm/types';
 interface AddContactFormProps {
   open: boolean;
   onClose: () => void;
-  onSubmit: (data: ContactData) => Promise<void>;
+  onSubmit: (data: any) => void;
 }
 
 const AddContactForm: React.FC<AddContactFormProps> = ({ open, onClose, onSubmit }) => {

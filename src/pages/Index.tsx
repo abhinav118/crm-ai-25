@@ -264,7 +264,7 @@ const Index = () => {
     }
   };
 
-  const handleAddContact = async (formData: any): Promise<void> => {
+  const handleAddContact = async (formData: any) => {
     try {
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       
