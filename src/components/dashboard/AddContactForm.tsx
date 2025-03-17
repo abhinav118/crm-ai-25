@@ -35,32 +35,10 @@ const AddContactForm: React.FC<AddContactFormProps> = ({ open, onClose, onSubmit
   } = useContactForm({ 
     onSubmit: async (data) => {
       try {
-        // Check for existing contacts to get a valid user_id
-        const { data: existingContacts, error: fetchError } = await supabase
-          .from('contacts')
-          .select('user_id')
-          .limit(1);
-        
-        if (fetchError) {
-          console.error('Error fetching existing contacts:', fetchError);
-          toast({
-            title: 'Error',
-            description: 'Failed to prepare contact data',
-            variant: 'destructive'
-          });
-          throw fetchError;
-        }
-        
-        // Use an existing user_id from the database if available, or generate a demo one
-        let userId;
-        if (existingContacts && existingContacts.length > 0) {
-          userId = existingContacts[0].user_id;
-          console.log('Using existing user_id:', userId);
-        } else {
-          // Generate a random UUID for demo purposes
-          userId = crypto.randomUUID();
-          console.log('Generated new user_id:', userId);
-        }
+        // Generate a demo user ID for any new contacts
+        // In a production app, this would be the authenticated user's ID
+        const userId = crypto.randomUUID();
+        console.log('Generated new user_id for contact:', userId);
         
         // Ensure user_id is set
         data.user_id = userId;

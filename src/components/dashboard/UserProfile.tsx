@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,7 +7,6 @@ import { Contact } from './ContactsTable';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { ContactData } from './ContactForm/types';
 
 interface UserProfileProps {
   contact: Contact;
@@ -47,7 +45,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
       
       console.log('Updating contact data:', updateData);
       
-      // Update contact in Supabase with rpc call to bypass RLS
+      // Update contact in Supabase
       const { data, error } = await supabase
         .from('contacts')
         .update(updateData)
@@ -86,7 +84,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
       
       console.log('Contact updated successfully:', data);
       
-      // Transform the data from snake_case to camelCase to match Contact type
+      // Transform the data to match Contact type
       const transformedContact: Contact = {
         id: data[0].id,
         name: data[0].name,
