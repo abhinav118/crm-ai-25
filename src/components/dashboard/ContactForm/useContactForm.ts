@@ -73,7 +73,6 @@ export const useContactForm = ({ onSubmit, onClose, initialData }: UseContactFor
     try {
       // Format data for submission
       const submissionData: ContactData = {
-        user_id: initialData?.user_id || '', // Will be set by the parent component
         name: `${values.firstName} ${values.lastName}`.trim(),
         email: emails[0] && emails[0].trim() !== '' ? emails[0] : null,
         phone: phones[0]?.number && phones[0].number.trim() !== '' ? phones[0].number : null,

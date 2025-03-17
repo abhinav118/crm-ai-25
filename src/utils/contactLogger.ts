@@ -11,11 +11,14 @@ export const logContactAction = async (
   contactInfo: ContactData | Contact | Partial<Contact>
 ): Promise<void> => {
   try {
+    // Convert the contactInfo to a JSON-compatible object
+    const jsonContactInfo = JSON.parse(JSON.stringify(contactInfo));
+    
     const { error } = await supabase
       .from('contact_logs')
       .insert({
         action,
-        contact_info: contactInfo
+        contact_info: jsonContactInfo
       });
 
     if (error) {
