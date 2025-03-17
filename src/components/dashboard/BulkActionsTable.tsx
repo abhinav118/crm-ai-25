@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { DataTable, ColumnDef } from '@/components/ui/data-table';
+import { DataTable } from '@/components/ui/data-table';
 import { Badge } from '@/components/ui/badge';
 import { fetchContactLogs, formatLogEntry } from '@/utils/contactLogger';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -112,13 +112,12 @@ const BulkActionsTable = () => {
     }
   };
 
-  const columns: ColumnDef<LogEntry>[] = [
+  const columns = [
     {
       id: 'contact',
       header: 'Contact',
-      cell: ({ row }) => {
-        // Fixed: properly type the row parameter
-        const log = row.original as unknown as LogEntry;
+      cell: ({ row }: { row: any }) => {
+        const log = row.original;
         const contact = log.contact || {};
         return (
           <div className="flex items-center gap-2">
@@ -134,9 +133,8 @@ const BulkActionsTable = () => {
     {
       id: 'action',
       header: 'Action',
-      cell: ({ row }) => {
-        // Fixed: properly type the row parameter
-        const log = row.original as unknown as LogEntry;
+      cell: ({ row }: { row: any }) => {
+        const log = row.original;
         return (
           <div className="flex items-center gap-2">
             {getActionIcon(log.action)}
@@ -151,9 +149,8 @@ const BulkActionsTable = () => {
       id: 'description',
       header: 'Description',
       accessorKey: 'description',
-      cell: ({ row }) => {
-        // Fixed: properly type the row parameter
-        const log = row.original as unknown as LogEntry;
+      cell: ({ row }: { row: any }) => {
+        const log = row.original;
         // Show message content if available
         if ((log.action === 'message_sent' || log.action === 'message_received') && log.contact?.message) {
           return (

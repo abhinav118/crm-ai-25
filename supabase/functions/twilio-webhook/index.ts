@@ -39,6 +39,8 @@ serve(async (req) => {
 
     // If we have a contactId from query params, use it
     if (contactId) {
+      console.log(`Using provided contactId: ${contactId}`)
+      
       // Insert the received message into the database
       const { data, error } = await supabase
         .from('messages')
@@ -52,6 +54,7 @@ serve(async (req) => {
         .select()
 
       if (error) {
+        console.error('Error inserting message:', error)
         throw error
       }
 
@@ -61,20 +64,41 @@ serve(async (req) => {
         .update({ last_activity: new Date().toISOString() })
         .eq('id', contactId)
 
-      console.log('Message stored in database:', data)
+      // Log the received message to contact_logs
+      await supabase
+        .from('contact_logs')
+        .insert({
+          action: 'message_received',
+          contact_info: {
+            id: contactId,
+            message: body,
+            channel: 'sms',
+            timestamp: new Date().toISOString()
+          }
+        })
+
+      console.log('Message stored in database using provided contactId:', data)
     } else {
+      console.log(`No contactId provided, looking up contact by phone: ${from}`)
+      
+      // Clean up phone number format for matching
+      const cleanFrom = from.replace(/\D/g, '')
+      
       // If no contactId provided, look up the contact by phone number
       const { data: contactData, error: contactError } = await supabase
         .from('contacts')
         .select('id, name')
-        .eq('phone', from)
+        .filter('phone', 'ilike', `%${cleanFrom}%`)
         .maybeSingle()
 
       if (contactError) {
+        console.error('Error looking up contact by phone:', contactError)
         throw contactError
       }
 
       if (contactData) {
+        console.log('Found contact by phone number:', contactData)
+        
         // Insert the received message into the database
         const { data, error } = await supabase
           .from('messages')
@@ -88,6 +112,7 @@ serve(async (req) => {
           .select()
 
         if (error) {
+          console.error('Error inserting message:', error)
           throw error
         }
 

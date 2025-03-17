@@ -106,7 +106,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
     console.log('Setting up messages subscription for contact:', contact.id);
     
     const subscription = supabase
-      .channel('messages-changes')
+      .channel(`messages-changes-${contact.id}`)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
@@ -120,11 +120,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
           const formattedMessage = {
             id: newMessage.id,
             text: newMessage.content,
-            sender: newMessage.sender as 'user' | 'contact',
+            sender: newMessage.sender,
             timestamp: newMessage.sent_at,
-            channel: newMessage.channel as 'sms' | 'email'
+            channel: newMessage.channel
           };
           
+          console.log('Adding new message to state:', formattedMessage);
           setMessages(prev => [...prev, formattedMessage]);
 
           // Log received message to contact_logs if it's from the contact
@@ -142,6 +143,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
       .subscribe();
     
     return () => {
+      console.log('Cleaning up message subscription');
       supabase.removeChannel(subscription);
     };
   }, [contact?.id]);
