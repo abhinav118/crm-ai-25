@@ -4,11 +4,11 @@ import { toast } from '@/hooks/use-toast';
 import { ContactData } from '@/components/dashboard/ContactForm/types';
 import { Contact } from '@/components/dashboard/ContactsTable';
 
-export type ContactAction = 'add' | 'update' | 'delete';
+export type ContactAction = 'add' | 'update' | 'delete' | 'message_sent' | 'message_received';
 
 export const logContactAction = async (
   action: ContactAction,
-  contactInfo: ContactData | Contact | Partial<Contact>
+  contactInfo: ContactData | Contact | Partial<Contact> | any
 ): Promise<void> => {
   try {
     // Convert the contactInfo to a JSON-compatible object

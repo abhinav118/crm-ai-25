@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { MessageSquare, Mail } from 'lucide-react';
 
 type LogEntry = {
   id: string;
@@ -78,7 +79,30 @@ const BulkActionsTable: React.FC = () => {
       case 'add': return 'bg-green-100 text-green-800';
       case 'update': return 'bg-blue-100 text-blue-800';
       case 'delete': return 'bg-red-100 text-red-800';
+      case 'message_sent': return 'bg-indigo-100 text-indigo-800';
+      case 'message_received': return 'bg-purple-100 text-purple-800';
       default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getActionIcon = (action: string) => {
+    switch(action) {
+      case 'message_sent':
+      case 'message_received':
+        return action.includes('email') ? <Mail size={14} className="mr-1" /> : <MessageSquare size={14} className="mr-1" />;
+      default:
+        return null;
+    }
+  };
+
+  const getActionLabel = (action: string) => {
+    switch(action) {
+      case 'add': return 'ADDED';
+      case 'update': return 'UPDATED';
+      case 'delete': return 'DELETED';
+      case 'message_sent': return 'MESSAGE SENT';
+      case 'message_received': return 'MESSAGE RECEIVED';
+      default: return action.toUpperCase();
     }
   };
 
@@ -129,8 +153,9 @@ const BulkActionsTable: React.FC = () => {
                     {formatDate(log.created_at)}
                   </TableCell>
                   <TableCell>
-                    <Badge className={getActionColor(log.action)}>
-                      {log.action.toUpperCase()}
+                    <Badge className={`${getActionColor(log.action)} flex items-center`}>
+                      {getActionIcon(log.action)}
+                      {getActionLabel(log.action)}
                     </Badge>
                   </TableCell>
                   <TableCell>
@@ -152,16 +177,36 @@ const BulkActionsTable: React.FC = () => {
       <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Contact Details</DialogTitle>
+            <DialogTitle>
+              {selectedLog?.action.includes('message') 
+                ? 'Message Details' 
+                : 'Contact Details'}
+            </DialogTitle>
             <DialogDescription>
-              {selectedLog?.action.toUpperCase()} operation performed at {selectedLog && formatDate(selectedLog.created_at)}
+              {getActionLabel(selectedLog?.action || '')} at {selectedLog && formatDate(selectedLog.created_at)}
             </DialogDescription>
           </DialogHeader>
           
           <ScrollArea className="max-h-[60vh]">
             <div className="space-y-4 p-1">
+              {selectedLog && selectedLog.action.includes('message') && selectedLog.contact_info.message && (
+                <div className="bg-gray-50 p-3 rounded-lg border">
+                  <p className="font-medium text-sm mb-1">Message:</p>
+                  <p className="text-gray-700">{selectedLog.contact_info.message}</p>
+                  
+                  {selectedLog.contact_info.channel && (
+                    <div className="mt-2 flex items-center">
+                      <span className="text-xs text-gray-500 mr-2">Via:</span>
+                      <Badge variant="outline">
+                        {selectedLog.contact_info.channel}
+                      </Badge>
+                    </div>
+                  )}
+                </div>
+              )}
+              
               {selectedLog && Object.entries(selectedLog.contact_info)
-                .filter(([key]) => key !== 'id' && key !== 'updated_at')
+                .filter(([key]) => !['message', 'id', 'updated_at'].includes(key))
                 .map(([key, value]) => (
                   <div key={key} className="grid grid-cols-3 gap-2">
                     <div className="font-medium capitalize col-span-1">{key.replace(/_/g, ' ')}:</div>
