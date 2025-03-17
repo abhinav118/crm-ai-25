@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,6 +7,7 @@ import { Contact } from './ContactsTable';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { logContactAction } from '@/utils/contactLogger';
 
 interface UserProfileProps {
   contact: Contact;
@@ -52,8 +52,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
         .from('contacts')
         .upsert({
           id: contact.id,
-          ...updateData,
-          user_id: contact.user_id
+          ...updateData
         })
         .select();
       
@@ -63,6 +62,12 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
       }
       
       console.log('Upsert response:', data);
+      
+      // Log the contact update action
+      await logContactAction('update', {
+        id: contact.id,
+        ...updateData
+      });
       
       // Handle the case where no data is returned but operation succeeded
       if (!data || data.length === 0) {
@@ -100,8 +105,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
         lastActivity: data[0].last_activity || '',
         status: data[0].status as 'active' | 'inactive',
         tags: data[0].tags || [],
-        createdAt: data[0].created_at,
-        user_id: data[0].user_id
+        createdAt: data[0].created_at
       };
       
       // Update UI state with the transformed data

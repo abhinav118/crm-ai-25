@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Form } from '@/components/ui/form';
@@ -12,6 +11,7 @@ import { useContactForm } from './ContactForm/useContactForm';
 import { ContactData } from './ContactForm/types';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { logContactAction } from '@/utils/contactLogger';
 
 interface AddContactFormProps {
   open: boolean;
@@ -35,17 +35,14 @@ const AddContactForm: React.FC<AddContactFormProps> = ({ open, onClose, onSubmit
   } = useContactForm({ 
     onSubmit: async (data) => {
       try {
-        // Generate a demo user ID for any new contacts
-        // In a production app, this would be the authenticated user's ID
-        const userId = crypto.randomUUID();
-        console.log('Generated new user_id for contact:', userId);
-        
-        // Ensure user_id and updated_at are set
-        data.user_id = userId;
+        // Ensure updated_at is set
         data.updated_at = new Date().toISOString();
         
-        console.log('Submitting contact with user_id:', data.user_id);
+        console.log('Submitting contact with data:', data);
         await onSubmit(data);
+        
+        // Log the contact addition
+        await logContactAction('add', data);
       } catch (error) {
         console.error('Error in contact submission:', error);
         toast({

@@ -13,7 +13,6 @@ export interface PhoneEntry {
 }
 
 export interface ContactData {
-  user_id: string;
   name: string;
   email: string | null;
   phone: string | null;
@@ -21,6 +20,6 @@ export interface ContactData {
   status: string;
   tags: string[];
   last_activity?: string | null;
-  updated_at: string; // Changed from optional to required
+  updated_at: string; // Required field
   id?: string; // Optional for updating existing contacts
 }

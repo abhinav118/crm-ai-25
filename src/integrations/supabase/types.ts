@@ -9,6 +9,27 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      contact_logs: {
+        Row: {
+          action: string
+          contact_info: Json
+          created_at: string
+          id: string
+        }
+        Insert: {
+          action: string
+          contact_info: Json
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          action?: string
+          contact_info?: Json
+          created_at?: string
+          id?: string
+        }
+        Relationships: []
+      }
       contacts: {
         Row: {
           company: string | null
@@ -21,7 +42,6 @@ export type Database = {
           status: string | null
           tags: string[] | null
           updated_at: string
-          user_id: string
         }
         Insert: {
           company?: string | null
@@ -34,7 +54,6 @@ export type Database = {
           status?: string | null
           tags?: string[] | null
           updated_at?: string
-          user_id: string
         }
         Update: {
           company?: string | null
@@ -47,7 +66,6 @@ export type Database = {
           status?: string | null
           tags?: string[] | null
           updated_at?: string
-          user_id?: string
         }
         Relationships: []
       }
@@ -59,7 +77,6 @@ export type Database = {
           id: string
           sender: string
           sent_at: string
-          user_id: string
         }
         Insert: {
           channel?: string
@@ -68,7 +85,6 @@ export type Database = {
           id?: string
           sender: string
           sent_at?: string
-          user_id: string
         }
         Update: {
           channel?: string
@@ -77,7 +93,6 @@ export type Database = {
           id?: string
           sender?: string
           sent_at?: string
-          user_id?: string
         }
         Relationships: [
           {

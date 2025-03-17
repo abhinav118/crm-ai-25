@@ -16,6 +16,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { UserPlus } from 'lucide-react';
 import { ContactData } from '@/components/dashboard/ContactForm/types';
+import { logContactAction } from '@/utils/contactLogger';
 
 const Index = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -155,8 +156,7 @@ const Index = () => {
           phone: samplePhones[i],
           company: sampleCompanies[i],
           status: i % 5 === 0 ? 'inactive' : 'active',
-          tags: sampleTags[i],
-          user_id: user?.id || '00000000-0000-0000-0000-000000000000'
+          tags: sampleTags[i]
         });
       }
       
@@ -286,39 +286,54 @@ const Index = () => {
     }
   };
 
+  const handleDeleteContacts = async () => {
+    if (selectedRows.size === 0) return;
+    
+    try {
+      const selectedIds = Array.from(selectedRows);
+      
+      const contactsToDelete = contacts.filter(c => selectedIds.includes(c.id));
+      
+      console.log(`Deleting ${selectedIds.length} contacts with IDs:`, selectedIds);
+      
+      const { error } = await supabase
+        .from('contacts')
+        .delete()
+        .in('id', selectedIds);
+      
+      if (error) throw error;
+      
+      for (const contact of contactsToDelete) {
+        await logContactAction('delete', contact);
+      }
+      
+      setContacts(prevContacts => prevContacts.filter(c => !selectedIds.includes(c.id)));
+      setFilteredContacts(prevContacts => prevContacts.filter(c => !selectedIds.includes(c.id)));
+      setSelectedRows(new Set());
+      setSelectedCount(0);
+      
+      toast({
+        title: 'Success',
+        description: `${selectedIds.length} contact${selectedIds.length > 1 ? 's' : ''} deleted successfully`,
+      });
+      
+      fetchContacts();
+      
+    } catch (error) {
+      console.error('Error deleting contacts:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete contacts',
+        variant: 'destructive'
+      });
+    }
+  };
+
   const handleAddContact = async (formData: ContactData): Promise<void> => {
     try {
-      const { data: existingContacts, error: fetchError } = await supabase
-        .from('contacts')
-        .select('user_id')
-        .limit(1);
-      
-      if (fetchError) {
-        console.error('Error fetching existing contacts:', fetchError);
-        throw fetchError;
-      }
-      
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      
-      if (userError) {
-        console.error('User authentication error:', userError);
-      }
-      
-      let validUserId;
-      
-      if (existingContacts && existingContacts.length > 0) {
-        console.log('Using existing user_id for contact:', existingContacts[0].user_id);
-        validUserId = existingContacts[0].user_id;
-      } else if (user?.id) {
-        validUserId = user.id;
-      } else {
-        throw new Error('No valid user_id available - cannot create contact');
-      }
-      
-      console.log('Submitting contact with user_id:', validUserId);
+      console.log('Submitting contact with data:', formData);
       
       const contact = {
-        user_id: validUserId,
         name: formData.name,
         email: formData.email,
         phone: formData.phone,
@@ -356,7 +371,6 @@ const Index = () => {
         tags: data.tags || [],
         lastActivity: data.last_activity || '',
         createdAt: data.created_at,
-        user_id: data.user_id,
       };
 
       setContacts(prevContacts => [newContact, ...prevContacts]);
@@ -419,6 +433,7 @@ const Index = () => {
                 selectedCount={selectedCount} 
                 onAddContact={() => setIsAddContactModalOpen(true)}
                 onSendMessage={handleSendMessage}
+                onDeleteContacts={handleDeleteContacts}
               />
             </div>
           </div>
