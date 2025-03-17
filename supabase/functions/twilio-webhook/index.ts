@@ -1,4 +1,3 @@
-
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -32,6 +31,7 @@ serve(async (req) => {
     const messageSid = formData.get('MessageSid') as string
 
     console.log(`Received SMS from ${from} to ${to}: ${body}`)
+    console.log(`Message SID: ${messageSid}, Contact ID: ${contactId || 'not provided'}`)
 
     if (!body) {
       throw new Error('No message body received')
@@ -81,14 +81,28 @@ serve(async (req) => {
     } else {
       console.log(`No contactId provided, looking up contact by phone: ${from}`)
       
-      // Clean up phone number format for matching
-      const cleanFrom = from.replace(/\D/g, '')
+      // Clean up phone number format for matching - handle multiple formats
+      let cleanFrom = from.replace(/\D/g, '')
+      
+      // If the phone starts with a plus sign, keep it for the search
+      if (from.startsWith('+')) {
+        cleanFrom = from;
+      } else if (cleanFrom.length === 10) {
+        // Add US country code if it's a 10-digit number without country code
+        cleanFrom = `+1${cleanFrom}`;
+      } else if (cleanFrom.length === 11 && cleanFrom.startsWith('1')) {
+        // Format 11-digit US number with country code
+        cleanFrom = `+${cleanFrom}`;
+      }
+      
+      console.log(`Looking for contact with phone number like: ${cleanFrom}`);
       
       // If no contactId provided, look up the contact by phone number
+      // Use multiple search patterns to increase chances of matching
       const { data: contactData, error: contactError } = await supabase
         .from('contacts')
-        .select('id, name')
-        .filter('phone', 'ilike', `%${cleanFrom}%`)
+        .select('id, name, phone')
+        .or(`phone.eq.${cleanFrom},phone.ilike.%${cleanFrom.slice(-10)}%`)
         .maybeSingle()
 
       if (contactError) {
@@ -139,6 +153,58 @@ serve(async (req) => {
         console.log('Message stored in database for contact:', contactData.name)
       } else {
         console.log('No matching contact found for phone number:', from)
+        console.log('Creating a new contact for this phone number')
+        
+        // Create a new contact entry for this unknown sender
+        const { data: newContact, error: newContactError } = await supabase
+          .from('contacts')
+          .insert({
+            name: `Unknown (${from})`,
+            phone: from,
+            status: 'active',
+            tags: ['sms-inbound'],
+            last_activity: new Date().toISOString()
+          })
+          .select()
+          .single()
+          
+        if (newContactError) {
+          console.error('Error creating new contact:', newContactError)
+          throw newContactError
+        }
+        
+        // Insert the received message for the new contact
+        const { data, error } = await supabase
+          .from('messages')
+          .insert({
+            contact_id: newContact.id,
+            content: body,
+            sender: 'contact',
+            channel: 'sms',
+            sent_at: new Date().toISOString()
+          })
+          .select()
+          
+        if (error) {
+          console.error('Error inserting message for new contact:', error)
+          throw error
+        }
+        
+        // Log the received message for the new contact
+        await supabase
+          .from('contact_logs')
+          .insert({
+            action: 'message_received',
+            contact_info: {
+              id: newContact.id,
+              name: newContact.name,
+              message: body,
+              channel: 'sms',
+              timestamp: new Date().toISOString()
+            }
+          })
+          
+        console.log('Created new contact and stored message:', newContact.name)
       }
     }
 
