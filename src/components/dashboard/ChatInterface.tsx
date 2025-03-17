@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Avatar from '@/components/dashboard/Avatar';
 import { Button } from '@/components/ui/button';
@@ -88,6 +89,40 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
     fetchMessages();
   }, [contact, toast]);
 
+  // Set up real-time subscription for new messages
+  useEffect(() => {
+    if (!contact?.id) return;
+    
+    const subscription = supabase
+      .channel('messages-changes')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'messages',
+        filter: `contact_id=eq.${contact.id}`
+      }, (payload) => {
+        console.log('Messages change received:', payload);
+        
+        if (payload.eventType === 'INSERT') {
+          const newMessage = payload.new;
+          const formattedMessage = {
+            id: newMessage.id,
+            text: newMessage.content,
+            sender: newMessage.sender as 'user' | 'contact',
+            timestamp: newMessage.sent_at,
+            channel: newMessage.channel as 'sms' | 'whatsapp' | 'internal'
+          };
+          
+          setMessages(prev => [...prev, formattedMessage]);
+        }
+      })
+      .subscribe();
+    
+    return () => {
+      supabase.removeChannel(subscription);
+    };
+  }, [contact?.id]);
+
   const handleSend = async () => {
     if (!messageText.trim()) return;
     
@@ -106,16 +141,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
     setIsLoading(true);
     
     try {
-      // Use the contact's user_id or generate a new one
-      const userId = updatedContact.user_id || crypto.randomUUID();
-      
       // Prepare the message data
       const messageInsert = {
         contact_id: updatedContact.id,
         content: messageText,
         sender: 'user',
-        channel: activeChannel,
-        user_id: userId
+        channel: activeChannel
       };
       
       console.log('Inserting message:', messageInsert);
