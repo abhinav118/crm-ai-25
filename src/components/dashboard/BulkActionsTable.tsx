@@ -117,7 +117,8 @@ const BulkActionsTable = () => {
       id: 'contact',
       header: 'Contact',
       cell: ({ row }) => {
-        const log = row.original as LogEntry;
+        // Fixed: properly type the row parameter
+        const log = row.original as unknown as LogEntry;
         const contact = log.contact || {};
         return (
           <div className="flex items-center gap-2">
@@ -134,7 +135,8 @@ const BulkActionsTable = () => {
       id: 'action',
       header: 'Action',
       cell: ({ row }) => {
-        const log = row.original as LogEntry;
+        // Fixed: properly type the row parameter
+        const log = row.original as unknown as LogEntry;
         return (
           <div className="flex items-center gap-2">
             {getActionIcon(log.action)}
@@ -150,7 +152,8 @@ const BulkActionsTable = () => {
       header: 'Description',
       accessorKey: 'description',
       cell: ({ row }) => {
-        const log = row.original as LogEntry;
+        // Fixed: properly type the row parameter
+        const log = row.original as unknown as LogEntry;
         // Show message content if available
         if ((log.action === 'message_sent' || log.action === 'message_received') && log.contact?.message) {
           return (
