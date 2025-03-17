@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Sidebar from '@/components/dashboard/Sidebar';
 import TopBar from '@/components/dashboard/TopBar';
@@ -82,7 +83,7 @@ const Index = () => {
           company: contact.company || '',
           status: contact.status as 'active' | 'inactive',
           tags: contact.tags || [],
-          lastActivity: contact.last_activity || '',
+          lastActivity: contact.last_activity || contact.created_at, // Use created_at as fallback
           createdAt: contact.created_at,
         }));
         
@@ -177,17 +178,18 @@ const Index = () => {
   useEffect(() => {
     fetchContacts();
     
+    // Set up realtime subscription for all contact changes (INSERT, UPDATE, DELETE)
     const channel = supabase
       .channel('schema-db-changes')
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
           schema: 'public',
           table: 'contacts'
         },
         (payload) => {
-          console.log('Real-time update received:', payload);
+          console.log('Real-time update received for contacts:', payload);
           fetchContacts();
         }
       )
@@ -332,13 +334,17 @@ const Index = () => {
     try {
       console.log('Submitting contact with data:', formData);
       
+      // Set last_activity to created_at when contact is first created
+      const currentTime = new Date().toISOString();
+      
       const contact = {
         name: formData.name,
         email: formData.email,
         phone: formData.phone,
         company: formData.company,
         status: 'active',
-        tags: formData.tags || []
+        tags: formData.tags || [],
+        last_activity: currentTime // Set last_activity to current time (same as created_at)
       };
 
       console.log('Inserting contact with data:', contact);
@@ -368,7 +374,7 @@ const Index = () => {
         company: data.company || '',
         status: data.status as 'active' | 'inactive',
         tags: data.tags || [],
-        lastActivity: data.last_activity || '',
+        lastActivity: data.last_activity || data.created_at,
         createdAt: data.created_at,
       };
 

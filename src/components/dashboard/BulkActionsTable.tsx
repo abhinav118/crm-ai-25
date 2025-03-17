@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -5,6 +6,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { fetchContactLogs } from '@/utils/contactLogger';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 type LogEntry = {
   id: string;
@@ -16,6 +25,8 @@ type LogEntry = {
 const BulkActionsTable: React.FC = () => {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedLog, setSelectedLog] = useState<LogEntry | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   useEffect(() => {
     const loadLogs = async () => {
@@ -71,6 +82,11 @@ const BulkActionsTable: React.FC = () => {
     }
   };
 
+  const handleViewDetails = (log: LogEntry) => {
+    setSelectedLog(log);
+    setDetailsOpen(true);
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -88,48 +104,91 @@ const BulkActionsTable: React.FC = () => {
   }
 
   return (
-    <div className="rounded-md border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Time</TableHead>
-            <TableHead>Action</TableHead>
-            <TableHead>Contact</TableHead>
-            <TableHead>Details</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {logs.length === 0 ? (
+    <>
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
             <TableRow>
-              <TableCell colSpan={4} className="h-24 text-center">
-                No logs found
-              </TableCell>
+              <TableHead>Time</TableHead>
+              <TableHead>Action</TableHead>
+              <TableHead>Contact</TableHead>
+              <TableHead>Details</TableHead>
             </TableRow>
-          ) : (
-            logs.map((log) => (
-              <TableRow key={log.id}>
-                <TableCell className="font-medium">
-                  {formatDate(log.created_at)}
-                </TableCell>
-                <TableCell>
-                  <Badge className={getActionColor(log.action)}>
-                    {log.action.toUpperCase()}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  {log.contact_info.name || 'Unknown'}
-                </TableCell>
-                <TableCell>
-                  <Button variant="outline" size="sm" onClick={() => console.log(log.contact_info)}>
-                    View Details
-                  </Button>
+          </TableHeader>
+          <TableBody>
+            {logs.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={4} className="h-24 text-center">
+                  No logs found
                 </TableCell>
               </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
-    </div>
+            ) : (
+              logs.map((log) => (
+                <TableRow key={log.id}>
+                  <TableCell className="font-medium">
+                    {formatDate(log.created_at)}
+                  </TableCell>
+                  <TableCell>
+                    <Badge className={getActionColor(log.action)}>
+                      {log.action.toUpperCase()}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {log.contact_info.name || 'Unknown'}
+                  </TableCell>
+                  <TableCell>
+                    <Button variant="outline" size="sm" onClick={() => handleViewDetails(log)}>
+                      View Details
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* Contact Details Dialog */}
+      <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Contact Details</DialogTitle>
+            <DialogDescription>
+              {selectedLog?.action.toUpperCase()} operation performed at {selectedLog && formatDate(selectedLog.created_at)}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <ScrollArea className="max-h-[60vh]">
+            <div className="space-y-4 p-1">
+              {selectedLog && Object.entries(selectedLog.contact_info)
+                .filter(([key]) => key !== 'id' && key !== 'updated_at')
+                .map(([key, value]) => (
+                  <div key={key} className="grid grid-cols-3 gap-2">
+                    <div className="font-medium capitalize col-span-1">{key.replace(/_/g, ' ')}:</div>
+                    <div className="col-span-2">
+                      {Array.isArray(value) ? (
+                        <div className="flex flex-wrap gap-1">
+                          {(value as string[]).map((item, i) => (
+                            <Badge key={i} variant="outline" className="px-2 py-0.5 text-xs">
+                              {item}
+                            </Badge>
+                          ))}
+                        </div>
+                      ) : typeof value === 'object' && value !== null ? (
+                        <pre className="text-xs whitespace-pre-wrap bg-gray-50 p-2 rounded">
+                          {JSON.stringify(value, null, 2)}
+                        </pre>
+                      ) : (
+                        String(value || '-')
+                      )}
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 
