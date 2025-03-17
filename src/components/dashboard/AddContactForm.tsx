@@ -40,8 +40,9 @@ const AddContactForm: React.FC<AddContactFormProps> = ({ open, onClose, onSubmit
         const userId = crypto.randomUUID();
         console.log('Generated new user_id for contact:', userId);
         
-        // Ensure user_id is set
+        // Ensure user_id and updated_at are set
         data.user_id = userId;
+        data.updated_at = new Date().toISOString();
         
         console.log('Submitting contact with user_id:', data.user_id);
         await onSubmit(data);

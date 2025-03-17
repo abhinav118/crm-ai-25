@@ -21,5 +21,6 @@ export interface ContactData {
   status: string;
   tags: string[];
   last_activity?: string | null;
+  updated_at?: string;
   id?: string; // Optional for updating existing contacts
 }

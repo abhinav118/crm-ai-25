@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -32,7 +33,8 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
     setIsLoading(true);
     
     try {
-      // Prepare contact data for update
+      // Prepare contact data for update with current timestamp
+      const currentTime = new Date().toISOString();
       const updateData = {
         name: formData.name,
         email: formData.email || null,
@@ -40,16 +42,19 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
         company: formData.company || null,
         status: formData.status,
         tags: formData.tags || [],
-        updated_at: new Date().toISOString()
+        updated_at: currentTime
       };
       
       console.log('Updating contact data:', updateData);
       
-      // Update contact in Supabase
+      // Upsert contact in Supabase (update if exists, insert if not)
       const { data, error } = await supabase
         .from('contacts')
-        .update(updateData)
-        .eq('id', contact.id)
+        .upsert({
+          id: contact.id,
+          ...updateData,
+          user_id: contact.user_id
+        })
         .select();
       
       if (error) {
@@ -57,7 +62,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
         throw error;
       }
       
-      console.log('Update response:', data);
+      console.log('Upsert response:', data);
       
       // Handle the case where no data is returned but operation succeeded
       if (!data || data.length === 0) {
@@ -66,7 +71,8 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
         // Update the local state with the new values
         const updatedContact = {
           ...contact,
-          ...updateData
+          ...updateData,
+          updated_at: currentTime
         };
         
         if (onSave) {

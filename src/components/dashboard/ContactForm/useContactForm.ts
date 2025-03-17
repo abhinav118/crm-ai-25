@@ -79,8 +79,14 @@ export const useContactForm = ({ onSubmit, onClose, initialData }: UseContactFor
         phone: phones[0]?.number && phones[0].number.trim() !== '' ? phones[0].number : null,
         company: values.company || null,
         status: initialData?.status || 'active',
-        tags: values.tags || []
+        tags: values.tags || [],
+        updated_at: new Date().toISOString()
       };
+      
+      // If we have an ID (editing), include it
+      if (initialData?.id) {
+        submissionData.id = initialData.id;
+      }
       
       console.log('Preparing contact data for submission:', submissionData);
       
