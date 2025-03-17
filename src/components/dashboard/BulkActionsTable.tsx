@@ -6,6 +6,7 @@ import { fetchContactLogs, formatLogEntry } from '@/utils/contactLogger';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CalendarIcon, MessageSquare, Tag, User, Pencil, Trash } from 'lucide-react';
 import Avatar from './Avatar';
+import { supabase } from '@/integrations/supabase/client';
 
 type LogEntry = {
   id: string;
@@ -116,7 +117,7 @@ const BulkActionsTable = () => {
       id: 'contact',
       header: 'Contact',
       cell: ({ row }) => {
-        const log = row.original;
+        const log = row.original as LogEntry;
         const contact = log.contact || {};
         return (
           <div className="flex items-center gap-2">
@@ -133,7 +134,7 @@ const BulkActionsTable = () => {
       id: 'action',
       header: 'Action',
       cell: ({ row }) => {
-        const log = row.original;
+        const log = row.original as LogEntry;
         return (
           <div className="flex items-center gap-2">
             {getActionIcon(log.action)}
@@ -149,7 +150,7 @@ const BulkActionsTable = () => {
       header: 'Description',
       accessorKey: 'description',
       cell: ({ row }) => {
-        const log = row.original;
+        const log = row.original as LogEntry;
         // Show message content if available
         if ((log.action === 'message_sent' || log.action === 'message_received') && log.contact?.message) {
           return (
@@ -206,7 +207,6 @@ const BulkActionsTable = () => {
       <DataTable
         data={logs}
         columns={columns}
-        searchPlaceholder="Search activity logs..."
       />
     </div>
   );

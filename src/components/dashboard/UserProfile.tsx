@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Edit2, Calendar, Phone, Mail, User, MapPin, Award, AtSign, Tag } from 'lucide-react';
+import { Edit2, Calendar, Phone, Mail, User, MapPin, Award, AtSign, Tag, X } from 'lucide-react';
 import { Contact } from './ContactsTable';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
