@@ -14,6 +14,11 @@ export const logContactAction = async (
     // Convert the contactInfo to a JSON-compatible object
     const jsonContactInfo = JSON.parse(JSON.stringify(contactInfo));
     
+    // Add timestamp if not provided
+    if (!jsonContactInfo.timestamp) {
+      jsonContactInfo.timestamp = new Date().toISOString();
+    }
+    
     const { error } = await supabase
       .from('contact_logs')
       .insert({
@@ -55,4 +60,49 @@ export const fetchContactLogs = async () => {
     });
     return [];
   }
+};
+
+// Helper to format log entries for display
+export const formatLogEntry = (log: any) => {
+  const { action, contact_info, created_at } = log;
+  const date = new Date(created_at);
+  
+  let description = '';
+  let contact = contact_info || {};
+  
+  switch (action) {
+    case 'add':
+      description = `Contact "${contact.name}" was added`;
+      break;
+    case 'update':
+      if (contact.action_name) {
+        description = `${contact.action_name}: Updated "${contact.name}"`;
+        if (contact.tags && contact.tags.length > 0) {
+          description += ` with tags: ${contact.tags.join(', ')}`;
+        }
+      } else {
+        description = `Contact "${contact.name}" was updated`;
+      }
+      break;
+    case 'delete':
+      description = `Contact "${contact.name}" was deleted`;
+      break;
+    case 'message_sent':
+      description = `Message sent to "${contact.name}"${contact.channel ? ` via ${contact.channel}` : ''}`;
+      break;
+    case 'message_received':
+      description = `Message received from "${contact.name}"${contact.channel ? ` via ${contact.channel}` : ''}`;
+      break;
+    default:
+      description = `Action "${action}" performed on contact "${contact.name}"`;
+  }
+  
+  return {
+    id: log.id,
+    description,
+    date: date.toLocaleString(),
+    action,
+    contact: contact,
+    timestamp: created_at
+  };
 };

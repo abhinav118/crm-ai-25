@@ -51,6 +51,7 @@ serve(async (req) => {
     formData.append('To', formattedPhone)
     formData.append('From', TWILIO_PHONE_NUMBER)
     formData.append('Body', message)
+    formData.append('StatusCallback', `https://nzsflibcvrisxjlzuxjn.supabase.co/functions/v1/twilio-webhook?contactId=${contactId}`)
 
     const twilioResponse = await fetch(twilioEndpoint, {
       method: 'POST',

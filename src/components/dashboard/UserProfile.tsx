@@ -1,10 +1,12 @@
+
 import React, { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Edit2, Calendar, Phone, Mail, User, MapPin, Award, AtSign } from 'lucide-react';
+import { Edit2, Calendar, Phone, Mail, User, MapPin, Award, AtSign, Tag } from 'lucide-react';
 import { Contact } from './ContactsTable';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { logContactAction } from '@/utils/contactLogger';
@@ -18,6 +20,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState(contact);
   const [isLoading, setIsLoading] = useState(false);
+  const [newTag, setNewTag] = useState('');
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -26,6 +29,26 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
 
   const handleSelectChange = (name: string, value: string) => {
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleAddTag = () => {
+    if (newTag.trim()) {
+      const updatedTags = [...(formData.tags || []), newTag.trim()];
+      setFormData(prev => ({ ...prev, tags: updatedTags }));
+      setNewTag('');
+    }
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    const updatedTags = (formData.tags || []).filter(tag => tag !== tagToRemove);
+    setFormData(prev => ({ ...prev, tags: updatedTags }));
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && newTag.trim()) {
+      e.preventDefault();
+      handleAddTag();
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -207,6 +230,47 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
               </SelectContent>
             </Select>
           </div>
+          <div>
+            <Label htmlFor="tags">Tags</Label>
+            <div className="flex flex-wrap gap-2 mb-2">
+              {(formData.tags || []).map(tag => (
+                <Badge 
+                  key={tag}
+                  variant="secondary" 
+                  className="px-2 py-1 flex items-center gap-1"
+                >
+                  {tag}
+                  <button 
+                    type="button"
+                    onClick={() => handleRemoveTag(tag)}
+                    className="ml-1 rounded-full hover:bg-gray-200 p-0.5"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ))}
+            </div>
+            <div className="flex">
+              <Input 
+                id="newTag" 
+                placeholder="Add new tag"
+                value={newTag} 
+                onChange={(e) => setNewTag(e.target.value)}
+                onKeyDown={handleKeyPress}
+                className="flex-1"
+              />
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="sm"
+                onClick={handleAddTag}
+                disabled={!newTag.trim()}
+                className="ml-2"
+              >
+                Add
+              </Button>
+            </div>
+          </div>
           <div className="mt-4">
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? 'Saving...' : 'Save Changes'}
@@ -223,6 +287,23 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
             <ProfileItem icon={<Calendar />} label="Last Activity" value={formatDate(contact.lastActivity)} />
             <ProfileItem icon={<MapPin />} label="Status" value={contact.status} />
             <ProfileItem icon={<AtSign />} label="Created" value={formatDate(contact.createdAt)} />
+            <div className="flex items-start gap-2">
+              <div className="text-gray-400 mt-1"><Tag size={16} /></div>
+              <div>
+                <p className="text-sm text-gray-500">Tags</p>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {(contact.tags && contact.tags.length > 0) ? (
+                    contact.tags.map(tag => (
+                      <Badge key={tag} variant="outline" className="px-2 py-0.5 text-xs">
+                        {tag}
+                      </Badge>
+                    ))
+                  ) : (
+                    <span className="text-gray-500">No tags</span>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}

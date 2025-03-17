@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { 
   UserPlus,
@@ -18,6 +18,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import AddTagsDialog from './AddTagsDialog';
+import { Contact } from './ContactsTable';
 
 type ActionButtonsProps = {
   selectedCount?: number;
@@ -25,6 +27,8 @@ type ActionButtonsProps = {
   onAddContact?: () => void;
   onSendMessage?: () => void;
   onDeleteContacts?: () => void;
+  selectedContacts?: Contact[];
+  onTagsAdded?: () => void;
 };
 
 const ActionButtons: React.FC<ActionButtonsProps> = ({ 
@@ -32,9 +36,12 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
   className = '',
   onAddContact,
   onSendMessage,
-  onDeleteContacts
+  onDeleteContacts,
+  selectedContacts = [],
+  onTagsAdded
 }) => {
-  const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showTagsDialog, setShowTagsDialog] = useState(false);
 
   const handleDeleteClick = () => {
     setShowDeleteDialog(true);
@@ -45,6 +52,13 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
       onDeleteContacts();
     }
     setShowDeleteDialog(false);
+  };
+
+  const handleTagsAdded = () => {
+    if (onTagsAdded) {
+      onTagsAdded();
+    }
+    setShowTagsDialog(false);
   };
 
   return (
@@ -75,6 +89,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
               size="sm" 
               variant="outline"
               className="gap-1"
+              onClick={() => setShowTagsDialog(true)}
             >
               <Tag size={16} />
               Add Tag
@@ -118,6 +133,15 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {showTagsDialog && (
+        <AddTagsDialog
+          open={showTagsDialog}
+          onClose={() => setShowTagsDialog(false)}
+          selectedContacts={selectedContacts}
+          onTagsAdded={handleTagsAdded}
+        />
+      )}
     </>
   );
 };

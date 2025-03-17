@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Avatar from '@/components/dashboard/Avatar';
 import { Button } from '@/components/ui/button';
 import UserProfile from './UserProfile';
@@ -45,6 +45,16 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
   const [isFetching, setIsFetching] = useState(true);
   const [updatedContact, setUpdatedContact] = useState<Contact>(contact);
   const { toast } = useToast();
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Scroll to bottom whenever messages change
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   // Fetch messages from Supabase when contact changes
   useEffect(() => {
@@ -92,6 +102,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
   // Set up real-time subscription for new messages
   useEffect(() => {
     if (!contact?.id) return;
+    
+    console.log('Setting up messages subscription for contact:', contact.id);
     
     const subscription = supabase
       .channel('messages-changes')
@@ -392,6 +404,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
                         </div>
                       </div>
                     ))}
+                  <div ref={messagesEndRef} />
                 </TabsContent>
                 
                 <TabsContent value="email" className="mt-0 h-full">
@@ -435,6 +448,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
                         </div>
                       </div>
                     ))}
+                  <div ref={messagesEndRef} />
                 </TabsContent>
               </div>
 

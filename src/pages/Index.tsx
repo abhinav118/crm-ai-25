@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Sidebar from '@/components/dashboard/Sidebar';
 import TopBar from '@/components/dashboard/TopBar';
@@ -83,7 +82,7 @@ const Index = () => {
           company: contact.company || '',
           status: contact.status as 'active' | 'inactive',
           tags: contact.tags || [],
-          lastActivity: contact.last_activity || contact.created_at, // Use created_at as fallback
+          lastActivity: contact.last_activity || contact.created_at,
           createdAt: contact.created_at,
         }));
         
@@ -178,7 +177,6 @@ const Index = () => {
   useEffect(() => {
     fetchContacts();
     
-    // Set up realtime subscription for all contact changes (INSERT, UPDATE, DELETE)
     const channel = supabase
       .channel('schema-db-changes')
       .on(
@@ -271,12 +269,16 @@ const Index = () => {
     navigate(`/#${value}`);
   };
   
-  const totalPages = Math.ceil(totalCount / pageSize);
-  
-  const toggleSidebar = () => {
-    setSidebarCollapsed(!sidebarCollapsed);
+  const handleTagsAdded = () => {
+    fetchContacts();
+    setSelectedRows(new Set());
+    setSelectedCount(0);
   };
-
+  
+  const getSelectedContacts = (): Contact[] => {
+    return contacts.filter(contact => selectedRows.has(contact.id));
+  };
+  
   const handleSendMessage = () => {
     if (selectedRows.size > 0) {
       const firstSelectedId = Array.from(selectedRows)[0];
@@ -334,7 +336,6 @@ const Index = () => {
     try {
       console.log('Submitting contact with data:', formData);
       
-      // Set last_activity to created_at when contact is first created
       const currentTime = new Date().toISOString();
       
       const contact = {
@@ -344,7 +345,7 @@ const Index = () => {
         company: formData.company,
         status: 'active',
         tags: formData.tags || [],
-        last_activity: currentTime // Set last_activity to current time (same as created_at)
+        last_activity: currentTime
       };
 
       console.log('Inserting contact with data:', contact);
@@ -400,6 +401,12 @@ const Index = () => {
     }
   };
   
+  const totalPages = Math.ceil(totalCount / pageSize);
+  
+  const toggleSidebar = () => {
+    setSidebarCollapsed(!sidebarCollapsed);
+  };
+
   if (isLoading) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
@@ -439,6 +446,8 @@ const Index = () => {
                 onAddContact={() => setIsAddContactModalOpen(true)}
                 onSendMessage={handleSendMessage}
                 onDeleteContacts={handleDeleteContacts}
+                selectedContacts={getSelectedContacts()}
+                onTagsAdded={handleTagsAdded}
               />
             </div>
           </div>

@@ -1,46 +1,43 @@
 
 import React, { useState, useEffect } from 'react';
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
-import { fetchContactLogs } from '@/utils/contactLogger';
+import { DataTable, ColumnDef } from '@/components/ui/data-table';
 import { Badge } from '@/components/ui/badge';
-import { supabase } from '@/integrations/supabase/client';
-import { 
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { MessageSquare, Mail } from 'lucide-react';
+import { fetchContactLogs, formatLogEntry } from '@/utils/contactLogger';
+import { Skeleton } from '@/components/ui/skeleton';
+import { CalendarIcon, MessageSquare, Tag, User, Pencil, Trash } from 'lucide-react';
+import Avatar from './Avatar';
 
 type LogEntry = {
   id: string;
+  description: string;
+  date: string;
   action: string;
-  contact_info: any;
-  created_at: string;
+  contact: any;
+  timestamp: string;
 };
 
-const BulkActionsTable: React.FC = () => {
+const BulkActionsTable = () => {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedLog, setSelectedLog] = useState<LogEntry | null>(null);
-  const [detailsOpen, setDetailsOpen] = useState(false);
 
   useEffect(() => {
-    const loadLogs = async () => {
+    const getLogs = async () => {
       setIsLoading(true);
-      const data = await fetchContactLogs();
-      setLogs(data);
-      setIsLoading(false);
+      try {
+        const logsData = await fetchContactLogs();
+        const formattedLogs = logsData.map(formatLogEntry);
+        setLogs(formattedLogs);
+      } catch (error) {
+        console.error('Error fetching logs:', error);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
-    loadLogs();
+    getLogs();
 
-    // Set up realtime subscription for new logs
-    const channel = supabase
+    // Set up realtime subscription
+    const subscription = supabase
       .channel('schema-db-changes')
       .on(
         'postgres_changes',
@@ -49,67 +46,144 @@ const BulkActionsTable: React.FC = () => {
           schema: 'public',
           table: 'contact_logs'
         },
-        (payload) => {
-          console.log('Realtime update for contact_logs:', payload);
-          loadLogs();
+        () => {
+          // Refresh logs when a new log is added
+          getLogs();
         }
       )
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(subscription);
     };
   }, []);
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return new Intl.DateTimeFormat('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: 'numeric',
-      second: 'numeric',
-      hour12: true
-    }).format(date);
-  };
-
-  const getActionColor = (action: string) => {
-    switch(action) {
-      case 'add': return 'bg-green-100 text-green-800';
-      case 'update': return 'bg-blue-100 text-blue-800';
-      case 'delete': return 'bg-red-100 text-red-800';
-      case 'message_sent': return 'bg-indigo-100 text-indigo-800';
-      case 'message_received': return 'bg-purple-100 text-purple-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
+  // Helper function to get icon based on action
   const getActionIcon = (action: string) => {
-    switch(action) {
+    switch (action) {
+      case 'add':
+        return <User className="h-4 w-4 text-green-500" />;
+      case 'update':
+        return <Pencil className="h-4 w-4 text-blue-500" />;
+      case 'delete':
+        return <Trash className="h-4 w-4 text-red-500" />;
       case 'message_sent':
+        return <MessageSquare className="h-4 w-4 text-indigo-500" />;
       case 'message_received':
-        return action.includes('email') ? <Mail size={14} className="mr-1" /> : <MessageSquare size={14} className="mr-1" />;
+        return <MessageSquare className="h-4 w-4 text-purple-500" />;
       default:
-        return null;
+        return <CalendarIcon className="h-4 w-4 text-gray-500" />;
     }
   };
 
-  const getActionLabel = (action: string) => {
-    switch(action) {
-      case 'add': return 'ADDED';
-      case 'update': return 'UPDATED';
-      case 'delete': return 'DELETED';
-      case 'message_sent': return 'MESSAGE SENT';
-      case 'message_received': return 'MESSAGE RECEIVED';
-      default: return action.toUpperCase();
+  // Get badge color based on action
+  const getActionBadgeColor = (action: string) => {
+    switch (action) {
+      case 'add':
+        return 'bg-green-100 text-green-800';
+      case 'update':
+        return 'bg-blue-100 text-blue-800';
+      case 'delete':
+        return 'bg-red-100 text-red-800';
+      case 'message_sent':
+        return 'bg-indigo-100 text-indigo-800';
+      case 'message_received':
+        return 'bg-purple-100 text-purple-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
-  const handleViewDetails = (log: LogEntry) => {
-    setSelectedLog(log);
-    setDetailsOpen(true);
+  const formatActionType = (action: string) => {
+    switch (action) {
+      case 'add':
+        return 'Add';
+      case 'update':
+        return 'Update';
+      case 'delete':
+        return 'Delete';
+      case 'message_sent':
+        return 'Sent';
+      case 'message_received':
+        return 'Received';
+      default:
+        return action.replace('_', ' ');
+    }
   };
+
+  const columns: ColumnDef<LogEntry>[] = [
+    {
+      id: 'contact',
+      header: 'Contact',
+      cell: ({ row }) => {
+        const log = row.original;
+        const contact = log.contact || {};
+        return (
+          <div className="flex items-center gap-2">
+            {contact.name && <Avatar name={contact.name} size="sm" />}
+            <div>
+              <div className="font-medium">{contact.name || 'Unknown Contact'}</div>
+              {contact.email && <div className="text-xs text-gray-500">{contact.email}</div>}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      id: 'action',
+      header: 'Action',
+      cell: ({ row }) => {
+        const log = row.original;
+        return (
+          <div className="flex items-center gap-2">
+            {getActionIcon(log.action)}
+            <Badge variant="outline" className={`${getActionBadgeColor(log.action)} border-0`}>
+              {formatActionType(log.action)}
+            </Badge>
+          </div>
+        );
+      },
+    },
+    {
+      id: 'description',
+      header: 'Description',
+      accessorKey: 'description',
+      cell: ({ row }) => {
+        const log = row.original;
+        // Show message content if available
+        if ((log.action === 'message_sent' || log.action === 'message_received') && log.contact?.message) {
+          return (
+            <div>
+              <div>{log.description}</div>
+              <div className="text-sm text-gray-500 mt-1 italic">"{log.contact.message}"</div>
+            </div>
+          );
+        }
+        // Show tags if this was a tag update
+        if (log.action === 'update' && log.contact?.tags && log.contact.tags.length > 0) {
+          return (
+            <div>
+              <div>{log.description}</div>
+              <div className="flex flex-wrap gap-1 mt-1">
+                {log.contact.tags.map((tag: string) => (
+                  <Badge key={tag} variant="outline" className="px-2 py-0.5 text-xs flex items-center gap-1">
+                    <Tag className="h-3 w-3" />
+                    {tag}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          );
+        }
+        return log.description;
+      },
+    },
+    {
+      id: 'date',
+      header: 'Date',
+      accessorKey: 'date',
+    },
+  ];
 
   if (isLoading) {
     return (
@@ -128,112 +202,13 @@ const BulkActionsTable: React.FC = () => {
   }
 
   return (
-    <>
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Time</TableHead>
-              <TableHead>Action</TableHead>
-              <TableHead>Contact</TableHead>
-              <TableHead>Details</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {logs.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={4} className="h-24 text-center">
-                  No logs found
-                </TableCell>
-              </TableRow>
-            ) : (
-              logs.map((log) => (
-                <TableRow key={log.id}>
-                  <TableCell className="font-medium">
-                    {formatDate(log.created_at)}
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={`${getActionColor(log.action)} flex items-center`}>
-                      {getActionIcon(log.action)}
-                      {getActionLabel(log.action)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {log.contact_info.name || 'Unknown'}
-                  </TableCell>
-                  <TableCell>
-                    <Button variant="outline" size="sm" onClick={() => handleViewDetails(log)}>
-                      View Details
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
-
-      {/* Contact Details Dialog */}
-      <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>
-              {selectedLog?.action.includes('message') 
-                ? 'Message Details' 
-                : 'Contact Details'}
-            </DialogTitle>
-            <DialogDescription>
-              {getActionLabel(selectedLog?.action || '')} at {selectedLog && formatDate(selectedLog.created_at)}
-            </DialogDescription>
-          </DialogHeader>
-          
-          <ScrollArea className="max-h-[60vh]">
-            <div className="space-y-4 p-1">
-              {selectedLog && selectedLog.action.includes('message') && selectedLog.contact_info.message && (
-                <div className="bg-gray-50 p-3 rounded-lg border">
-                  <p className="font-medium text-sm mb-1">Message:</p>
-                  <p className="text-gray-700">{selectedLog.contact_info.message}</p>
-                  
-                  {selectedLog.contact_info.channel && (
-                    <div className="mt-2 flex items-center">
-                      <span className="text-xs text-gray-500 mr-2">Via:</span>
-                      <Badge variant="outline">
-                        {selectedLog.contact_info.channel}
-                      </Badge>
-                    </div>
-                  )}
-                </div>
-              )}
-              
-              {selectedLog && Object.entries(selectedLog.contact_info)
-                .filter(([key]) => !['message', 'id', 'updated_at'].includes(key))
-                .map(([key, value]) => (
-                  <div key={key} className="grid grid-cols-3 gap-2">
-                    <div className="font-medium capitalize col-span-1">{key.replace(/_/g, ' ')}:</div>
-                    <div className="col-span-2">
-                      {Array.isArray(value) ? (
-                        <div className="flex flex-wrap gap-1">
-                          {(value as string[]).map((item, i) => (
-                            <Badge key={i} variant="outline" className="px-2 py-0.5 text-xs">
-                              {item}
-                            </Badge>
-                          ))}
-                        </div>
-                      ) : typeof value === 'object' && value !== null ? (
-                        <pre className="text-xs whitespace-pre-wrap bg-gray-50 p-2 rounded">
-                          {JSON.stringify(value, null, 2)}
-                        </pre>
-                      ) : (
-                        String(value || '-')
-                      )}
-                    </div>
-                  </div>
-                ))}
-            </div>
-          </ScrollArea>
-        </DialogContent>
-      </Dialog>
-    </>
+    <div className="glass-card">
+      <DataTable
+        data={logs}
+        columns={columns}
+        searchPlaceholder="Search activity logs..."
+      />
+    </div>
   );
 };
 
