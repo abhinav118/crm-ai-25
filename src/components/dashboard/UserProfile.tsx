@@ -47,13 +47,11 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
       
       console.log('Updating contact data:', updateData);
       
-      // Upsert contact in Supabase (update if exists, insert if not)
+      // Update contact in Supabase
       const { data, error } = await supabase
         .from('contacts')
-        .upsert({
-          id: contact.id,
-          ...updateData
-        })
+        .update(updateData)
+        .eq('id', contact.id)
         .select();
       
       if (error) {
@@ -61,7 +59,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
         throw error;
       }
       
-      console.log('Upsert response:', data);
+      console.log('Update response:', data);
       
       // Log the contact update action
       await logContactAction('update', {
