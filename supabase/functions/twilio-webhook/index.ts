@@ -1,3 +1,4 @@
+
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -8,23 +9,47 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
+  console.log("Twilio webhook received request")
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
+    console.log("Handling OPTIONS request")
     return new Response(null, { headers: corsHeaders })
   }
 
-  // Create a Supabase client
-  const supabaseUrl = Deno.env.get('SUPABASE_URL') || ''
-  const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
-  const supabase = createClient(supabaseUrl, supabaseKey)
-
   try {
+    console.log("Processing webhook request")
+    
+    // Create a Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') || ''
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
+    const supabase = createClient(supabaseUrl, supabaseKey)
+    
     // Get the URL search params
     const url = new URL(req.url)
     const contactId = url.searchParams.get('contactId')
+    
+    console.log("Request URL:", req.url)
+    console.log("Contact ID from params:", contactId)
+    
+    // Log headers for debugging
+    const headers = {}
+    req.headers.forEach((value, key) => {
+      headers[key] = value
+    })
+    console.log("Request headers:", JSON.stringify(headers))
 
     // Get the request body (Twilio sends form data)
     const formData = await req.formData()
+    
+    // Log all form fields for debugging
+    const formFields = {}
+    for (const [key, value] of formData.entries()) {
+      formFields[key] = value
+    }
+    console.log("Form data received:", JSON.stringify(formFields))
+    
+    // Get specific fields we need
     const from = formData.get('From') as string
     const to = formData.get('To') as string
     const body = formData.get('Body') as string
@@ -220,7 +245,9 @@ serve(async (req) => {
       }
     )
   } catch (error) {
-    console.error('Error handling SMS webhook:', error.message)
+    console.error('Error handling SMS webhook:', error)
+    console.error('Error message:', error.message)
+    console.error('Error stack:', error.stack)
     
     return new Response(
       JSON.stringify({ 
