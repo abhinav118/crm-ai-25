@@ -23,32 +23,34 @@ serve(async (req) => {
   try {
     console.log("Processing webhook request")
     
-    // Create a Supabase client
+    // Create a Supabase client with service role key to bypass RLS
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || ''
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
     
-    if (!supabaseUrl || !supabaseKey) {
+    if (!supabaseUrl || !supabaseServiceKey) {
       throw new Error('Missing Supabase credentials')
     }
     
-    const supabase = createClient(supabaseUrl, supabaseKey)
+    // Use service role key to bypass RLS
+    const supabase = createClient(supabaseUrl, supabaseServiceKey)
     
     // Get the URL search params
     const url = new URL(req.url)
     const contactId = url.searchParams.get('contactId')
     
+    // Log request information
     console.log("Request URL:", req.url)
     console.log("Contact ID from params:", contactId)
     
     // Log headers for debugging
-    const headers = {}
+    const headers: Record<string, string> = {}
     req.headers.forEach((value, key) => {
       headers[key] = value
     })
     console.log("Request headers:", JSON.stringify(headers))
 
     // Get the request body (Twilio sends form data)
-    let formData;
+    let formData: FormData
     try {
       formData = await req.formData()
     } catch (formError) {
@@ -57,7 +59,7 @@ serve(async (req) => {
         JSON.stringify({ 
           success: false, 
           error: "Failed to parse form data",
-          details: formError.message 
+          details: (formError as Error).message 
         }),
         { 
           status: 400, 
@@ -70,23 +72,32 @@ serve(async (req) => {
     }
     
     // Log all form fields for debugging
-    const formFields = {}
+    const formFields: Record<string, string> = {}
     for (const [key, value] of formData.entries()) {
-      formFields[key] = value
+      formFields[key] = value.toString()
     }
     console.log("Form data received:", JSON.stringify(formFields))
     
     // Get specific fields we need
-    const from = formData.get('From') as string
-    const to = formData.get('To') as string
-    const body = formData.get('Body') as string
-    const messageSid = formData.get('MessageSid') as string
+    const incomingMessage = formData.get('Body')?.toString() || ''
+    const fromNumber = formData.get('From')?.toString() || ''
+    const toNumber = formData.get('To')?.toString() || ''
+    const messageSid = formData.get('MessageSid')?.toString() || ''
 
-    console.log(`Received SMS from ${from} to ${to}: ${body}`)
+    console.log(`Received SMS from ${fromNumber} to ${toNumber}: ${incomingMessage}`)
     console.log(`Message SID: ${messageSid}, Contact ID: ${contactId || 'not provided'}`)
 
-    if (!body) {
+    if (!incomingMessage) {
       throw new Error('No message body received')
+    }
+
+    // Create a message object to store
+    const messageObj = {
+      id: messageSid,
+      text: incomingMessage,
+      sender: 'external',
+      timestamp: new Date().toISOString(),
+      fromNumber: fromNumber
     }
 
     // If we have a contactId from query params, use it
@@ -98,7 +109,7 @@ serve(async (req) => {
         .from('messages')
         .insert({
           contact_id: contactId,
-          content: body,
+          content: incomingMessage,
           sender: 'contact',
           channel: 'sms',
           sent_at: new Date().toISOString()
@@ -123,7 +134,7 @@ serve(async (req) => {
           action: 'message_received',
           contact_info: {
             id: contactId,
-            message: body,
+            message: incomingMessage,
             channel: 'sms',
             timestamp: new Date().toISOString()
           }
@@ -131,23 +142,23 @@ serve(async (req) => {
 
       console.log('Message stored in database using provided contactId:', data)
     } else {
-      console.log(`No contactId provided, looking up contact by phone: ${from}`)
+      console.log(`No contactId provided, looking up contact by phone: ${fromNumber}`)
       
       // Clean up phone number format for matching - handle multiple formats
-      let cleanFrom = from.replace(/\D/g, '')
+      let cleanFrom = fromNumber.replace(/\D/g, '')
       
       // If the phone starts with a plus sign, keep it for the search
-      if (from.startsWith('+')) {
-        cleanFrom = from;
+      if (fromNumber.startsWith('+')) {
+        cleanFrom = fromNumber
       } else if (cleanFrom.length === 10) {
         // Add US country code if it's a 10-digit number without country code
-        cleanFrom = `+1${cleanFrom}`;
+        cleanFrom = `+1${cleanFrom}`
       } else if (cleanFrom.length === 11 && cleanFrom.startsWith('1')) {
         // Format 11-digit US number with country code
-        cleanFrom = `+${cleanFrom}`;
+        cleanFrom = `+${cleanFrom}`
       }
       
-      console.log(`Looking for contact with phone number like: ${cleanFrom}`);
+      console.log(`Looking for contact with phone number like: ${cleanFrom}`)
       
       // If no contactId provided, look up the contact by phone number
       // Use multiple search patterns to increase chances of matching
@@ -170,7 +181,7 @@ serve(async (req) => {
           .from('messages')
           .insert({
             contact_id: contactData.id,
-            content: body,
+            content: incomingMessage,
             sender: 'contact',
             channel: 'sms',
             sent_at: new Date().toISOString()
@@ -196,7 +207,7 @@ serve(async (req) => {
             contact_info: {
               id: contactData.id,
               name: contactData.name,
-              message: body,
+              message: incomingMessage,
               channel: 'sms',
               timestamp: new Date().toISOString()
             }
@@ -204,15 +215,15 @@ serve(async (req) => {
 
         console.log('Message stored in database for contact:', contactData.name)
       } else {
-        console.log('No matching contact found for phone number:', from)
+        console.log('No matching contact found for phone number:', fromNumber)
         console.log('Creating a new contact for this phone number')
         
         // Create a new contact entry for this unknown sender
         const { data: newContact, error: newContactError } = await supabase
           .from('contacts')
           .insert({
-            name: `Unknown (${from})`,
-            phone: from,
+            name: `Unknown (${fromNumber})`,
+            phone: fromNumber,
             status: 'active',
             tags: ['sms-inbound'],
             last_activity: new Date().toISOString()
@@ -230,7 +241,7 @@ serve(async (req) => {
           .from('messages')
           .insert({
             contact_id: newContact.id,
-            content: body,
+            content: incomingMessage,
             sender: 'contact',
             channel: 'sms',
             sent_at: new Date().toISOString()
@@ -250,7 +261,7 @@ serve(async (req) => {
             contact_info: {
               id: newContact.id,
               name: newContact.name,
-              message: body,
+              message: incomingMessage,
               channel: 'sms',
               timestamp: new Date().toISOString()
             }
@@ -260,7 +271,7 @@ serve(async (req) => {
       }
     }
 
-    // Return a TwiML response to acknowledge receipt
+    // Return a TwiML response to acknowledge receipt (similar to what the Node.js app returns)
     return new Response(
       `<?xml version="1.0" encoding="UTF-8"?>
       <Response></Response>`,
@@ -274,13 +285,13 @@ serve(async (req) => {
     )
   } catch (error) {
     console.error('Error handling SMS webhook:', error)
-    console.error('Error message:', error.message)
-    console.error('Error stack:', error.stack)
+    console.error('Error message:', (error as Error).message)
+    console.error('Error stack:', (error as Error).stack)
     
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: error.message,
+        error: (error as Error).message,
         message: 'Failed to process SMS webhook'
       }),
       { 
