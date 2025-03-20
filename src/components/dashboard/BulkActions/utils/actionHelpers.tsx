@@ -1,28 +1,45 @@
 
 import React from 'react';
 import { User, Pencil, Trash, MessageSquare, CalendarIcon } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 
 // Helper function to get icon based on action
 export const getActionIcon = (action: string) => {
   switch (action) {
     case 'add':
-      return <User className="h-4 w-4 text-green-500" />;
+      return User;
     case 'update':
-      return <Pencil className="h-4 w-4 text-blue-500" />;
+      return Pencil;
     case 'delete':
-      return <Trash className="h-4 w-4 text-red-500" />;
+      return Trash;
     case 'message_sent':
-      return <MessageSquare className="h-4 w-4 text-indigo-500" />;
+      return MessageSquare;
     case 'message_received':
-      return <MessageSquare className="h-4 w-4 text-purple-500" />;
+      return MessageSquare;
     default:
-      return <CalendarIcon className="h-4 w-4 text-gray-500" />;
+      return CalendarIcon;
   }
 };
 
 // Get badge color based on action
-export const getActionBadgeColor = (action: string) => {
+export const getActionColor = (action: string) => {
+  switch (action) {
+    case 'add':
+      return 'text-green-500 border-green-200';
+    case 'update':
+      return 'text-blue-500 border-blue-200';
+    case 'delete':
+      return 'text-red-500 border-red-200';
+    case 'message_sent':
+      return 'text-indigo-500 border-indigo-200';
+    case 'message_received':
+      return 'text-purple-500 border-purple-200';
+    default:
+      return 'text-gray-500 border-gray-200';
+  }
+};
+
+// Renamed from getActionBadgeColor to avoid confusion
+export const getActionBadgeStyle = (action: string) => {
   switch (action) {
     case 'add':
       return 'bg-green-100 text-green-800';
