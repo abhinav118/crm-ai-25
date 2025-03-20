@@ -281,7 +281,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
               icon={<MapPin />} 
               label="Status" 
               value={
-                <Badge variant={contact.status === 'active' ? 'default' : 'secondary'}>
+                <Badge variant={contact.status === 'active' ? 'success' : 'secondary'}>
                   {contact.status}
                 </Badge>
               } 
