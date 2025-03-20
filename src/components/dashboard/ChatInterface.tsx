@@ -47,14 +47,22 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
   const [updatedContact, setUpdatedContact] = useState<Contact>(contact);
   const { toast } = useToast();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   // Scroll to bottom whenever messages change
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
   useEffect(() => {
-    scrollToBottom();
+    // Add small delay to ensure DOM has updated
+    const timeoutId = setTimeout(() => {
+      scrollToBottom();
+    }, 100);
+    
+    return () => clearTimeout(timeoutId);
   }, [messages]);
 
   // Fetch messages from Supabase when contact changes
@@ -396,23 +404,25 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
                   )}
                   
                   {!isFetching && messages.filter(msg => msg.channel === 'sms').length > 0 && (
-                    <ScrollArea className="pr-4 flex-1">
-                      <div className="space-y-4">
-                        {messages
-                          .filter(msg => msg.channel === 'sms')
-                          .map(message => (
-                            <div key={message.id} className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-                              <div className={`max-w-[70%] p-3 rounded-lg ${message.sender === 'user' ? 'bg-primary text-white' : 'bg-gray-100'}`}>
-                                <p className="text-sm">{message.text}</p>
-                                <p className={`text-xs mt-1 ${message.sender === 'user' ? 'text-primary-foreground/70' : 'text-gray-500'}`}>
-                                  {formatTime(message.timestamp)}
-                                </p>
+                    <div className="h-full overflow-hidden" ref={scrollAreaRef}>
+                      <ScrollArea className="h-full pr-4">
+                        <div className="space-y-4 pb-2">
+                          {messages
+                            .filter(msg => msg.channel === 'sms')
+                            .map(message => (
+                              <div key={message.id} className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                <div className={`max-w-[70%] p-3 rounded-lg ${message.sender === 'user' ? 'bg-primary text-white' : 'bg-gray-100'}`}>
+                                  <p className="text-sm">{message.text}</p>
+                                  <p className={`text-xs mt-1 ${message.sender === 'user' ? 'text-primary-foreground/70' : 'text-gray-500'}`}>
+                                    {formatTime(message.timestamp)}
+                                  </p>
+                                </div>
                               </div>
-                            </div>
-                          ))}
-                        <div ref={messagesEndRef} />
-                      </div>
-                    </ScrollArea>
+                            ))}
+                          <div ref={messagesEndRef} />
+                        </div>
+                      </ScrollArea>
+                    </div>
                   )}
                 </TabsContent>
                 
@@ -446,23 +456,25 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
                   )}
                   
                   {!isFetching && messages.filter(msg => msg.channel === 'email').length > 0 && (
-                    <ScrollArea className="pr-4 flex-1">
-                      <div className="space-y-4">
-                        {messages
-                          .filter(msg => msg.channel === 'email')
-                          .map(message => (
-                            <div key={message.id} className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-                              <div className={`max-w-[70%] p-3 rounded-lg ${message.sender === 'user' ? 'bg-primary text-white' : 'bg-gray-100'}`}>
-                                <p className="text-sm">{message.text}</p>
-                                <p className={`text-xs mt-1 ${message.sender === 'user' ? 'text-primary-foreground/70' : 'text-gray-500'}`}>
-                                  {formatTime(message.timestamp)}
-                                </p>
+                    <div className="h-full overflow-hidden">
+                      <ScrollArea className="h-full pr-4">
+                        <div className="space-y-4 pb-2">
+                          {messages
+                            .filter(msg => msg.channel === 'email')
+                            .map(message => (
+                              <div key={message.id} className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                <div className={`max-w-[70%] p-3 rounded-lg ${message.sender === 'user' ? 'bg-primary text-white' : 'bg-gray-100'}`}>
+                                  <p className="text-sm">{message.text}</p>
+                                  <p className={`text-xs mt-1 ${message.sender === 'user' ? 'text-primary-foreground/70' : 'text-gray-500'}`}>
+                                    {formatTime(message.timestamp)}
+                                  </p>
+                                </div>
                               </div>
-                            </div>
-                          ))}
-                        <div ref={messagesEndRef} />
-                      </div>
-                    </ScrollArea>
+                            ))}
+                          <div ref={messagesEndRef} />
+                        </div>
+                      </ScrollArea>
+                    </div>
                   )}
                 </TabsContent>
               </div>

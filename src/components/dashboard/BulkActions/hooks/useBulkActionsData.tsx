@@ -40,7 +40,11 @@ export const useBulkActionsData = () => {
                   description: 'Error processing entry',
                   date: new Date().toLocaleString(),
                   action: log.action || 'unknown',
-                  contact: null,
+                  contact: {
+                    name: 'Unknown Contact',
+                    status: 'inactive',
+                    email: ''
+                  },
                   timestamp: log.created_at || new Date().toISOString()
                 };
               }

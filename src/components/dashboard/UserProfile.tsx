@@ -171,146 +171,150 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
       </div>
 
       {isEditing ? (
-        <form onSubmit={handleSubmit} className="space-y-3 p-4 overflow-y-auto">
-          <div>
-            <Label htmlFor="name">Full Name</Label>
-            <Input 
-              id="name" 
-              name="name"
-              value={formData.name} 
-              onChange={handleChange} 
-              required
-            />
-          </div>
-          <div>
-            <Label htmlFor="email">Email</Label>
-            <Input 
-              id="email" 
-              name="email"
-              value={formData.email || ''} 
-              onChange={handleChange} 
-            />
-          </div>
-          <div>
-            <Label htmlFor="phone">Phone</Label>
-            <Input 
-              id="phone" 
-              name="phone"
-              value={formData.phone || ''} 
-              onChange={handleChange} 
-            />
-          </div>
-          <div>
-            <Label htmlFor="company">Company</Label>
-            <Input 
-              id="company" 
-              name="company"
-              value={formData.company || ''} 
-              onChange={handleChange} 
-            />
-          </div>
-          <div>
-            <Label htmlFor="status">Status</Label>
-            <Select 
-              value={formData.status} 
-              onValueChange={(value) => handleSelectChange('status', value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label htmlFor="tags">Tags</Label>
-            <div className="flex flex-wrap gap-2 mb-2">
-              {(formData.tags || []).map(tag => (
-                <Badge 
-                  key={tag}
-                  variant="secondary" 
-                  className="px-2 py-1 flex items-center gap-1"
-                >
-                  {tag}
-                  <button 
-                    type="button"
-                    onClick={() => handleRemoveTag(tag)}
-                    className="ml-1 rounded-full hover:bg-gray-200 p-0.5"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </Badge>
-              ))}
-            </div>
-            <div className="flex">
+        <ScrollArea className="flex-1">
+          <form onSubmit={handleSubmit} className="space-y-3 p-4">
+            <div>
+              <Label htmlFor="name">Full Name</Label>
               <Input 
-                id="newTag" 
-                placeholder="Add new tag"
-                value={newTag} 
-                onChange={(e) => setNewTag(e.target.value)}
-                onKeyDown={handleKeyPress}
-                className="flex-1"
+                id="name" 
+                name="name"
+                value={formData.name} 
+                onChange={handleChange} 
+                required
               />
-              <Button 
-                type="button" 
-                variant="outline" 
-                size="sm"
-                onClick={handleAddTag}
-                disabled={!newTag.trim()}
-                className="ml-2"
+            </div>
+            <div>
+              <Label htmlFor="email">Email</Label>
+              <Input 
+                id="email" 
+                name="email"
+                value={formData.email || ''} 
+                onChange={handleChange} 
+              />
+            </div>
+            <div>
+              <Label htmlFor="phone">Phone</Label>
+              <Input 
+                id="phone" 
+                name="phone"
+                value={formData.phone || ''} 
+                onChange={handleChange} 
+              />
+            </div>
+            <div>
+              <Label htmlFor="company">Company</Label>
+              <Input 
+                id="company" 
+                name="company"
+                value={formData.company || ''} 
+                onChange={handleChange} 
+              />
+            </div>
+            <div>
+              <Label htmlFor="status">Status</Label>
+              <Select 
+                value={formData.status} 
+                onValueChange={(value) => handleSelectChange('status', value)}
               >
-                Add
+                <SelectTrigger>
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="tags">Tags</Label>
+              <div className="flex flex-wrap gap-2 mb-2">
+                {(formData.tags || []).map(tag => (
+                  <Badge 
+                    key={tag}
+                    variant="secondary" 
+                    className="px-2 py-1 flex items-center gap-1"
+                  >
+                    {tag}
+                    <button 
+                      type="button"
+                      onClick={() => handleRemoveTag(tag)}
+                      className="ml-1 rounded-full hover:bg-gray-200 p-0.5"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+              <div className="flex">
+                <Input 
+                  id="newTag" 
+                  placeholder="Add new tag"
+                  value={newTag} 
+                  onChange={(e) => setNewTag(e.target.value)}
+                  onKeyDown={handleKeyPress}
+                  className="flex-1"
+                />
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleAddTag}
+                  disabled={!newTag.trim()}
+                  className="ml-2"
+                >
+                  Add
+                </Button>
+              </div>
+            </div>
+            <div className="mt-4">
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? 'Saving...' : 'Save Changes'}
               </Button>
             </div>
-          </div>
-          <div className="mt-4">
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? 'Saving...' : 'Save Changes'}
-            </Button>
-          </div>
-        </form>
+          </form>
+        </ScrollArea>
       ) : (
         <ScrollArea className="flex-1">
-          <div className="p-4 space-y-4">
-            <ProfileItem icon={<User className="h-4 w-4" />} label="Name" value={contact.name} />
-            <ProfileItem icon={<Phone className="h-4 w-4" />} label="Phone" value={contact.phone || 'Not provided'} />
-            <ProfileItem icon={<Mail className="h-4 w-4" />} label="Email" value={contact.email || 'Not provided'} />
-            <ProfileItem icon={<Building className="h-4 w-4" />} label="Company" value={contact.company || 'Not provided'} />
-            <ProfileItem 
-              icon={<Calendar className="h-4 w-4" />}
-              label="Last Activity" 
-              value={formatDate(contact.lastActivity)} 
-            />
-            <ProfileItem 
-              icon={<MapPin className="h-4 w-4" />} 
-              label="Status" 
-              value={
-                <Badge variant={contact.status === 'active' ? 'success' : 'secondary'}>
-                  {contact.status}
-                </Badge>
-              } 
-            />
-            <ProfileItem 
-              icon={<AtSign className="h-4 w-4" />} 
-              label="Created" 
-              value={formatDate(contact.createdAt)} 
-            />
-            <div className="flex items-start gap-2">
-              <div className="text-gray-400 mt-1"><Tag className="h-4 w-4" /></div>
-              <div className="flex-1">
-                <p className="text-sm text-gray-500">Tags</p>
-                <div className="flex flex-wrap gap-1 mt-1">
-                  {contact.tags && contact.tags.length > 0 ? (
-                    contact.tags.map(tag => (
-                      <Badge key={tag} variant="outline" className="px-2 py-0.5 text-xs">
-                        {tag}
-                      </Badge>
-                    ))
-                  ) : (
-                    <span className="text-gray-500">No tags</span>
-                  )}
+          <div className="p-4 space-y-6">
+            <div className="space-y-4">
+              <ProfileItem icon={<User className="h-5 w-5" />} label="Name" value={contact.name} />
+              <ProfileItem icon={<Phone className="h-5 w-5" />} label="Phone" value={contact.phone || 'Not provided'} />
+              <ProfileItem icon={<Mail className="h-5 w-5" />} label="Email" value={contact.email || 'Not provided'} />
+              <ProfileItem icon={<Building className="h-5 w-5" />} label="Company" value={contact.company || 'Not provided'} />
+              <ProfileItem 
+                icon={<Calendar className="h-5 w-5" />}
+                label="Last Activity" 
+                value={formatDate(contact.lastActivity)} 
+              />
+              <ProfileItem 
+                icon={<MapPin className="h-5 w-5" />} 
+                label="Status" 
+                value={
+                  <Badge variant={contact.status === 'active' ? 'success' : 'secondary'}>
+                    {contact.status}
+                  </Badge>
+                } 
+              />
+              <ProfileItem 
+                icon={<AtSign className="h-5 w-5" />} 
+                label="Created" 
+                value={formatDate(contact.createdAt)} 
+              />
+              <div className="flex items-start gap-3">
+                <div className="text-gray-400 mt-1"><Tag className="h-5 w-5" /></div>
+                <div className="flex-1">
+                  <p className="text-sm text-gray-500 mb-1">Tags</p>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {contact.tags && contact.tags.length > 0 ? (
+                      contact.tags.map(tag => (
+                        <Badge key={tag} variant="outline" className="px-2 py-0.5 text-xs">
+                          {tag}
+                        </Badge>
+                      ))
+                    ) : (
+                      <span className="text-gray-500">No tags</span>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -328,10 +332,10 @@ interface ProfileItemProps {
 }
 
 const ProfileItem = ({ icon, label, value }: ProfileItemProps) => (
-  <div className="flex items-start gap-2">
+  <div className="flex items-start gap-3">
     <div className="text-gray-400 mt-1">{icon}</div>
     <div className="flex-1">
-      <p className="text-sm text-gray-500">{label}</p>
+      <p className="text-sm text-gray-500 mb-1">{label}</p>
       {typeof value === 'string' ? (
         <p className="font-medium">{value}</p>
       ) : (
