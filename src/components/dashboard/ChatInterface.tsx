@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Avatar from '@/components/dashboard/Avatar';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import UserProfile from './UserProfile';
 import { Contact } from './ContactsTable';
 import { supabase } from '@/integrations/supabase/client';
@@ -49,21 +50,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollAreaContainerRef = useRef<HTMLDivElement>(null);
 
-  // Scroll to bottom whenever messages change
+  // Scroll to bottom without animation
   const scrollToBottom = () => {
     if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
     }
   };
-
-  useEffect(() => {
-    // Add delay to ensure DOM has updated
-    const timeoutId = setTimeout(() => {
-      scrollToBottom();
-    }, 200);
-    
-    return () => clearTimeout(timeoutId);
-  }, [messages]);
 
   // Fetch messages from Supabase when contact changes
   useEffect(() => {
@@ -93,8 +85,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
           
           setMessages(formattedMessages);
           
-          // Schedule scroll after messages are rendered
-          setTimeout(scrollToBottom, 300);
+          // Scroll without animation after messages are loaded
+          setTimeout(scrollToBottom, 100);
         }
       } catch (error) {
         console.error('Error fetching messages:', error);
@@ -140,8 +132,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
           console.log('Adding new message to state:', formattedMessage);
           setMessages(prev => [...prev, formattedMessage]);
           
-          // Force scroll to bottom when a new message is received
-          setTimeout(scrollToBottom, 100);
+          // Scroll without animation for new messages
+          setTimeout(scrollToBottom, 50);
 
           // Log received message to contact_logs if it's from the contact
           if (newMessage.sender === 'contact') {
@@ -163,7 +155,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
     };
   }, [contact?.id]);
 
-  const handleSend = async () => {
+  const handleSend = async (e: React.FormEvent) => {
+    // Prevent default form submission to avoid page reload
+    e.preventDefault();
+    
     if (!messageText.trim()) return;
     
     // First, create a temporary message to show in the UI
@@ -180,8 +175,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
     setMessageText('');
     setIsLoading(true);
     
-    // Force scroll after message is added
-    setTimeout(scrollToBottom, 50);
+    // Scroll without animation after message is added
+    scrollToBottom();
     
     try {
       // Prepare the message data
@@ -297,7 +292,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSend();
+      // Directly call handleSend with a synthetic event
+      handleSend(e as unknown as React.FormEvent);
     }
   };
 
@@ -381,8 +377,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
                 </TabsList>
               </div>
 
-              {/* Messages Container */}
-              <div className="flex-1 overflow-hidden p-4">
+              {/* Messages Container - with fixed height */}
+              <div className="flex-1 overflow-hidden p-4 flex flex-col">
                 <TabsContent value="sms" className="mt-0 h-full flex flex-col">
                   {!contact.phone && (
                     <div className="flex items-center justify-center h-full">
@@ -414,7 +410,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
                   
                   {!isFetching && messages.filter(msg => msg.channel === 'sms').length > 0 && (
                     <div className="h-full flex flex-col" ref={scrollAreaContainerRef}>
-                      <ScrollArea className="flex-1 pr-4" style={{ height: 'calc(100% - 20px)' }}>
+                      <ScrollArea className="flex-1 pr-4" type="auto">
                         <div className="space-y-4 pb-2">
                           {messages
                             .filter(msg => msg.channel === 'sms')
@@ -466,7 +462,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
                   
                   {!isFetching && messages.filter(msg => msg.channel === 'email').length > 0 && (
                     <div className="h-full flex flex-col">
-                      <ScrollArea className="flex-1 pr-4" style={{ height: 'calc(100% - 20px)' }}>
+                      <ScrollArea className="flex-1 pr-4" type="auto">
                         <div className="space-y-4 pb-2">
                           {messages
                             .filter(msg => msg.channel === 'email')
@@ -488,54 +484,57 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
                 </TabsContent>
               </div>
 
-              {/* Message Input */}
+              {/* Message Input - Fixed to the bottom */}
               <div className="p-4 border-t">
-                <div className="flex items-center gap-2 mb-2">
-                  <Button variant="ghost" size="sm">
-                    <Smile size={18} />
-                  </Button>
-                  <Button variant="ghost" size="sm">
-                    <Link size={18} />
-                  </Button>
-                  <Button variant="ghost" size="sm">
-                    <FileText size={18} />
-                  </Button>
-                </div>
-                <div className="flex gap-2">
-                  <textarea
-                    className="flex-1 border rounded-md p-2 text-sm resize-none h-[60px]"
-                    placeholder={getChannelPlaceholder(activeChannel)}
-                    value={messageText}
-                    onChange={(e) => setMessageText(e.target.value)}
-                    onKeyDown={handleKeyPress}
-                    disabled={isChannelDisabled(activeChannel) || isLoading}
-                  />
-                  <div className="flex flex-col gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="px-3" 
-                      onClick={() => setMessageText('')}
-                      disabled={!messageText.trim() || isLoading}
-                    >
-                      Clear
+                <form onSubmit={handleSend} className="flex flex-col space-y-2">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Button type="button" variant="ghost" size="sm">
+                      <Smile size={18} />
                     </Button>
-                    <Button 
-                      size="sm" 
-                      className="px-3" 
-                      onClick={handleSend} 
-                      disabled={!messageText.trim() || isChannelDisabled(activeChannel) || isLoading}
-                    >
-                      <Send size={14} className="mr-1" />
-                      {isLoading ? 'Sending...' : 'Send'}
+                    <Button type="button" variant="ghost" size="sm">
+                      <Link size={18} />
+                    </Button>
+                    <Button type="button" variant="ghost" size="sm">
+                      <FileText size={18} />
                     </Button>
                   </div>
-                </div>
-                {isChannelDisabled(activeChannel) && (
-                  <p className="text-sm text-yellow-600 mt-2">
-                    {getMissingInfoMessage(activeChannel)}
-                  </p>
-                )}
+                  <div className="flex gap-2">
+                    <Textarea
+                      className="flex-1 resize-none h-[60px]"
+                      placeholder={getChannelPlaceholder(activeChannel)}
+                      value={messageText}
+                      onChange={(e) => setMessageText(e.target.value)}
+                      onKeyDown={handleKeyPress}
+                      disabled={isChannelDisabled(activeChannel) || isLoading}
+                    />
+                    <div className="flex flex-col gap-2">
+                      <Button 
+                        type="button"
+                        variant="outline" 
+                        size="sm" 
+                        className="px-3" 
+                        onClick={() => setMessageText('')}
+                        disabled={!messageText.trim() || isLoading}
+                      >
+                        Clear
+                      </Button>
+                      <Button 
+                        type="submit"
+                        size="sm" 
+                        className="px-3" 
+                        disabled={!messageText.trim() || isChannelDisabled(activeChannel) || isLoading}
+                      >
+                        <Send size={14} className="mr-1" />
+                        {isLoading ? 'Sending...' : 'Send'}
+                      </Button>
+                    </div>
+                  </div>
+                  {isChannelDisabled(activeChannel) && (
+                    <p className="text-sm text-yellow-600 mt-2">
+                      {getMissingInfoMessage(activeChannel)}
+                    </p>
+                  )}
+                </form>
               </div>
             </Tabs>
           </div>
