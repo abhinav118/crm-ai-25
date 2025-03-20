@@ -7,6 +7,7 @@ import { Contact } from './ContactsTable';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { logContactAction } from '@/utils/contactLogger';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   MessageSquare,
   Mail,
@@ -335,7 +336,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
         {/* Split View: Profile and Chat */}
         <div className="flex flex-1 overflow-hidden">
           {/* Left Side - Profile */}
-          <div className="w-1/3 border-r p-4 overflow-y-auto">
+          <div className="w-1/3 border-r">
             <UserProfile 
               contact={updatedContact}
               onSave={handleContactUpdate}
@@ -364,8 +365,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
               </div>
 
               {/* Messages Container */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                <TabsContent value="sms" className="mt-0 space-y-4 h-full">
+              <div className="flex-1 overflow-hidden p-4">
+                <TabsContent value="sms" className="mt-0 h-full flex flex-col">
                   {!contact.phone && (
                     <div className="flex items-center justify-center h-full">
                       <div className="text-center text-gray-500 bg-yellow-50 p-4 rounded-lg">
@@ -394,22 +395,28 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
                     </div>
                   )}
                   
-                  {!isFetching && messages
-                    .filter(msg => msg.channel === 'sms')
-                    .map(message => (
-                      <div key={message.id} className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-[70%] p-3 rounded-lg ${message.sender === 'user' ? 'bg-primary text-white' : 'bg-gray-100'}`}>
-                          <p className="text-sm">{message.text}</p>
-                          <p className={`text-xs mt-1 ${message.sender === 'user' ? 'text-primary-foreground/70' : 'text-gray-500'}`}>
-                            {formatTime(message.timestamp)}
-                          </p>
-                        </div>
+                  {!isFetching && messages.filter(msg => msg.channel === 'sms').length > 0 && (
+                    <ScrollArea className="pr-4 flex-1">
+                      <div className="space-y-4">
+                        {messages
+                          .filter(msg => msg.channel === 'sms')
+                          .map(message => (
+                            <div key={message.id} className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+                              <div className={`max-w-[70%] p-3 rounded-lg ${message.sender === 'user' ? 'bg-primary text-white' : 'bg-gray-100'}`}>
+                                <p className="text-sm">{message.text}</p>
+                                <p className={`text-xs mt-1 ${message.sender === 'user' ? 'text-primary-foreground/70' : 'text-gray-500'}`}>
+                                  {formatTime(message.timestamp)}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        <div ref={messagesEndRef} />
                       </div>
-                    ))}
-                  <div ref={messagesEndRef} />
+                    </ScrollArea>
+                  )}
                 </TabsContent>
                 
-                <TabsContent value="email" className="mt-0 h-full">
+                <TabsContent value="email" className="mt-0 h-full flex flex-col">
                   {!contact.email && (
                     <div className="flex items-center justify-center h-full">
                       <div className="text-center text-gray-500 bg-yellow-50 p-4 rounded-lg">
@@ -438,19 +445,25 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
                     </div>
                   )}
                   
-                  {!isFetching && messages
-                    .filter(msg => msg.channel === 'email')
-                    .map(message => (
-                      <div key={message.id} className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-[70%] p-3 rounded-lg ${message.sender === 'user' ? 'bg-primary text-white' : 'bg-gray-100'}`}>
-                          <p className="text-sm">{message.text}</p>
-                          <p className={`text-xs mt-1 ${message.sender === 'user' ? 'text-primary-foreground/70' : 'text-gray-500'}`}>
-                            {formatTime(message.timestamp)}
-                          </p>
-                        </div>
+                  {!isFetching && messages.filter(msg => msg.channel === 'email').length > 0 && (
+                    <ScrollArea className="pr-4 flex-1">
+                      <div className="space-y-4">
+                        {messages
+                          .filter(msg => msg.channel === 'email')
+                          .map(message => (
+                            <div key={message.id} className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+                              <div className={`max-w-[70%] p-3 rounded-lg ${message.sender === 'user' ? 'bg-primary text-white' : 'bg-gray-100'}`}>
+                                <p className="text-sm">{message.text}</p>
+                                <p className={`text-xs mt-1 ${message.sender === 'user' ? 'text-primary-foreground/70' : 'text-gray-500'}`}>
+                                  {formatTime(message.timestamp)}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        <div ref={messagesEndRef} />
                       </div>
-                    ))}
-                  <div ref={messagesEndRef} />
+                    </ScrollArea>
+                  )}
                 </TabsContent>
               </div>
 

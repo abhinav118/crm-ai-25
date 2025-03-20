@@ -1,14 +1,16 @@
+
 import React, { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Edit2, Calendar, Phone, Mail, User, MapPin, Award, AtSign, Tag, X } from 'lucide-react';
+import { Edit2, Calendar, Phone, Mail, User, MapPin, Award, AtSign, Tag, X, Building } from 'lucide-react';
 import { Contact } from './ContactsTable';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { logContactAction } from '@/utils/contactLogger';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface UserProfileProps {
   contact: Contact;
@@ -154,9 +156,9 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm p-4 flex flex-col h-full">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold">Contact Information</h3>
+    <div className="bg-white h-full flex flex-col overflow-hidden">
+      <div className="flex items-center justify-between p-4 border-b">
+        <h3 className="text-lg font-semibold text-gray-900">Contact Information</h3>
         <Button 
           variant="ghost" 
           size="sm" 
@@ -169,7 +171,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
       </div>
 
       {isEditing ? (
-        <form onSubmit={handleSubmit} className="space-y-3 flex-1 overflow-y-auto">
+        <form onSubmit={handleSubmit} className="space-y-3 p-4 overflow-y-auto">
           <div>
             <Label htmlFor="name">Full Name</Label>
             <Input 
@@ -270,15 +272,19 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
           </div>
         </form>
       ) : (
-        <div className="space-y-4 flex-1 overflow-y-auto">
-          <div className="grid grid-cols-1 gap-3">
-            <ProfileItem icon={<User />} label="Name" value={contact.name} />
-            <ProfileItem icon={<Mail />} label="Email" value={contact.email || 'Not provided'} />
-            <ProfileItem icon={<Phone />} label="Phone" value={contact.phone || 'Not provided'} />
-            <ProfileItem icon={<Award />} label="Company" value={contact.company || 'Not provided'} />
-            <ProfileItem icon={<Calendar />} label="Last Activity" value={formatDate(contact.lastActivity)} />
+        <ScrollArea className="flex-1">
+          <div className="p-4 space-y-4">
+            <ProfileItem icon={<User className="h-4 w-4" />} label="Name" value={contact.name} />
+            <ProfileItem icon={<Phone className="h-4 w-4" />} label="Phone" value={contact.phone || 'Not provided'} />
+            <ProfileItem icon={<Mail className="h-4 w-4" />} label="Email" value={contact.email || 'Not provided'} />
+            <ProfileItem icon={<Building className="h-4 w-4" />} label="Company" value={contact.company || 'Not provided'} />
             <ProfileItem 
-              icon={<MapPin />} 
+              icon={<Calendar className="h-4 w-4" />}
+              label="Last Activity" 
+              value={formatDate(contact.lastActivity)} 
+            />
+            <ProfileItem 
+              icon={<MapPin className="h-4 w-4" />} 
               label="Status" 
               value={
                 <Badge variant={contact.status === 'active' ? 'success' : 'secondary'}>
@@ -286,9 +292,13 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
                 </Badge>
               } 
             />
-            <ProfileItem icon={<AtSign />} label="Created" value={formatDate(contact.createdAt)} />
+            <ProfileItem 
+              icon={<AtSign className="h-4 w-4" />} 
+              label="Created" 
+              value={formatDate(contact.createdAt)} 
+            />
             <div className="flex items-start gap-2">
-              <div className="text-gray-400 mt-1"><Tag size={16} /></div>
+              <div className="text-gray-400 mt-1"><Tag className="h-4 w-4" /></div>
               <div className="flex-1">
                 <p className="text-sm text-gray-500">Tags</p>
                 <div className="flex flex-wrap gap-1 mt-1">
@@ -305,7 +315,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
               </div>
             </div>
           </div>
-        </div>
+        </ScrollArea>
       )}
     </div>
   );

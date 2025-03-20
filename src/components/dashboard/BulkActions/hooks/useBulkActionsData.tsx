@@ -29,7 +29,22 @@ export const useBulkActionsData = () => {
         
         // If we have valid logs, format them, otherwise use empty array
         const formattedLogs = validLogs.length > 0 
-          ? validLogs.map(log => formatLogEntry(log))
+          ? validLogs.map(log => {
+              try {
+                return formatLogEntry(log);
+              } catch (error) {
+                console.error('Error formatting log entry:', error, log);
+                // Return a default log entry with minimal required fields
+                return {
+                  id: log.id || String(Date.now()),
+                  description: 'Error processing entry',
+                  date: new Date().toLocaleString(),
+                  action: log.action || 'unknown',
+                  contact: null,
+                  timestamp: log.created_at || new Date().toISOString()
+                };
+              }
+            })
           : [];
           
         setLogs(formattedLogs);
