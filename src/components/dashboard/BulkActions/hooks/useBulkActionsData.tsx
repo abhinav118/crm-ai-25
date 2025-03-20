@@ -8,7 +8,12 @@ export type LogEntry = {
   description: string;
   date: string;
   action: string;
-  contact: any;
+  contact: {
+    name: string;
+    status: string;
+    email?: string;
+    id?: string;
+  };
   timestamp: string;
 };
 
@@ -34,7 +39,7 @@ export const useBulkActionsData = () => {
                 return formatLogEntry(log);
               } catch (error) {
                 console.error('Error formatting log entry:', error, log);
-                // Return a default log entry with minimal required fields
+                // Return a default log entry with required fields
                 return {
                   id: log.id || String(Date.now()),
                   description: 'Error processing entry',

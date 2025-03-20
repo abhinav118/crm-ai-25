@@ -47,7 +47,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
   const [updatedContact, setUpdatedContact] = useState<Contact>(contact);
   const { toast } = useToast();
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const scrollAreaContainerRef = useRef<HTMLDivElement>(null);
 
   // Scroll to bottom whenever messages change
   const scrollToBottom = () => {
@@ -57,10 +57,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
   };
 
   useEffect(() => {
-    // Add small delay to ensure DOM has updated
+    // Add delay to ensure DOM has updated
     const timeoutId = setTimeout(() => {
       scrollToBottom();
-    }, 100);
+    }, 200);
     
     return () => clearTimeout(timeoutId);
   }, [messages]);
@@ -92,6 +92,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
           }));
           
           setMessages(formattedMessages);
+          
+          // Schedule scroll after messages are rendered
+          setTimeout(scrollToBottom, 300);
         }
       } catch (error) {
         console.error('Error fetching messages:', error);
@@ -136,6 +139,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
           
           console.log('Adding new message to state:', formattedMessage);
           setMessages(prev => [...prev, formattedMessage]);
+          
+          // Force scroll to bottom when a new message is received
+          setTimeout(scrollToBottom, 100);
 
           // Log received message to contact_logs if it's from the contact
           if (newMessage.sender === 'contact') {
@@ -173,6 +179,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
     setMessages(prev => [...prev, newMessage]);
     setMessageText('');
     setIsLoading(true);
+    
+    // Force scroll after message is added
+    setTimeout(scrollToBottom, 50);
     
     try {
       // Prepare the message data
@@ -397,15 +406,15 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
                   {isFetching && (
                     <div className="flex items-center justify-center h-20">
                       <div className="text-center">
-                        <div className="animate-spin rounded-full h-6 w-6 border-2 border-primary border-t-transparent mx-auto"></div>
+                        <div className="animate-spin rounded-full h-6 w-6 border-4 border-primary border-t-transparent mx-auto"></div>
                         <p className="text-sm text-gray-500 mt-2">Loading messages...</p>
                       </div>
                     </div>
                   )}
                   
                   {!isFetching && messages.filter(msg => msg.channel === 'sms').length > 0 && (
-                    <div className="h-full overflow-hidden" ref={scrollAreaRef}>
-                      <ScrollArea className="h-full pr-4">
+                    <div className="h-full flex flex-col" ref={scrollAreaContainerRef}>
+                      <ScrollArea className="flex-1 pr-4" style={{ height: 'calc(100% - 20px)' }}>
                         <div className="space-y-4 pb-2">
                           {messages
                             .filter(msg => msg.channel === 'sms')
@@ -449,15 +458,15 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
                   {isFetching && (
                     <div className="flex items-center justify-center h-20">
                       <div className="text-center">
-                        <div className="animate-spin rounded-full h-6 w-6 border-2 border-primary border-t-transparent mx-auto"></div>
+                        <div className="animate-spin rounded-full h-6 w-6 border-4 border-primary border-t-transparent mx-auto"></div>
                         <p className="text-sm text-gray-500 mt-2">Loading messages...</p>
                       </div>
                     </div>
                   )}
                   
                   {!isFetching && messages.filter(msg => msg.channel === 'email').length > 0 && (
-                    <div className="h-full overflow-hidden">
-                      <ScrollArea className="h-full pr-4">
+                    <div className="h-full flex flex-col">
+                      <ScrollArea className="flex-1 pr-4" style={{ height: 'calc(100% - 20px)' }}>
                         <div className="space-y-4 pb-2">
                           {messages
                             .filter(msg => msg.channel === 'email')

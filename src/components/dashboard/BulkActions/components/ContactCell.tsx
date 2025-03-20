@@ -4,29 +4,30 @@ import { LogEntry } from '../hooks/useBulkActionsData';
 import Avatar from '@/components/dashboard/Avatar';
 
 const ContactCell = ({ log }: { log: LogEntry }) => {
-  // Handle cases where contact information might be missing
+  // Add defensive code to handle potentially undefined contact
   if (!log || !log.contact) {
     return (
-      <div className="flex items-center gap-2">
+      <div className="flex items-center space-x-2">
         <Avatar name="Unknown" status="inactive" />
         <div>
-          <p className="font-medium">Unknown Contact</p>
-          <p className="text-sm text-gray-500">Contact info unavailable</p>
+          <p className="text-sm font-medium">Unknown Contact</p>
+          <p className="text-xs text-gray-500">No data available</p>
         </div>
       </div>
     );
   }
-  
-  const contactInfo = log.contact;
-  const name = contactInfo.name || 'Unknown Contact';
-  const status = contactInfo.status || 'inactive';
 
+  const { contact } = log;
+  
   return (
-    <div className="flex items-center gap-2">
-      <Avatar name={name} status={status as any} />
+    <div className="flex items-center space-x-2">
+      <Avatar 
+        name={contact.name || 'Unknown'} 
+        status={contact.status || 'inactive'} 
+      />
       <div>
-        <p className="font-medium">{name}</p>
-        {contactInfo.email && <p className="text-sm text-gray-500">{contactInfo.email}</p>}
+        <p className="text-sm font-medium">{contact.name || 'Unknown Contact'}</p>
+        <p className="text-xs text-gray-500">{contact.email || 'No email'}</p>
       </div>
     </div>
   );
