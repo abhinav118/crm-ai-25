@@ -21,10 +21,21 @@ export const useBulkActionsData = () => {
       setIsLoading(true);
       try {
         const logsData = await fetchContactLogs();
-        const formattedLogs = logsData.map(formatLogEntry);
+        
+        // Ensure each log has the required fields before formatting
+        const validLogs = logsData.filter(log => log && log.action);
+        
+        console.log('Fetched logs:', validLogs);
+        
+        // If we have valid logs, format them, otherwise use empty array
+        const formattedLogs = validLogs.length > 0 
+          ? validLogs.map(log => formatLogEntry(log))
+          : [];
+          
         setLogs(formattedLogs);
       } catch (error) {
         console.error('Error fetching logs:', error);
+        setLogs([]); // Set empty array on error
       } finally {
         setIsLoading(false);
       }

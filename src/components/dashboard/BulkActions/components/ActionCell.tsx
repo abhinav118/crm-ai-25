@@ -1,21 +1,20 @@
 
 import React from 'react';
-import { Badge } from '@/components/ui/badge';
-import { getActionIcon, getActionBadgeColor, formatActionType } from '../utils/actionHelpers';
 import { LogEntry } from '../hooks/useBulkActionsData';
+import { Badge } from '@/components/ui/badge';
+import { getActionColor, getActionIcon } from '../utils/actionHelpers';
 
-type ActionCellProps = {
-  log: LogEntry;
-};
+const ActionCell = ({ log }: { log: LogEntry }) => {
+  // Make sure log.action exists with a fallback
+  const action = log.action || 'unknown';
+  const ActionIcon = getActionIcon(action);
+  const colorClass = getActionColor(action);
 
-const ActionCell: React.FC<ActionCellProps> = ({ log }) => {
   return (
-    <div className="flex items-center gap-2">
-      {getActionIcon(log.action)}
-      <Badge variant="outline" className={`${getActionBadgeColor(log.action)} border-0`}>
-        {formatActionType(log.action)}
-      </Badge>
-    </div>
+    <Badge className={`gap-1 ${colorClass}`} variant="outline">
+      {ActionIcon && <ActionIcon className="h-3.5 w-3.5" />}
+      <span className="capitalize">{action.replace('_', ' ')}</span>
+    </Badge>
   );
 };
 

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -56,7 +55,6 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
     setIsLoading(true);
     
     try {
-      // Prepare contact data for update with current timestamp
       const currentTime = new Date().toISOString();
       const updateData = {
         name: formData.name,
@@ -70,7 +68,6 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
       
       console.log('Updating contact data:', updateData);
       
-      // Update contact in Supabase
       const { data, error } = await supabase
         .from('contacts')
         .update(updateData)
@@ -84,17 +81,14 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
       
       console.log('Update response:', data);
       
-      // Log the contact update action
       await logContactAction('update', {
         id: contact.id,
         ...updateData
       });
       
-      // Handle the case where no data is returned but operation succeeded
       if (!data || data.length === 0) {
         console.log('Contact updated but no data returned');
         
-        // Update the local state with the new values
         const updatedContact = {
           ...contact,
           ...updateData,
@@ -116,7 +110,6 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
       
       console.log('Contact updated successfully:', data);
       
-      // Transform the data to match Contact type
       const transformedContact: Contact = {
         id: data[0].id,
         name: data[0].name,
@@ -129,7 +122,6 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
         createdAt: data[0].created_at
       };
       
-      // Update UI state with the transformed data
       if (onSave) {
         onSave(transformedContact);
       }
@@ -177,7 +169,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
       </div>
 
       {isEditing ? (
-        <form onSubmit={handleSubmit} className="space-y-3 flex-1">
+        <form onSubmit={handleSubmit} className="space-y-3 flex-1 overflow-y-auto">
           <div>
             <Label htmlFor="name">Full Name</Label>
             <Input 
@@ -278,21 +270,29 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
           </div>
         </form>
       ) : (
-        <div className="space-y-4 flex-1">
+        <div className="space-y-4 flex-1 overflow-y-auto">
           <div className="grid grid-cols-1 gap-3">
             <ProfileItem icon={<User />} label="Name" value={contact.name} />
             <ProfileItem icon={<Mail />} label="Email" value={contact.email || 'Not provided'} />
             <ProfileItem icon={<Phone />} label="Phone" value={contact.phone || 'Not provided'} />
             <ProfileItem icon={<Award />} label="Company" value={contact.company || 'Not provided'} />
             <ProfileItem icon={<Calendar />} label="Last Activity" value={formatDate(contact.lastActivity)} />
-            <ProfileItem icon={<MapPin />} label="Status" value={contact.status} />
+            <ProfileItem 
+              icon={<MapPin />} 
+              label="Status" 
+              value={
+                <Badge variant={contact.status === 'active' ? 'success' : 'secondary'}>
+                  {contact.status}
+                </Badge>
+              } 
+            />
             <ProfileItem icon={<AtSign />} label="Created" value={formatDate(contact.createdAt)} />
             <div className="flex items-start gap-2">
               <div className="text-gray-400 mt-1"><Tag size={16} /></div>
-              <div>
+              <div className="flex-1">
                 <p className="text-sm text-gray-500">Tags</p>
                 <div className="flex flex-wrap gap-1 mt-1">
-                  {(contact.tags && contact.tags.length > 0) ? (
+                  {contact.tags && contact.tags.length > 0 ? (
                     contact.tags.map(tag => (
                       <Badge key={tag} variant="outline" className="px-2 py-0.5 text-xs">
                         {tag}
@@ -311,12 +311,22 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
   );
 };
 
-const ProfileItem = ({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) => (
+interface ProfileItemProps {
+  icon: React.ReactNode;
+  label: string;
+  value: string | React.ReactNode;
+}
+
+const ProfileItem = ({ icon, label, value }: ProfileItemProps) => (
   <div className="flex items-start gap-2">
     <div className="text-gray-400 mt-1">{icon}</div>
-    <div>
+    <div className="flex-1">
       <p className="text-sm text-gray-500">{label}</p>
-      <p className="font-medium">{value}</p>
+      {typeof value === 'string' ? (
+        <p className="font-medium">{value}</p>
+      ) : (
+        value
+      )}
     </div>
   </div>
 );

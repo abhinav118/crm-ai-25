@@ -1,21 +1,20 @@
 
 import React from 'react';
-import Avatar from '../../Avatar';
 import { LogEntry } from '../hooks/useBulkActionsData';
+import Avatar from '@/components/dashboard/Avatar';
 
-type ContactCellProps = {
-  log: LogEntry;
-};
+const ContactCell = ({ log }: { log: LogEntry }) => {
+  // Handle cases where contact information might be missing
+  const contactInfo = log.contact || {};
+  const name = contactInfo.name || 'Unknown Contact';
+  const status = contactInfo.status || 'inactive';
 
-const ContactCell: React.FC<ContactCellProps> = ({ log }) => {
-  const contact = log.contact || {};
-  
   return (
     <div className="flex items-center gap-2">
-      {contact.name && <Avatar name={contact.name} size="sm" />}
+      <Avatar name={name} status={status as any} />
       <div>
-        <div className="font-medium">{contact.name || 'Unknown Contact'}</div>
-        {contact.email && <div className="text-xs text-gray-500">{contact.email}</div>}
+        <p className="font-medium">{name}</p>
+        {contactInfo.email && <p className="text-sm text-gray-500">{contactInfo.email}</p>}
       </div>
     </div>
   );
