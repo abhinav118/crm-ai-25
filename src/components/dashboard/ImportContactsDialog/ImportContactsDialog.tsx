@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -8,6 +7,7 @@ import UploadStage from './UploadStage';
 import MapStage from './MapStage';
 import VerifyStage from './VerifyStage';
 import ImportBreadcrumbs from './ImportBreadcrumbs';
+import type { Database } from "@/integrations/supabase/types";
 
 export interface CsvColumn {
   header: string;
@@ -125,10 +125,22 @@ const ImportContactsDialog: React.FC<ImportContactsDialogProps> = ({
         return;
       }
       
+      // Type the contacts properly for the database insert
+      const typedContacts = contactsToImport.map(contact => {
+        return {
+          name: contact.name || 'Imported Contact', // Ensure name is always set
+          email: contact.email as string | null,
+          phone: contact.phone as string | null,
+          company: contact.company as string | null,
+          status: contact.status as string | null,
+          tags: contact.tags as string[] | null
+        };
+      });
+      
       // Insert contacts into the database
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('contacts')
-        .insert(contactsToImport);
+        .insert(typedContacts);
       
       if (error) {
         throw error;
