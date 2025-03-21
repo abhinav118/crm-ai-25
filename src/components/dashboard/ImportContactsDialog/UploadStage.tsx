@@ -1,220 +1,130 @@
 
-import React, { useState, useRef } from 'react';
-import { ImportMode } from './ImportContactsDialog';
-import { CsvColumn } from './ImportContactsDialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { useToast } from '@/hooks/use-toast';
+import React, { useCallback, useState } from 'react';
+import { useDropzone } from 'react-dropzone';
 import Papa from 'papaparse';
+import { UploadCloud } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { CsvColumn } from './ImportContactsDialog';
 
 interface UploadStageProps {
-  onFileUpload: (file: File, data: Record<string, string>[], columns: CsvColumn[]) => void;
-  importMode: ImportMode;
-  onImportModeChange: (mode: ImportMode) => void;
+  onFileSelected: (file: File, columns: CsvColumn[], data: Record<string, string>[]) => void;
 }
 
-const UploadStage: React.FC<UploadStageProps> = ({ 
-  onFileUpload, 
-  importMode,
-  onImportModeChange
-}) => {
-  const [dragActive, setDragActive] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const { toast } = useToast();
+const UploadStage: React.FC<UploadStageProps> = ({ onFileSelected }) => {
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-  const handleDrag = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    if (e.type === 'dragenter' || e.type === 'dragover') {
-      setDragActive(true);
-    } else if (e.type === 'dragleave') {
-      setDragActive(false);
-    }
-  };
-
-  const processFile = (file: File) => {
+  const onDrop = useCallback((acceptedFiles: File[]) => {
+    const file = acceptedFiles[0];
     if (!file) return;
     
-    if (file.type !== 'text/csv' && !file.name.endsWith('.csv')) {
-      toast({
-        title: 'Invalid file type',
-        description: 'Please upload a CSV file',
-        variant: 'destructive',
-      });
+    // Check if it's a CSV file
+    if (!file.name.endsWith('.csv')) {
+      setError('Please upload a CSV file');
       return;
     }
     
-    if (file.size > 30 * 1024 * 1024) { // 30MB limit
-      toast({
-        title: 'File too large',
-        description: 'File size exceeds 30MB limit',
-        variant: 'destructive',
-      });
-      return;
-    }
-    
-    setIsLoading(true);
+    setSelectedFile(file);
+    setError(null);
+    parseCSV(file);
+  }, []);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      'text/csv': ['.csv'],
+    },
+    maxFiles: 1,
+  });
+
+  const parseCSV = (file: File) => {
+    setIsUploading(true);
+    setUploadProgress(0);
     
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
       complete: (results) => {
-        const parsedData = results.data as Record<string, string>[];
+        setUploadProgress(100);
         
-        if (parsedData.length === 0 || Object.keys(parsedData[0]).length === 0) {
-          toast({
-            title: 'Empty file',
-            description: 'The uploaded CSV file is empty or has no valid data',
-            variant: 'destructive',
-          });
-          setIsLoading(false);
-          return;
-        }
-
-        // Extract columns
-        const headers = Object.keys(parsedData[0]);
+        // Create column definitions from headers
+        const headers = results.meta.fields || [];
+        const columns: CsvColumn[] = headers.map(header => ({
+          header,
+          selected: true,
+          mappedTo: null,
+          sample: results.data[0]?.[header] || '',
+        }));
         
-        // Get sample data for each column (up to 3 rows)
-        const columns: CsvColumn[] = headers.map(header => {
-          const samples = parsedData.slice(0, 3).map(row => row[header] || '');
-          return {
-            header,
-            sample: samples,
-            mappedTo: null,
-            selected: true,
-            updateEmptyValues: false
-          };
-        });
+        // Convert data to Record<string, string>[]
+        const typedData = results.data as Record<string, string>[];
         
-        onFileUpload(file, parsedData, columns);
-        setIsLoading(false);
+        // Call the callback with the parsed data
+        onFileSelected(file, columns, typedData);
+        setIsUploading(false);
       },
       error: (error) => {
-        console.error('CSV parsing error:', error);
-        toast({
-          title: 'Failed to parse CSV',
-          description: error.message,
-          variant: 'destructive',
-        });
-        setIsLoading(false);
-      }
+        setError(`Error parsing CSV: ${error.message}`);
+        setIsUploading(false);
+      },
+      step: (results, parser) => {
+        // Calculate progress based on rows processed
+        const totalRows = file.size / 100; // Rough estimate
+        const progress = Math.min(90, (results.meta.cursor / totalRows) * 100);
+        setUploadProgress(progress);
+      },
     });
   };
 
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      processFile(e.dataTransfer.files[0]);
-    }
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      processFile(e.target.files[0]);
-    }
-  };
-
-  const handleButtonClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const generateSampleFile = () => {
-    const headers = ['name', 'email', 'phone', 'company', 'status', 'tags'];
-    const sampleData = [
-      ['John Doe', 'john@example.com', '123-456-7890', 'Acme Inc', 'active', 'client,important'],
-      ['Jane Smith', 'jane@example.com', '987-654-3210', 'XYZ Corp', 'inactive', 'prospect'],
-      ['Alex Johnson', 'alex@example.com', '555-555-5555', 'ABC Ltd', 'active', 'lead,new']
-    ];
-    
-    const csvContent = [
-      headers.join(','),
-      ...sampleData.map(row => row.join(','))
-    ].join('\n');
-    
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', 'contacts_sample.csv');
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
   return (
-    <div className="mt-4">
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <h2 className="text-lg font-medium mb-2">Upload your files</h2>
-        <p className="text-gray-600 mb-4">
-          Before uploading files, make sure your file is ready to import.{' '}
-          <button 
-            className="text-indigo-600 hover:text-indigo-800 font-medium" 
-            onClick={generateSampleFile}
-          >
-            Download sample file
-          </button>{' '}
-          or{' '}
-          <button className="text-indigo-600 hover:text-indigo-800 font-medium">
-            learn more
-          </button>.
-        </p>
-        
-        <div
-          className={`border-2 border-dashed rounded-lg p-8 text-center mb-6 transition-colors ${
-            dragActive 
-              ? 'border-indigo-500 bg-indigo-50' 
-              : 'border-gray-300 hover:border-gray-400'
-          }`}
-          onDragEnter={handleDrag}
-          onDragLeave={handleDrag}
-          onDragOver={handleDrag}
-          onDrop={handleDrop}
-          onClick={handleButtonClick}
-        >
-          <input
-            ref={fileInputRef}
-            type="file"
-            className="hidden"
-            accept=".csv"
-            onChange={handleFileChange}
-          />
-          <p className="text-gray-700 mb-1 cursor-pointer">
-            Click to upload or drag and drop
-          </p>
-          <p className="text-gray-500 text-sm">
-            csv (max size 30MB)
-          </p>
+    <div className="space-y-4">
+      {error && (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+      
+      <div
+        {...getRootProps()}
+        className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+          isDragActive ? 'border-primary bg-secondary/20' : 'border-border hover:border-primary/50'
+        }`}
+      >
+        <input {...getInputProps()} />
+        <div className="flex flex-col items-center justify-center space-y-4">
+          <UploadCloud size={48} className="text-muted-foreground" />
+          <div>
+            <p className="text-lg font-medium">
+              {selectedFile ? selectedFile.name : 'Drag and drop a CSV file here'}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              or click to browse files
+            </p>
+          </div>
+          <Button type="button" variant="outline">
+            Select File
+          </Button>
         </div>
-        
-        <div className="mt-4">
-          <h3 className="text-sm font-medium text-gray-700 mb-2">Choose how to import contacts</h3>
-          <Select 
-            value={importMode} 
-            onValueChange={(value) => onImportModeChange(value as ImportMode)}
-          >
-            <SelectTrigger className="w-full max-w-md">
-              <SelectValue placeholder="Create and update contacts" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="create">Create new contacts only</SelectItem>
-              <SelectItem value="update">Update existing contacts only</SelectItem>
-              <SelectItem value="both">Create and update contacts</SelectItem>
-            </SelectContent>
-          </Select>
+      </div>
+      
+      {isUploading && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-sm">Uploading {selectedFile?.name}</span>
+            <span className="text-sm">{Math.round(uploadProgress)}%</span>
+          </div>
+          <Progress value={uploadProgress} />
         </div>
+      )}
+      
+      <div className="text-sm text-muted-foreground">
+        <p>Supported format: CSV</p>
+        <p>Maximum file size: 10MB</p>
+        <p>Ensure your CSV file has headers that can be mapped to contact fields</p>
       </div>
     </div>
   );

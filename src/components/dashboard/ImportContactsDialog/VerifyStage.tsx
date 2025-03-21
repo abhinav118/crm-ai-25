@@ -1,6 +1,16 @@
 
 import React, { useState } from 'react';
 import { CsvColumn } from './ImportContactsDialog';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { CheckCircle, XCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface VerifyStageProps {
   columns: CsvColumn[];
@@ -8,84 +18,92 @@ interface VerifyStageProps {
 }
 
 const VerifyStage: React.FC<VerifyStageProps> = ({ columns, data }) => {
-  const [previewCount, setPreviewCount] = useState(5);
+  const [showAll, setShowAll] = useState(false);
   
-  // Get column names for mapped fields
-  const mappedFieldNames = columns
-    .filter(col => col.selected && col.mappedTo)
-    .map(col => ({
-      header: col.header,
-      fieldName: col.mappedTo as string
-    }));
+  // Show a maximum of 5 records initially
+  const displayData = showAll ? data : data.slice(0, 5);
   
-  const getFieldNameForHeader = (header: string) => {
-    const mapping = mappedFieldNames.find(m => m.header === header);
-    return mapping ? mapping.fieldName : header;
+  // Filter out columns that aren't selected or mapped
+  const selectedColumns = columns.filter(col => col.selected && col.mappedTo);
+  
+  const getValueValidationStatus = (value: string) => {
+    return value && value.trim() !== '' ? 'valid' : 'invalid';
   };
-  
-  // Count total rows
-  const totalRows = data.length;
-  
-  // Get sample data
-  const previewData = data.slice(0, previewCount);
-  
+
   return (
-    <div className="space-y-6">
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <h2 className="text-lg font-medium mb-2">Verify import data</h2>
-        <p className="text-gray-600 mb-4">
-          Review the data before importing. The preview shows {previewCount} of {totalRows} rows.
-        </p>
-        
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="bg-gray-50">
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">#</th>
-                {columns.map((col, i) => (
-                  <th key={i} className="px-4 py-3 text-left text-sm font-medium text-gray-700">
-                    {getFieldNameForHeader(col.header)}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {previewData.map((row, rowIndex) => (
-                <tr key={rowIndex} className={rowIndex % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
-                  <td className="px-4 py-3 text-sm text-gray-500">{rowIndex + 1}</td>
-                  {columns.map((col, colIndex) => (
-                    <td key={colIndex} className="px-4 py-3 text-sm text-gray-700">
-                      {row[col.header] || <span className="italic text-gray-400">empty</span>}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        
-        <div className="mt-4 text-sm text-gray-600">
-          <p>
-            Showing {Math.min(previewCount, totalRows)} of {totalRows} rows.
-            {totalRows > previewCount && (
-              <button 
-                className="ml-2 text-indigo-600 hover:text-indigo-800"
-                onClick={() => setPreviewCount(prev => Math.min(prev + 5, totalRows))}
-              >
-                Show more
-              </button>
-            )}
-          </p>
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-medium">Verify Import Data</h3>
+        <div className="text-sm text-muted-foreground">
+          Showing {displayData.length} of {data.length} records
         </div>
       </div>
       
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <h2 className="text-lg font-medium mb-2">Import summary</h2>
-        <ul className="list-disc list-inside space-y-2 text-gray-700">
-          <li>Total rows to import: {totalRows}</li>
-          <li>Mapped fields: {mappedFieldNames.length}</li>
+      <div className="rounded-md border overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              {selectedColumns.map((column, index) => (
+                <TableHead key={index} className="whitespace-nowrap">
+                  {column.mappedTo} 
+                  <span className="text-muted-foreground ml-1">
+                    ({column.header})
+                  </span>
+                </TableHead>
+              ))}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {displayData.length > 0 ? (
+              displayData.map((row, rowIndex) => (
+                <TableRow key={rowIndex}>
+                  {selectedColumns.map((column, colIndex) => {
+                    const value = row[column.header];
+                    const status = getValueValidationStatus(value);
+                    
+                    return (
+                      <TableCell key={colIndex} className="whitespace-nowrap">
+                        <div className="flex items-center">
+                          {status === 'valid' ? (
+                            <CheckCircle size={14} className="mr-2 text-green-600 flex-shrink-0" />
+                          ) : (
+                            <XCircle size={14} className="mr-2 text-red-600 flex-shrink-0" />
+                          )}
+                          <span className={status === 'invalid' ? 'text-muted-foreground italic' : ''}>
+                            {value || '(empty)'}
+                          </span>
+                        </div>
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={selectedColumns.length} className="text-center py-4">
+                  No data to display
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+      
+      {data.length > 5 && !showAll && (
+        <div className="flex justify-center">
+          <Button variant="outline" onClick={() => setShowAll(true)}>
+            Show All {data.length} Records
+          </Button>
+        </div>
+      )}
+      
+      <div className="bg-muted/40 p-4 rounded-md">
+        <h4 className="font-medium mb-2">Import Summary</h4>
+        <ul className="space-y-1 text-sm">
+          <li>Total records: {data.length}</li>
+          <li>Fields to import: {selectedColumns.length}</li>
           <li>
-            Fields being imported: {mappedFieldNames.map(m => m.fieldName).join(', ')}
+            Fields mapping: {selectedColumns.map(col => `${col.header} → ${col.mappedTo}`).join(', ')}
           </li>
         </ul>
       </div>

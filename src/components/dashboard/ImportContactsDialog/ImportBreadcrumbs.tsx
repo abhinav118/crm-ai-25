@@ -1,103 +1,53 @@
 
 import React from 'react';
+import { CheckCircle, CircleIcon, UploadIcon, MapIcon, CheckIcon } from 'lucide-react';
 import { ImportStage } from './ImportContactsDialog';
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
-import { Check, Circle } from 'lucide-react';
 
 interface ImportBreadcrumbsProps {
   currentStage: ImportStage;
+  onStageSelect: (stage: ImportStage) => void;
 }
 
-const ImportBreadcrumbs: React.FC<ImportBreadcrumbsProps> = ({ currentStage }) => {
-  const stages: { key: ImportStage; label: string; description: string }[] = [
-    { 
-      key: 'upload', 
-      label: 'Upload', 
-      description: 'Upload file and configure' 
-    },
-    { 
-      key: 'map', 
-      label: 'Map', 
-      description: 'Map columns to fields' 
-    },
-    { 
-      key: 'verify', 
-      label: 'Verify', 
-      description: 'Confirm and finalize selection' 
-    },
+const ImportBreadcrumbs: React.FC<ImportBreadcrumbsProps> = ({ currentStage, onStageSelect }) => {
+  const stages: { id: ImportStage; label: string; icon: React.ReactNode }[] = [
+    { id: 'upload', label: 'Upload CSV', icon: <UploadIcon size={16} /> },
+    { id: 'map', label: 'Map Fields', icon: <MapIcon size={16} /> },
+    { id: 'verify', label: 'Verify Data', icon: <CheckIcon size={16} /> },
   ];
 
-  const getStageNumber = (stage: ImportStage): number => {
-    const index = stages.findIndex(s => s.key === stage);
-    return index + 1;
-  };
-
-  const isStageCompleted = (stage: ImportStage): boolean => {
-    const currentIndex = stages.findIndex(s => s.key === currentStage);
-    const stageIndex = stages.findIndex(s => s.key === stage);
-    return stageIndex < currentIndex;
-  };
-
-  const isCurrentStage = (stage: ImportStage): boolean => {
-    return stage === currentStage;
-  };
-
   return (
-    <div className="mb-8">
-      <Breadcrumb>
-        <BreadcrumbList className="flex justify-between w-full px-0">
-          {stages.map((stage, index) => (
-            <React.Fragment key={stage.key}>
-              <BreadcrumbItem className="flex flex-col items-center space-y-1">
-                <div className="flex items-center">
-                  <div 
-                    className={`flex items-center justify-center w-8 h-8 rounded-full border ${
-                      isStageCompleted(stage.key)
-                        ? 'bg-indigo-600 text-white border-indigo-600'
-                        : isCurrentStage(stage.key)
-                          ? 'bg-indigo-600 text-white border-indigo-600'
-                          : 'bg-white text-gray-400 border-gray-300'
-                    }`}
-                  >
-                    {isStageCompleted(stage.key) ? (
-                      <Check className="h-4 w-4" />
-                    ) : (
-                      <span>{getStageNumber(stage.key)}</span>
-                    )}
-                  </div>
-                  <BreadcrumbLink
-                    className={`ml-2 ${
-                      isCurrentStage(stage.key)
-                        ? 'font-medium text-indigo-600'
-                        : isStageCompleted(stage.key)
-                          ? 'text-gray-700'
-                          : 'text-gray-400'
-                    }`}
-                  >
-                    {stage.label}
-                  </BreadcrumbLink>
-                </div>
-                <span className="text-xs text-gray-500 mt-1 hidden md:block">
-                  {stage.description}
-                </span>
-              </BreadcrumbItem>
-              
-              {index < stages.length - 1 && (
-                <BreadcrumbSeparator className="mx-4">
-                  <div className="w-16 h-px bg-gray-300 hidden md:block"></div>
-                </BreadcrumbSeparator>
-              )}
-            </React.Fragment>
-          ))}
-        </BreadcrumbList>
-      </Breadcrumb>
+    <div className="flex items-center w-full py-4">
+      {stages.map((stage, index) => {
+        const isActive = currentStage === stage.id;
+        const isPast = 
+          (currentStage === 'map' && stage.id === 'upload') ||
+          (currentStage === 'verify' && (stage.id === 'upload' || stage.id === 'map')) ||
+          (currentStage === 'complete');
+        
+        return (
+          <React.Fragment key={stage.id}>
+            <div 
+              className={`flex items-center cursor-pointer ${isActive || isPast ? 'text-primary' : 'text-muted-foreground'}`}
+              onClick={() => onStageSelect(stage.id)}
+            >
+              <div className="flex items-center justify-center w-8 h-8">
+                {isPast ? (
+                  <CheckCircle size={18} className="text-primary" />
+                ) : (
+                  <CircleIcon size={18} className={isActive ? 'fill-primary' : 'fill-none'} />
+                )}
+              </div>
+              <span className={`text-sm font-medium ${isActive ? 'text-primary' : ''}`}>
+                {stage.label}
+              </span>
+            </div>
+            
+            {index < stages.length - 1 && (
+              <div className={`flex-1 h-0.5 mx-2 ${isPast ? 'bg-primary' : 'bg-border'}`} />
+            )}
+          </React.Fragment>
+        );
+      })}
     </div>
   );
 };

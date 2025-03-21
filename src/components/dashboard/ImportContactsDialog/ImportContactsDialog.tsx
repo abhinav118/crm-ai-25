@@ -13,9 +13,11 @@ export interface CsvColumn {
   header: string;
   selected: boolean;
   mappedTo: string | null;
+  sample?: string;
+  updateEmptyValues?: boolean;
 }
 
-type ImportStage = 'upload' | 'map' | 'verify' | 'complete';
+export type ImportStage = 'upload' | 'map' | 'verify' | 'complete';
 
 interface ImportContactsDialogProps {
   open: boolean;
@@ -160,14 +162,16 @@ const ImportContactsDialog: React.FC<ImportContactsDialogProps> = ({
               (stage === 'verify' && (newStage === 'map' || newStage === 'upload')) ||
               (stage === 'map' && newStage === 'upload')
             ) {
-              setStage(newStage);
+              setStage(newStage as ImportStage);
             }
           }} 
         />
         
         <div className="py-4">
           {stage === 'upload' && (
-            <UploadStage onFileSelected={handleFileSelected} />
+            <UploadStage 
+              onFileSelected={handleFileSelected} 
+            />
           )}
           
           {stage === 'map' && (
