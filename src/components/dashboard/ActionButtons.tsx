@@ -6,7 +6,8 @@ import {
   Send,
   Download,
   Trash2,
-  Tag
+  Tag,
+  Upload 
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -22,6 +23,7 @@ import AddTagsDialog from './AddTagsDialog';
 import SendMessageDialog from './SendMessageDialog';
 import { Contact } from './ContactsTable';
 import { useToast } from '@/hooks/use-toast';
+import ImportContactsDialog from './ImportContactsDialog/ImportContactsDialog';
 
 type ActionButtonsProps = {
   selectedCount?: number;
@@ -31,6 +33,7 @@ type ActionButtonsProps = {
   onDeleteContacts?: () => void;
   selectedContacts?: Contact[];
   onTagsAdded?: () => void;
+  onContactsImported?: () => void;
 };
 
 const ActionButtons: React.FC<ActionButtonsProps> = ({ 
@@ -40,11 +43,13 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
   onSendMessage,
   onDeleteContacts,
   selectedContacts = [],
-  onTagsAdded
+  onTagsAdded,
+  onContactsImported
 }) => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showTagsDialog, setShowTagsDialog] = useState(false);
   const [showMessageDialog, setShowMessageDialog] = useState(false);
+  const [showImportDialog, setShowImportDialog] = useState(false);
   const { toast } = useToast();
 
   const handleDeleteClick = () => {
@@ -71,6 +76,17 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
     if (onSendMessage) {
       onSendMessage();
     }
+  };
+
+  const handleContactsImported = () => {
+    if (onContactsImported) {
+      onContactsImported();
+    }
+    setShowImportDialog(false);
+    toast({
+      title: "Import successful",
+      description: "Contacts have been imported successfully",
+    });
   };
 
   const handleExportCSV = () => {
@@ -158,6 +174,15 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
         <Button 
           variant="outline"
           className="gap-1 mr-2 border-gray-300"
+          onClick={() => setShowImportDialog(true)}
+        >
+          <Upload size={16} />
+          Import
+        </Button>
+        
+        <Button 
+          variant="outline"
+          className="gap-1 mr-2 border-gray-300"
           onClick={handleExportCSV}
           disabled={selectedCount === 0}
         >
@@ -206,6 +231,12 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
         open={showMessageDialog}
         onClose={() => setShowMessageDialog(false)}
         selectedContacts={selectedContacts}
+      />
+
+      <ImportContactsDialog
+        open={showImportDialog}
+        onClose={() => setShowImportDialog(false)}
+        onImportSuccess={handleContactsImported}
       />
     </>
   );
