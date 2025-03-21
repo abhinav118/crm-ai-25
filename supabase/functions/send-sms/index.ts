@@ -11,6 +11,7 @@ interface SMSRequest {
   to: string
   message: string
   contactId: string
+  mediaUrls?: string[]  // Optional array of media URLs
 }
 
 serve(async (req) => {
@@ -30,13 +31,16 @@ serve(async (req) => {
 
     // Get the request body
     const requestBody = await req.json()
-    const { to, message, contactId } = requestBody as SMSRequest
+    const { to, message, contactId, mediaUrls = [] } = requestBody as SMSRequest
 
     if (!to || !message || !contactId) {
       throw new Error('Missing required parameters: to, message, or contactId')
     }
 
     console.log(`Sending SMS to ${to}: ${message}`)
+    if (mediaUrls.length > 0) {
+      console.log(`With media attachments: ${mediaUrls.join(', ')}`)
+    }
 
     // Format phone number if needed
     let formattedPhone = to
@@ -52,6 +56,11 @@ serve(async (req) => {
     formData.append('From', TWILIO_PHONE_NUMBER)
     formData.append('Body', message)
     formData.append('StatusCallback', `https://nzsflibcvrisxjlzuxjn.supabase.co/functions/v1/twilio-webhook?contactId=${contactId}`)
+    
+    // Add MediaUrl parameters if provided
+    mediaUrls.forEach(url => {
+      formData.append('MediaUrl', url)
+    })
 
     const twilioResponse = await fetch(twilioEndpoint, {
       method: 'POST',
