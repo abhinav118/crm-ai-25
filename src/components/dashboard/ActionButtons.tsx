@@ -21,6 +21,7 @@ import {
 import AddTagsDialog from './AddTagsDialog';
 import SendMessageDialog from './SendMessageDialog';
 import { Contact } from './ContactsTable';
+import { useToast } from '@/hooks/use-toast';
 
 type ActionButtonsProps = {
   selectedCount?: number;
@@ -44,6 +45,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showTagsDialog, setShowTagsDialog] = useState(false);
   const [showMessageDialog, setShowMessageDialog] = useState(false);
+  const { toast } = useToast();
 
   const handleDeleteClick = () => {
     setShowDeleteDialog(true);
@@ -69,6 +71,57 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
     if (onSendMessage) {
       onSendMessage();
     }
+  };
+
+  const handleExportCSV = () => {
+    if (!selectedContacts || selectedContacts.length === 0) {
+      toast({
+        title: "No contacts selected",
+        description: "Please select at least one contact to export",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Prepare CSV data
+    const headers = ['Name', 'Email', 'Phone', 'Company', 'Status', 'Tags', 'Last Activity', 'Created At'];
+    
+    const rows = selectedContacts.map(contact => [
+      contact.name,
+      contact.email || '',
+      contact.phone || '',
+      contact.company || '',
+      contact.status,
+      (contact.tags || []).join(', '),
+      contact.lastActivity ? new Date(contact.lastActivity).toLocaleString() : '',
+      contact.createdAt ? new Date(contact.createdAt).toLocaleString() : ''
+    ]);
+    
+    // Combine headers and rows
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+    
+    // Create a Blob with the CSV data
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    
+    // Create a download link
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `contacts_export_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.style.visibility = 'hidden';
+    
+    // Add the link to the DOM, trigger the download, and remove the link
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast({
+      title: "Export successful",
+      description: `${selectedContacts.length} contacts exported to CSV`,
+    });
   };
 
   return (
@@ -105,6 +158,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
         <Button 
           variant="outline"
           className="gap-1 mr-2 border-gray-300"
+          onClick={handleExportCSV}
           disabled={selectedCount === 0}
         >
           <Download size={16} />

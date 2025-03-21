@@ -46,9 +46,9 @@ serve(async (req) => {
 
     console.log(`Uploading file to Twilio: ${friendlyName} (${file.type})`)
 
-    // Upload to Twilio Media Resource API
+    // Upload to Twilio Media Resource API - Fix: Removed "Services/" from URL path
     const twilioResponse = await fetch(
-      `https://mcs.us1.twilio.com/v1/Services/${TWILIO_ACCOUNT_SID}/Media`,
+      `https://mcs.us1.twilio.com/v1/Media`,
       {
         method: 'POST',
         headers: {
