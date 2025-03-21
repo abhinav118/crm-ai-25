@@ -46,7 +46,7 @@ serve(async (req) => {
 
     console.log(`Uploading file to Twilio: ${friendlyName} (${file.type})`)
 
-    // Upload to Twilio Assets API
+    // Upload to Twilio Media Resource API
     const twilioResponse = await fetch(
       `https://mcs.us1.twilio.com/v1/Services/${TWILIO_ACCOUNT_SID}/Media`,
       {
@@ -58,12 +58,19 @@ serve(async (req) => {
       }
     )
 
-    const twilioData = await twilioResponse.json()
-
     if (!twilioResponse.ok) {
-      console.error('Twilio API error:', JSON.stringify(twilioData))
-      throw new Error(`Twilio API error: ${JSON.stringify(twilioData)}`)
+      const errorText = await twilioResponse.text()
+      console.error('Twilio API error response:', errorText)
+      try {
+        const errorJson = JSON.parse(errorText)
+        throw new Error(`Twilio API error: ${JSON.stringify(errorJson)}`)
+      } catch (e) {
+        throw new Error(`Twilio API error: ${errorText}`)
+      }
     }
+
+    const twilioData = await twilioResponse.json()
+    console.log('Twilio API success response:', JSON.stringify(twilioData))
 
     // Return success response with CORS headers
     return new Response(

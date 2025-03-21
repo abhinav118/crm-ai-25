@@ -73,58 +73,53 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
 
   return (
     <>
-      <div className={`space-x-2 flex ${className}`}>
+      <div className={`flex ${className}`}>
         <Button 
-          size="sm" 
-          className="gap-1"
+          className="gap-1 mr-2 bg-indigo-600 hover:bg-indigo-700"
           onClick={onAddContact}
         >
           <UserPlus size={16} />
           Add Contact
         </Button>
         
-        {selectedCount > 0 && (
-          <>
-            <Button 
-              size="sm"
-              variant="outline" 
-              className="gap-1"
-              onClick={handleSendMessageClick}
-            >
-              <Send size={16} />
-              Send Message
-            </Button>
-            
-            <Button 
-              size="sm" 
-              variant="outline"
-              className="gap-1"
-              onClick={() => setShowTagsDialog(true)}
-            >
-              <Tag size={16} />
-              Add Tag
-            </Button>
-            
-            <Button 
-              size="sm"
-              variant="outline"
-              className="gap-1"
-            >
-              <Download size={16} />
-              Export
-            </Button>
-            
-            <Button 
-              size="sm"
-              variant="destructive"
-              className="gap-1"
-              onClick={handleDeleteClick}
-            >
-              <Trash2 size={16} />
-              Delete
-            </Button>
-          </>
-        )}
+        <Button 
+          variant="outline" 
+          className="gap-1 mr-2 border-gray-300"
+          onClick={handleSendMessageClick}
+          disabled={selectedCount === 0}
+        >
+          <Send size={16} />
+          Send Message
+        </Button>
+        
+        <Button 
+          variant="outline"
+          className="gap-1 mr-2 border-gray-300"
+          onClick={() => setShowTagsDialog(true)}
+          disabled={selectedCount === 0}
+        >
+          <Tag size={16} />
+          Add Tag
+        </Button>
+        
+        <Button 
+          variant="outline"
+          className="gap-1 mr-2 border-gray-300"
+          disabled={selectedCount === 0}
+        >
+          <Download size={16} />
+          Export
+        </Button>
+        
+        <Button 
+          variant="destructive"
+          className="gap-1"
+          onClick={handleDeleteClick}
+          disabled={selectedCount === 0}
+        >
+          <Trash2 size={16} />
+          Delete
+        </Button>
       </div>
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

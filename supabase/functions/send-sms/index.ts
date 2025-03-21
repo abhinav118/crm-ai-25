@@ -62,6 +62,8 @@ serve(async (req) => {
       formData.append('MediaUrl', url)
     })
 
+    console.log('Sending Twilio request with form data:', formData.toString())
+
     const twilioResponse = await fetch(twilioEndpoint, {
       method: 'POST',
       headers: {
@@ -71,7 +73,16 @@ serve(async (req) => {
       body: formData.toString()
     })
 
-    const twilioData = await twilioResponse.json()
+    const responseText = await twilioResponse.text()
+    console.log('Twilio API raw response:', responseText)
+    
+    let twilioData;
+    try {
+      twilioData = JSON.parse(responseText)
+    } catch (e) {
+      console.error('Error parsing Twilio response:', e)
+      throw new Error(`Invalid Twilio response: ${responseText}`)
+    }
 
     if (!twilioResponse.ok) {
       console.error('Twilio API error:', JSON.stringify(twilioData))
