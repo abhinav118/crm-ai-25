@@ -1,305 +1,220 @@
 
 import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import ImportBreadcrumbs from './ImportBreadcrumbs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { toast } from "@/components/ui/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import UploadStage from './UploadStage';
 import MapStage from './MapStage';
 import VerifyStage from './VerifyStage';
-import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent } from '@/components/ui/sheet';
-import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-
-export type ImportStage = 'upload' | 'map' | 'verify';
-export type ImportMode = 'create' | 'update' | 'both';
+import ImportBreadcrumbs from './ImportBreadcrumbs';
 
 export interface CsvColumn {
   header: string;
-  sample: string[];
-  mappedTo: string | null;
   selected: boolean;
-  updateEmptyValues: boolean;
+  mappedTo: string | null;
 }
+
+type ImportStage = 'upload' | 'map' | 'verify' | 'complete';
 
 interface ImportContactsDialogProps {
   open: boolean;
-  onClose: () => void;
-  onImportSuccess?: () => void;
+  onOpenChange: (open: boolean) => void;
 }
 
 const ImportContactsDialog: React.FC<ImportContactsDialogProps> = ({ 
   open, 
-  onClose,
-  onImportSuccess 
+  onOpenChange 
 }) => {
   const [stage, setStage] = useState<ImportStage>('upload');
-  const [importMode, setImportMode] = useState<ImportMode>('both');
   const [file, setFile] = useState<File | null>(null);
   const [columns, setColumns] = useState<CsvColumn[]>([]);
-  const [parsedData, setParsedData] = useState<Record<string, string>[]>([]);
-  const [importReady, setImportReady] = useState(false);
+  const [data, setData] = useState<Record<string, string>[]>([]);
   const [isImporting, setIsImporting] = useState(false);
-  const [dontImportUnmapped, setDontImportUnmapped] = useState(true);
-  const { toast } = useToast();
 
-  const handleFileUpload = (uploadedFile: File, data: Record<string, string>[], extractedColumns: CsvColumn[]) => {
-    setFile(uploadedFile);
-    setParsedData(data);
-    setColumns(extractedColumns);
-    setStage('map');
+  const resetState = () => {
+    setStage('upload');
+    setFile(null);
+    setColumns([]);
+    setData([]);
+    setIsImporting(false);
   };
 
-  const handleImportModeChange = (mode: ImportMode) => {
-    setImportMode(mode);
+  const handleClose = () => {
+    resetState();
+    onOpenChange(false);
   };
 
-  const handleColumnMapping = (updatedColumns: CsvColumn[]) => {
-    setColumns(updatedColumns);
-    
-    // Check if at least one column is mapped and selected
-    const hasSelectedMappings = updatedColumns.some(col => col.selected && col.mappedTo);
-    setImportReady(hasSelectedMappings);
+  const goToNextStage = () => {
+    if (stage === 'upload') {
+      setStage('map');
+    } else if (stage === 'map') {
+      setStage('verify');
+    } else if (stage === 'verify') {
+      importContacts();
+    }
   };
 
-  const handleGoBack = () => {
-    if (stage === 'map') setStage('upload');
-    if (stage === 'verify') setStage('map');
+  const goToPreviousStage = () => {
+    if (stage === 'map') {
+      setStage('upload');
+    } else if (stage === 'verify') {
+      setStage('map');
+    }
   };
 
-  const handleNext = () => {
-    if (stage === 'map') setStage('verify');
+  const handleFileSelected = (selectedFile: File, parsedColumns: CsvColumn[], parsedData: Record<string, string>[]) => {
+    setFile(selectedFile);
+    setColumns(parsedColumns);
+    setData(parsedData);
   };
 
-  const handleImport = async () => {
-    if (!importReady || !parsedData.length) return;
-    
-    setIsImporting(true);
-    
-    try {
-      // Filter to only selected columns
-      const selectedColumns = columns.filter(col => col.selected && col.mappedTo);
+  const prepareDataForImport = () => {
+    // Get the mapping of CSV headers to database fields
+    const headerToFieldMap = columns.reduce((map, column) => {
+      if (column.selected && column.mappedTo) {
+        map[column.header] = column.mappedTo;
+      }
+      return map;
+    }, {} as Record<string, string>);
+
+    // Transform the data according to the mapping
+    return data.map(row => {
+      const transformedRow: Record<string, any> = {
+        // Ensure name field has a default value if it's not mapped
+        name: 'Imported Contact'
+      };
       
-      // Prepare contacts for import
-      const contactsToImport = parsedData.map(row => {
-        const contact: Record<string, any> = {};
+      // Apply mappings from CSV to database fields
+      Object.keys(headerToFieldMap).forEach(header => {
+        const fieldName = headerToFieldMap[header];
+        const value = row[header];
         
-        selectedColumns.forEach(col => {
-          if (col.mappedTo && (!col.updateEmptyValues && !row[col.header])) {
-            // Skip empty values if updateEmptyValues is false
-            return;
-          }
-          
-          // Convert to tags array if tags field
-          if (col.mappedTo === 'tags' && row[col.header]) {
-            contact[col.mappedTo] = row[col.header].split(',').map(tag => tag.trim());
-          } else {
-            contact[col.mappedTo] = row[col.header] || null;
-          }
-        });
-        
-        // Ensure name is present (required field)
-        if (!contact.name) {
-          contact.name = 'Imported Contact';
+        // Only add non-empty values
+        if (value !== undefined && value !== null && value !== '') {
+          transformedRow[fieldName] = value;
         }
-        
-        // Set default status if not provided
-        if (!contact.status) {
-          contact.status = 'active';
-        }
-        
-        return contact;
       });
+      
+      return transformedRow;
+    });
+  };
+
+  const importContacts = async () => {
+    try {
+      setIsImporting(true);
+      
+      // Prepare data for import
+      const contactsToImport = prepareDataForImport();
       
       if (contactsToImport.length === 0) {
-        throw new Error('No valid contacts to import');
+        toast({
+          title: "No data to import",
+          description: "Please select at least one column to import",
+          variant: "destructive"
+        });
+        return;
       }
       
-      console.log('Importing contacts:', contactsToImport);
-      
-      // Insert into database
+      // Insert contacts into the database
       const { data, error } = await supabase
         .from('contacts')
-        .insert(contactsToImport)
-        .select();
+        .insert(contactsToImport);
       
-      if (error) throw error;
-      
-      console.log('Import success:', data);
-      
-      toast({
-        title: 'Import successful',
-        description: `${data.length} contacts have been imported.`,
-      });
-      
-      if (onImportSuccess) {
-        onImportSuccess();
+      if (error) {
+        throw error;
       }
       
-      onClose();
-    } catch (error) {
-      console.error('Import error:', error);
       toast({
-        title: 'Import failed',
-        description: (error as Error).message,
-        variant: 'destructive',
+        title: "Import successful",
+        description: `Successfully imported ${contactsToImport.length} contacts`,
+      });
+      
+      // Close dialog and reset state
+      handleClose();
+      
+    } catch (error: any) {
+      console.error('Error importing contacts:', error);
+      toast({
+        title: "Import failed",
+        description: error.message || "An error occurred while importing contacts",
+        variant: "destructive"
       });
     } finally {
       setIsImporting(false);
     }
   };
 
-  const handleCancel = () => {
-    onClose();
-  };
-
-  // Use Dialog for desktop and Sheet for mobile
   return (
-    <>
-      <Dialog open={open} onOpenChange={onClose}>
-        <DialogContent className="sm:max-w-4xl">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-semibold">Import Contacts</DialogTitle>
-          </DialogHeader>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Import Contacts</DialogTitle>
+        </DialogHeader>
+        
+        <ImportBreadcrumbs 
+          currentStage={stage} 
+          onStageSelect={(newStage) => {
+            // Only allow going back to previous stages
+            if (
+              (stage === 'verify' && (newStage === 'map' || newStage === 'upload')) ||
+              (stage === 'map' && newStage === 'upload')
+            ) {
+              setStage(newStage);
+            }
+          }} 
+        />
+        
+        <div className="py-4">
+          {stage === 'upload' && (
+            <UploadStage onFileSelected={handleFileSelected} />
+          )}
           
-          <div className="py-2">
-            <ImportBreadcrumbs currentStage={stage} />
-            
-            {stage === 'upload' && (
-              <UploadStage 
-                onFileUpload={handleFileUpload} 
-                importMode={importMode}
-                onImportModeChange={handleImportModeChange}
-              />
-            )}
-            
-            {stage === 'map' && (
-              <MapStage 
-                columns={columns}
-                onColumnsChange={handleColumnMapping}
-                dontImportUnmapped={dontImportUnmapped}
-                onDontImportUnmappedChange={setDontImportUnmapped}
-              />
-            )}
-            
-            {stage === 'verify' && (
-              <VerifyStage 
-                columns={columns.filter(col => col.selected && col.mappedTo)}
-                data={parsedData}
-              />
-            )}
-            
-            <div className="flex justify-between mt-6">
-              {stage !== 'upload' ? (
-                <Button variant="outline" onClick={handleGoBack}>
-                  Back
-                </Button>
-              ) : (
-                <Button variant="outline" onClick={handleCancel}>
-                  Cancel
-                </Button>
-              )}
-              
-              <div className="space-x-2">
-                {stage === 'map' && (
-                  <Button 
-                    onClick={handleNext} 
-                    disabled={!importReady}
-                    className="bg-indigo-600 hover:bg-indigo-700"
-                  >
-                    Next
-                  </Button>
-                )}
-                
-                {stage === 'verify' && (
-                  <Button 
-                    onClick={handleImport} 
-                    disabled={!importReady || isImporting}
-                    isLoading={isImporting}
-                    className="bg-indigo-600 hover:bg-indigo-700"
-                  >
-                    Import
-                  </Button>
-                )}
-              </div>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-      
-      {/* Mobile view */}
-      <Sheet open={open} onOpenChange={onClose}>
-        <SheetContent className="w-full sm:max-w-full md:hidden">
-          <div className="h-full flex flex-col">
-            <div className="py-6">
-              <h2 className="text-xl font-semibold">Import Contacts</h2>
-            </div>
-            
-            <div className="flex-1 overflow-auto py-2">
-              <ImportBreadcrumbs currentStage={stage} />
-              
-              {stage === 'upload' && (
-                <UploadStage 
-                  onFileUpload={handleFileUpload} 
-                  importMode={importMode}
-                  onImportModeChange={handleImportModeChange}
-                />
-              )}
-              
-              {stage === 'map' && (
-                <MapStage 
-                  columns={columns}
-                  onColumnsChange={handleColumnMapping}
-                  dontImportUnmapped={dontImportUnmapped}
-                  onDontImportUnmappedChange={setDontImportUnmapped}
-                />
-              )}
-              
-              {stage === 'verify' && (
-                <VerifyStage 
-                  columns={columns.filter(col => col.selected && col.mappedTo)}
-                  data={parsedData}
-                />
-              )}
-            </div>
-            
-            <div className="py-4 border-t flex justify-between mt-auto">
-              {stage !== 'upload' ? (
-                <Button variant="outline" onClick={handleGoBack}>
-                  Back
-                </Button>
-              ) : (
-                <Button variant="outline" onClick={handleCancel}>
-                  Cancel
-                </Button>
-              )}
-              
-              <div className="space-x-2">
-                {stage === 'map' && (
-                  <Button 
-                    onClick={handleNext} 
-                    disabled={!importReady}
-                    className="bg-indigo-600 hover:bg-indigo-700"
-                  >
-                    Next
-                  </Button>
-                )}
-                
-                {stage === 'verify' && (
-                  <Button 
-                    onClick={handleImport} 
-                    disabled={!importReady || isImporting}
-                    isLoading={isImporting}
-                    className="bg-indigo-600 hover:bg-indigo-700"
-                  >
-                    Import
-                  </Button>
-                )}
-              </div>
-            </div>
-          </div>
-        </SheetContent>
-      </Sheet>
-    </>
+          {stage === 'map' && (
+            <MapStage 
+              columns={columns} 
+              setColumns={setColumns} 
+            />
+          )}
+          
+          {stage === 'verify' && (
+            <VerifyStage 
+              columns={columns.filter(col => col.selected)} 
+              data={data} 
+            />
+          )}
+        </div>
+        
+        <div className="flex justify-between mt-4">
+          {stage !== 'upload' ? (
+            <Button
+              variant="outline"
+              onClick={goToPreviousStage}
+            >
+              Back
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              onClick={handleClose}
+            >
+              Cancel
+            </Button>
+          )}
+          
+          <Button
+            onClick={goToNextStage}
+            disabled={
+              (stage === 'upload' && !file) ||
+              (stage === 'map' && !columns.some(col => col.selected && col.mappedTo)) ||
+              isImporting
+            }
+          >
+            {stage === 'verify' ? (isImporting ? 'Importing...' : 'Import Contacts') : 'Next'}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 };
 
