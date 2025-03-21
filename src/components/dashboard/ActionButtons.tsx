@@ -19,6 +19,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import AddTagsDialog from './AddTagsDialog';
+import SendMessageDialog from './SendMessageDialog';
 import { Contact } from './ContactsTable';
 
 type ActionButtonsProps = {
@@ -42,6 +43,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
 }) => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showTagsDialog, setShowTagsDialog] = useState(false);
+  const [showMessageDialog, setShowMessageDialog] = useState(false);
 
   const handleDeleteClick = () => {
     setShowDeleteDialog(true);
@@ -59,6 +61,14 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
       onTagsAdded();
     }
     setShowTagsDialog(false);
+  };
+
+  const handleSendMessageClick = () => {
+    setShowMessageDialog(true);
+    // Still call the parent callback if provided
+    if (onSendMessage) {
+      onSendMessage();
+    }
   };
 
   return (
@@ -79,7 +89,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
               size="sm"
               variant="outline" 
               className="gap-1"
-              onClick={onSendMessage}
+              onClick={handleSendMessageClick}
             >
               <Send size={16} />
               Send Message
@@ -142,6 +152,12 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
           onTagsAdded={handleTagsAdded}
         />
       )}
+
+      <SendMessageDialog
+        open={showMessageDialog}
+        onClose={() => setShowMessageDialog(false)}
+        selectedContacts={selectedContacts}
+      />
     </>
   );
 };
