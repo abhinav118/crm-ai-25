@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { 
@@ -72,7 +71,6 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
 
   const handleSendMessageClick = () => {
     setShowMessageDialog(true);
-    // Still call the parent callback if provided
     if (onSendMessage) {
       onSendMessage();
     }
@@ -82,7 +80,6 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
     if (onContactsImported) {
       onContactsImported();
     }
-    setShowImportDialog(false);
     toast({
       title: "Import successful",
       description: "Contacts have been imported successfully",
@@ -99,7 +96,6 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
       return;
     }
 
-    // Prepare CSV data
     const headers = ['Name', 'Email', 'Phone', 'Company', 'Status', 'Tags', 'Last Activity', 'Created At'];
     
     const rows = selectedContacts.map(contact => [
@@ -113,23 +109,19 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
       contact.createdAt ? new Date(contact.createdAt).toLocaleString() : ''
     ]);
     
-    // Combine headers and rows
     const csvContent = [
       headers.join(','),
       ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
     ].join('\n');
     
-    // Create a Blob with the CSV data
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     
-    // Create a download link
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
     link.setAttribute('download', `contacts_export_${new Date().toISOString().slice(0, 10)}.csv`);
     link.style.visibility = 'hidden';
     
-    // Add the link to the DOM, trigger the download, and remove the link
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -235,7 +227,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
 
       <ImportContactsDialog
         open={showImportDialog}
-        onClose={() => setShowImportDialog(false)}
+        onOpenChange={setShowImportDialog}
         onImportSuccess={handleContactsImported}
       />
     </>

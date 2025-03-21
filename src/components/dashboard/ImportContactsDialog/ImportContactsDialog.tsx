@@ -22,11 +22,13 @@ export type ImportStage = 'upload' | 'map' | 'verify' | 'complete';
 interface ImportContactsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onImportSuccess?: () => void;
 }
 
 const ImportContactsDialog: React.FC<ImportContactsDialogProps> = ({ 
   open, 
-  onOpenChange 
+  onOpenChange,
+  onImportSuccess
 }) => {
   const [stage, setStage] = useState<ImportStage>('upload');
   const [file, setFile] = useState<File | null>(null);
@@ -98,6 +100,11 @@ const ImportContactsDialog: React.FC<ImportContactsDialogProps> = ({
         }
       });
       
+      // Make sure name is always set
+      if (!transformedRow.name || transformedRow.name === '') {
+        transformedRow.name = 'Imported Contact';
+      }
+      
       return transformedRow;
     });
   };
@@ -131,6 +138,11 @@ const ImportContactsDialog: React.FC<ImportContactsDialogProps> = ({
         title: "Import successful",
         description: `Successfully imported ${contactsToImport.length} contacts`,
       });
+      
+      // Call success callback if provided
+      if (onImportSuccess) {
+        onImportSuccess();
+      }
       
       // Close dialog and reset state
       handleClose();
