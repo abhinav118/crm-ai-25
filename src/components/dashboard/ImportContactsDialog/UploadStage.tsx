@@ -51,14 +51,29 @@ const UploadStage: React.FC<UploadStageProps> = ({ onFileSelected }) => {
       complete: (results) => {
         setUploadProgress(100);
         
+        // Get the first few rows for better sample data
+        const sampleRows = results.data.slice(0, Math.min(5, results.data.length));
+        
         // Create column definitions from headers
         const headers = results.meta.fields || [];
-        const columns: CsvColumn[] = headers.map(header => ({
-          header,
-          selected: true,
-          mappedTo: null,
-          sample: results.data[0]?.[header] || '',
-        }));
+        const columns: CsvColumn[] = headers.map(header => {
+          // Get non-empty samples across the first few rows
+          let sample = '';
+          for (const row of sampleRows) {
+            const rowData = row as Record<string, string>;
+            if (rowData[header] && rowData[header].trim() !== '') {
+              sample = rowData[header];
+              break;
+            }
+          }
+          
+          return {
+            header,
+            selected: true,
+            mappedTo: null,
+            sample,
+          };
+        });
         
         // Convert data to Record<string, string>[]
         const typedData = results.data as Record<string, string>[];

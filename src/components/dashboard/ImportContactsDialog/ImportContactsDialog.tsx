@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -133,7 +134,8 @@ const ImportContactsDialog: React.FC<ImportContactsDialogProps> = ({
           phone: contact.phone as string | null,
           company: contact.company as string | null,
           status: contact.status as string | null,
-          tags: contact.tags as string[] | null
+          tags: contact.tags as string[] | null,
+          // We don't set created_at and updated_at as Supabase will use the defaults
         };
       });
       
