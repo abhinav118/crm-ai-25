@@ -1,11 +1,15 @@
 
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, X } from 'lucide-react';
+import { Search, Filter, X, FilterX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import FilterDialog, { FilterState } from './Filters/FilterDialog';
+import { Badge } from '@/components/ui/badge';
+import { format, sub } from 'date-fns';
 
 type SearchBarProps = {
   onSearch: (query: string) => void;
+  onFilterChange: (filters: FilterState) => void;
   className?: string;
   isActive?: boolean;
   onActiveChange?: (isActive: boolean) => void;
@@ -13,6 +17,7 @@ type SearchBarProps = {
 
 const SearchBar: React.FC<SearchBarProps> = ({ 
   onSearch, 
+  onFilterChange,
   className,
   isActive = false,
   onActiveChange = () => {}
@@ -20,6 +25,8 @@ const SearchBar: React.FC<SearchBarProps> = ({
   const [query, setQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
+  const [activeFilters, setActiveFilters] = useState<FilterState>({});
+  const [filterCount, setFilterCount] = useState(0);
   
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,6 +36,81 @@ const SearchBar: React.FC<SearchBarProps> = ({
   const clearSearch = () => {
     setQuery('');
     onSearch('');
+  };
+  
+  const applyFilters = (filters: FilterState) => {
+    setActiveFilters(filters);
+    onFilterChange(filters);
+    updateFilterCount(filters);
+  };
+
+  const clearFilters = () => {
+    setActiveFilters({});
+    onFilterChange({});
+    setFilterCount(0);
+  };
+
+  const updateFilterCount = (filters: FilterState) => {
+    const count = Object.keys(filters).filter(key => filters[key as keyof FilterState] !== undefined).length;
+    setFilterCount(count);
+  };
+
+  const getFilterSummary = (): string[] => {
+    const summary: string[] = [];
+
+    if (activeFilters.phone) {
+      const { operator, value } = activeFilters.phone;
+      if (operator === 'is' && value) {
+        summary.push(`Phone: ${value}`);
+      } else if (operator === 'isNot' && value) {
+        summary.push(`Phone is not ${value}`);
+      } else if (operator === 'isEmpty') {
+        summary.push('Phone is empty');
+      } else if (operator === 'isNotEmpty') {
+        summary.push('Phone is not empty');
+      }
+    }
+
+    if (activeFilters.email) {
+      const { operator, value } = activeFilters.email;
+      if (operator === 'is' && value) {
+        summary.push(`Email: ${value}`);
+      } else if (operator === 'isNot' && value) {
+        summary.push(`Email is not ${value}`);
+      } else if (operator === 'isEmpty') {
+        summary.push('Email is empty');
+      } else if (operator === 'isNotEmpty') {
+        summary.push('Email is not empty');
+      }
+    }
+
+    if (activeFilters.tag) {
+      const { operator, value } = activeFilters.tag;
+      if (operator === 'is' && value) {
+        summary.push(`Tag: ${value}`);
+      } else if (operator === 'isNot' && value) {
+        summary.push(`Tag is not ${value}`);
+      } else if (operator === 'isEmpty') {
+        summary.push('Tag is empty');
+      } else if (operator === 'isNotEmpty') {
+        summary.push('Tag is not empty');
+      } else if (operator === 'anyOf' && value) {
+        summary.push(`Tag is any of ${value}`);
+      }
+    }
+
+    if (activeFilters.created) {
+      const { operator, value, unit } = activeFilters.created;
+      if (operator === 'moreThan' && value !== null) {
+        summary.push(`Created more than ${value} ${unit} ago`);
+      } else if (operator === 'lessThan' && value !== null) {
+        summary.push(`Created less than ${value} ${unit} ago`);
+      } else if (operator === 'range') {
+        summary.push('Created in date range');
+      }
+    }
+
+    return summary;
   };
   
   useEffect(() => {
@@ -70,64 +152,54 @@ const SearchBar: React.FC<SearchBarProps> = ({
           <div className="absolute inset-y-0 right-0 flex items-center pr-2">
             <button
               type="button" 
-              onClick={() => setShowFilters(!showFilters)}
-              className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+              onClick={() => setShowFilters(true)}
+              className={cn(
+                "p-1.5 rounded-md transition-colors",
+                filterCount > 0 
+                  ? "text-primary bg-primary/10 hover:bg-primary/20"
+                  : "text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+              )}
             >
-              <Filter size={16} />
+              {filterCount > 0 ? (
+                <div className="relative">
+                  <Filter size={16} />
+                  <span className="absolute -top-2 -right-2 bg-primary text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+                    {filterCount}
+                  </span>
+                </div>
+              ) : (
+                <Filter size={16} />
+              )}
             </button>
           </div>
         </div>
         
-        {showFilters && (
-          <div className="absolute mt-2 w-full bg-white rounded-md shadow-lg border border-gray-200 p-4 z-10 animate-fade-in">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-medium">Filters</h3>
-                <button
-                  onClick={() => setShowFilters(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <X size={16} />
-                </button>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-gray-700">Status</label>
-                  <select className="w-full text-sm border border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary">
-                    <option value="">Any Status</option>
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                  </select>
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-gray-700">Date Added</label>
-                  <select className="w-full text-sm border border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary">
-                    <option value="">Any Time</option>
-                    <option value="today">Today</option>
-                    <option value="yesterday">Yesterday</option>
-                    <option value="week">This Week</option>
-                    <option value="month">This Month</option>
-                  </select>
-                </div>
-              </div>
-              
-              <div className="flex justify-end space-x-2">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => setShowFilters(false)}
-                >
-                  Cancel
-                </Button>
-                <Button type="button" size="sm">Apply Filters</Button>
-              </div>
-            </div>
+        {filterCount > 0 && (
+          <div className="mt-2 flex flex-wrap gap-2 items-center">
+            {getFilterSummary().map((summary, index) => (
+              <Badge key={index} variant="outline" className="bg-primary/5 text-xs py-1">
+                {summary}
+              </Badge>
+            ))}
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={clearFilters}
+              className="h-6 text-xs text-muted-foreground gap-1 hover:text-foreground"
+            >
+              <FilterX size={12} />
+              Clear all
+            </Button>
           </div>
         )}
       </form>
+
+      <FilterDialog 
+        open={showFilters} 
+        onOpenChange={setShowFilters}
+        onApplyFilters={applyFilters}
+        currentFilters={activeFilters}
+      />
     </div>
   );
 };

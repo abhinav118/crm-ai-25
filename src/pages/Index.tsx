@@ -17,7 +17,8 @@ import { Button } from '@/components/ui/button';
 import { UserPlus } from 'lucide-react';
 import { ContactData } from '@/components/dashboard/ContactForm/types';
 import { logContactAction } from '@/utils/contactLogger';
-import { startOfWeek, endOfWeek } from 'date-fns';
+import { startOfWeek, endOfWeek, subDays, subWeeks, subMonths, subYears } from 'date-fns';
+import { FilterState } from '@/components/dashboard/Filters/FilterDialog';
 
 const Index = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -35,6 +36,7 @@ const Index = () => {
   const [totalCount, setTotalCount] = useState(0);
   const [isAddContactModalOpen, setIsAddContactModalOpen] = useState(false);
   const [isSearchActive, setIsSearchActive] = useState(false);
+  const [activeFilters, setActiveFilters] = useState<FilterState>({});
   
   const { toast } = useToast();
   const location = useLocation();
@@ -45,9 +47,11 @@ const Index = () => {
     try {
       console.log('Fetching contacts from Supabase...');
       
-      const { count: existingCount, error: countError } = await supabase
-        .from('contacts')
-        .select('*', { count: 'exact', head: true });
+      let query = supabase.from('contacts').select('*', { count: 'exact', head: true });
+      
+      query = applyFiltersToQuery(query);
+      
+      const { count: existingCount, error: countError } = await query;
       
       if (countError) throw countError;
       
@@ -56,9 +60,10 @@ const Index = () => {
         await seedSampleContacts();
       }
       
-      const { count, error: totalCountError } = await supabase
-        .from('contacts')
-        .select('*', { count: 'exact', head: true });
+      query = supabase.from('contacts').select('*', { count: 'exact', head: true });
+      query = applyFiltersToQuery(query);
+      
+      const { count, error: totalCountError } = await query;
       
       if (totalCountError) throw totalCountError;
       setTotalCount(count || 0);
@@ -66,9 +71,10 @@ const Index = () => {
       const from = (currentPage - 1) * pageSize;
       const to = from + pageSize - 1;
       
-      const { data, error } = await supabase
-        .from('contacts')
-        .select('*')
+      query = supabase.from('contacts').select('*');
+      query = applyFiltersToQuery(query);
+      
+      const { data, error } = await query
         .order('created_at', { ascending: false })
         .range(from, to);
       
@@ -112,6 +118,87 @@ const Index = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+  
+  const applyFiltersToQuery = (query: any) => {
+    if (activeFilters.phone) {
+      const { operator, value } = activeFilters.phone;
+      
+      if (operator === 'is' && value) {
+        query = query.ilike('phone', `%${value}%`);
+      } else if (operator === 'isNot' && value) {
+        query = query.not('phone', 'ilike', `%${value}%`);
+      } else if (operator === 'isEmpty') {
+        query = query.or('phone.is.null,phone.eq.');
+      } else if (operator === 'isNotEmpty') {
+        query = query.not('phone', 'is', null).not('phone', 'eq', '');
+      }
+    }
+    
+    if (activeFilters.email) {
+      const { operator, value } = activeFilters.email;
+      
+      if (operator === 'is' && value) {
+        query = query.ilike('email', `%${value}%`);
+      } else if (operator === 'isNot' && value) {
+        query = query.not('email', 'ilike', `%${value}%`);
+      } else if (operator === 'isEmpty') {
+        query = query.or('email.is.null,email.eq.');
+      } else if (operator === 'isNotEmpty') {
+        query = query.not('email', 'is', null).not('email', 'eq', '');
+      }
+    }
+    
+    if (activeFilters.tag) {
+      const { operator, value } = activeFilters.tag;
+      
+      if (operator === 'is' && value) {
+        query = query.contains('tags', [value]);
+      } else if (operator === 'isNot' && value) {
+        query = query.not('tags', 'cs', `{${value}}`);
+      } else if (operator === 'isEmpty') {
+        query = query.or('tags.is.null,tags.eq.{}');
+      } else if (operator === 'isNotEmpty') {
+        query = query.not('tags', 'is', null).not('tags', 'eq', '{}');
+      } else if (operator === 'anyOf' && Array.isArray(value)) {
+        query = query.overlaps('tags', value);
+      }
+    }
+    
+    if (activeFilters.created) {
+      const { operator, value, unit } = activeFilters.created;
+      
+      if ((operator === 'moreThan' || operator === 'lessThan') && value !== null) {
+        let date: Date;
+        
+        switch (unit) {
+          case 'days':
+            date = subDays(new Date(), Number(value));
+            break;
+          case 'weeks':
+            date = subWeeks(new Date(), Number(value));
+            break;
+          case 'months':
+            date = subMonths(new Date(), Number(value));
+            break;
+          case 'years':
+            date = subYears(new Date(), Number(value));
+            break;
+          default:
+            date = subDays(new Date(), Number(value));
+        }
+        
+        const isoDate = date.toISOString();
+        
+        if (operator === 'moreThan') {
+          query = query.lt('created_at', isoDate);
+        } else if (operator === 'lessThan') {
+          query = query.gt('created_at', isoDate);
+        }
+      }
+    }
+    
+    return query;
   };
   
   const fetchRecentContacts = async () => {
@@ -246,7 +333,7 @@ const Index = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [currentPage, pageSize]);
+  }, [currentPage, pageSize, activeFilters]);
   
   useEffect(() => {
     const hash = location.hash.replace('#', '');
@@ -274,6 +361,11 @@ const Index = () => {
   
   const handleSearch = (query: string) => {
     setSearchQuery(query);
+  };
+  
+  const handleFilterChange = (filters: FilterState) => {
+    setActiveFilters(filters);
+    setCurrentPage(1);
   };
   
   const handlePageChange = (page: number) => {
@@ -490,7 +582,8 @@ const Index = () => {
           
           <div className="mb-6 flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
             <SearchBar 
-              onSearch={handleSearch} 
+              onSearch={handleSearch}
+              onFilterChange={handleFilterChange}
               onActiveChange={(active) => setIsSearchActive(active)}
               className="transition-all duration-300 ease-in-out" 
             />
@@ -618,7 +711,7 @@ const Index = () => {
 
       <AddContactForm 
         open={isAddContactModalOpen} 
-        onClose={() => setIsAddContactModalOpen(false)} 
+        onOpenChange={setIsAddContactModalOpen} 
         onSubmit={handleAddContact}
       />
     </div>
