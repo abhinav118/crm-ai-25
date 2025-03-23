@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Filter, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -7,11 +7,19 @@ import { cn } from '@/lib/utils';
 type SearchBarProps = {
   onSearch: (query: string) => void;
   className?: string;
+  isActive?: boolean;
+  onActiveChange?: (isActive: boolean) => void;
 };
 
-const SearchBar: React.FC<SearchBarProps> = ({ onSearch, className }) => {
+const SearchBar: React.FC<SearchBarProps> = ({ 
+  onSearch, 
+  className,
+  isActive = false,
+  onActiveChange = () => {}
+}) => {
   const [query, setQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
   
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,8 +31,16 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, className }) => {
     onSearch('');
   };
   
+  useEffect(() => {
+    onActiveChange(isFocused);
+  }, [isFocused, onActiveChange]);
+  
   return (
-    <div className={cn("w-full", className)}>
+    <div className={cn(
+      "w-full transition-all duration-300 ease-in-out", 
+      isFocused ? "md:flex-1" : "md:max-w-md",
+      className
+    )}>
       <form onSubmit={handleSearch} className="relative">
         <div className="relative flex items-center">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -35,6 +51,8 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, className }) => {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setTimeout(() => setIsFocused(false), 200)}
             className="block w-full pl-10 pr-12 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary text-sm"
             placeholder="Search contacts..."
           />

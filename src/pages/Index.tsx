@@ -17,12 +17,14 @@ import { Button } from '@/components/ui/button';
 import { UserPlus } from 'lucide-react';
 import { ContactData } from '@/components/dashboard/ContactForm/types';
 import { logContactAction } from '@/utils/contactLogger';
+import { startOfWeek, endOfWeek } from 'date-fns';
 
 const Index = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [filteredContacts, setFilteredContacts] = useState<Contact[]>([]);
+  const [recentContacts, setRecentContacts] = useState<Contact[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [isLoading, setIsLoading] = useState(true);
@@ -32,6 +34,7 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState('all');
   const [totalCount, setTotalCount] = useState(0);
   const [isAddContactModalOpen, setIsAddContactModalOpen] = useState(false);
+  const [isSearchActive, setIsSearchActive] = useState(false);
   
   const { toast } = useToast();
   const location = useLocation();
@@ -88,10 +91,13 @@ const Index = () => {
         
         setContacts(formattedContacts);
         setFilteredContacts(formattedContacts);
+        
+        fetchRecentContacts();
       } else {
         console.log('No contacts data returned from Supabase');
         setContacts([]);
         setFilteredContacts([]);
+        setRecentContacts([]);
       }
     } catch (error) {
       console.error('Error fetching contacts:', error);
@@ -102,8 +108,52 @@ const Index = () => {
       });
       setContacts([]);
       setFilteredContacts([]);
+      setRecentContacts([]);
     } finally {
       setIsLoading(false);
+    }
+  };
+  
+  const fetchRecentContacts = async () => {
+    try {
+      const now = new Date();
+      const weekStart = startOfWeek(now, { weekStartsOn: 1 });
+      const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
+      
+      const startDate = weekStart.toISOString();
+      const endDate = weekEnd.toISOString();
+      
+      console.log(`Fetching contacts with last_activity between ${startDate} and ${endDate}`);
+      
+      const { data, error } = await supabase
+        .from('contacts')
+        .select('*')
+        .or(`last_activity.gte.${startDate},last_activity.lte.${endDate}`)
+        .order('last_activity', { ascending: false });
+      
+      if (error) throw error;
+      
+      if (data && data.length > 0) {
+        const formattedRecentContacts = data.map(contact => ({
+          id: contact.id,
+          name: contact.name,
+          email: contact.email || '',
+          phone: contact.phone || '',
+          company: contact.company || '',
+          status: contact.status as 'active' | 'inactive',
+          tags: contact.tags || [],
+          lastActivity: contact.last_activity || contact.created_at,
+          createdAt: contact.created_at,
+        }));
+        
+        setRecentContacts(formattedRecentContacts);
+        console.log(`Found ${formattedRecentContacts.length} recent contacts`);
+      } else {
+        setRecentContacts([]);
+      }
+    } catch (error) {
+      console.error('Error fetching recent contacts:', error);
+      setRecentContacts([]);
     }
   };
   
@@ -439,8 +489,12 @@ const Index = () => {
           </div>
           
           <div className="mb-6 flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
-            <SearchBar onSearch={handleSearch} className="md:max-w-md" />
-            <div className="flex gap-2">
+            <SearchBar 
+              onSearch={handleSearch} 
+              onActiveChange={(active) => setIsSearchActive(active)}
+              className="transition-all duration-300 ease-in-out" 
+            />
+            <div className="flex gap-2 transition-all duration-300 ease-in-out">
               <ActionButtons 
                 selectedCount={selectedCount} 
                 onAddContact={() => setIsAddContactModalOpen(true)}
@@ -448,6 +502,7 @@ const Index = () => {
                 onDeleteContacts={handleDeleteContacts}
                 selectedContacts={getSelectedContacts()}
                 onTagsAdded={handleTagsAdded}
+                compactMode={isSearchActive}
               />
             </div>
           </div>
@@ -510,9 +565,32 @@ const Index = () => {
               )}
             </TabsContent>
             <TabsContent value="recent">
-              <div className="flex items-center justify-center h-60 bg-white rounded-lg border border-gray-200">
-                <p className="text-gray-500">Recent contacts view coming soon</p>
-              </div>
+              {isLoading ? (
+                <div className="space-y-4">
+                  {Array.from({ length: 5 }).map((_, index) => (
+                    <div key={index} className="flex items-center space-x-4">
+                      <Skeleton className="h-12 w-12 rounded-full" />
+                      <div className="space-y-2">
+                        <Skeleton className="h-4 w-[250px]" />
+                        <Skeleton className="h-4 w-[200px]" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : recentContacts.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-60 bg-white rounded-lg border border-gray-200">
+                  <p className="text-gray-500 mb-4">No recent contacts found this week</p>
+                </div>
+              ) : (
+                <ContactsTable 
+                  contacts={recentContacts} 
+                  onRowClick={handleRowClick}
+                  isSelectable={true}
+                  selectedRows={selectedRows}
+                  onSelectRow={handleSelectRow}
+                  onSelectAll={handleSelectAll}
+                />
+              )}
             </TabsContent>
             <TabsContent value="active">
               <div className="flex items-center justify-center h-60 bg-white rounded-lg border border-gray-200">

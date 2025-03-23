@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { 
@@ -33,6 +34,7 @@ type ActionButtonsProps = {
   selectedContacts?: Contact[];
   onTagsAdded?: () => void;
   onContactsImported?: () => void;
+  compactMode?: boolean;
 };
 
 const ActionButtons: React.FC<ActionButtonsProps> = ({ 
@@ -43,7 +45,8 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
   onDeleteContacts,
   selectedContacts = [],
   onTagsAdded,
-  onContactsImported
+  onContactsImported,
+  compactMode = false
 }) => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showTagsDialog, setShowTagsDialog] = useState(false);
@@ -134,62 +137,62 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
 
   return (
     <>
-      <div className={`flex ${className}`}>
+      <div className={`flex transition-all duration-300 ease-in-out ${compactMode ? 'flex-shrink-0' : ''} ${className}`}>
         <Button 
-          className="gap-1 mr-2 bg-indigo-600 hover:bg-indigo-700"
+          className={`gap-1 mr-2 bg-indigo-600 hover:bg-indigo-700 transition-all duration-300 ${compactMode ? 'w-10 p-0' : ''}`}
           onClick={onAddContact}
         >
           <UserPlus size={16} />
-          Add Contact
+          {!compactMode && "Add Contact"}
         </Button>
         
         <Button 
           variant="outline" 
-          className="gap-1 mr-2 border-gray-300"
+          className={`gap-1 mr-2 border-gray-300 transition-all duration-300 ${compactMode ? 'w-10 p-0' : ''}`}
           onClick={handleSendMessageClick}
           disabled={selectedCount === 0}
         >
           <Send size={16} />
-          Send Message
+          {!compactMode && "Send Message"}
         </Button>
         
         <Button 
           variant="outline"
-          className="gap-1 mr-2 border-gray-300"
+          className={`gap-1 mr-2 border-gray-300 transition-all duration-300 ${compactMode ? 'w-10 p-0' : ''}`}
           onClick={() => setShowTagsDialog(true)}
           disabled={selectedCount === 0}
         >
           <Tag size={16} />
-          Add Tag
+          {!compactMode && "Add Tag"}
         </Button>
         
         <Button 
           variant="outline"
-          className="gap-1 mr-2 border-gray-300"
+          className={`gap-1 mr-2 border-gray-300 transition-all duration-300 ${compactMode ? 'w-10 p-0' : ''}`}
           onClick={() => setShowImportDialog(true)}
         >
           <Upload size={16} />
-          Import
+          {!compactMode && "Import"}
         </Button>
         
         <Button 
           variant="outline"
-          className="gap-1 mr-2 border-gray-300"
+          className={`gap-1 mr-2 border-gray-300 transition-all duration-300 ${compactMode ? 'w-10 p-0' : ''}`}
           onClick={handleExportCSV}
           disabled={selectedCount === 0}
         >
           <Download size={16} />
-          Export
+          {!compactMode && "Export"}
         </Button>
         
         <Button 
           variant="destructive"
-          className="gap-1"
+          className={`gap-1 transition-all duration-300 ${compactMode ? 'w-10 p-0' : ''}`}
           onClick={handleDeleteClick}
           disabled={selectedCount === 0}
         >
           <Trash2 size={16} />
-          Delete
+          {!compactMode && "Delete"}
         </Button>
       </div>
 
