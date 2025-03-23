@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, X, Pencil, Trash2 } from 'lucide-react';
@@ -32,6 +31,8 @@ type FilterDialogProps = {
   totalCount?: number;
 };
 
+const FILTERS_STORAGE_KEY = 'contacts-filters';
+
 const FilterDialog: React.FC<FilterDialogProps> = ({
   open,
   onOpenChange,
@@ -42,33 +43,56 @@ const FilterDialog: React.FC<FilterDialogProps> = ({
   const [currentView, setCurrentView] = useState<FilterType>('main');
   const [filters, setFilters] = useState<FilterState>(currentFilters || {});
 
+  useEffect(() => {
+    if (open) {
+      const savedFilters = sessionStorage.getItem(FILTERS_STORAGE_KEY);
+      if (savedFilters) {
+        try {
+          const parsedFilters = JSON.parse(savedFilters);
+          setFilters(parsedFilters);
+        } catch (e) {
+          console.error('Error parsing saved filters', e);
+        }
+      } else {
+        setFilters(currentFilters || {});
+      }
+    }
+  }, [open, currentFilters]);
+
   const handleBack = () => {
     setCurrentView('main');
   };
 
   const handleFilterUpdate = (key: keyof FilterState, value: FilterValue | undefined) => {
-    setFilters(prev => ({
-      ...prev,
-      [key]: value
-    }));
+    setFilters(prev => {
+      const newFilters = {
+        ...prev,
+        [key]: value
+      };
+      sessionStorage.setItem(FILTERS_STORAGE_KEY, JSON.stringify(newFilters));
+      return newFilters;
+    });
   };
 
   const handleRemoveFilter = (key: keyof FilterState) => {
     setFilters(prev => {
       const newFilters = { ...prev };
       delete newFilters[key];
+      sessionStorage.setItem(FILTERS_STORAGE_KEY, JSON.stringify(newFilters));
       return newFilters;
     });
   };
 
   const handleApplyFilters = () => {
     onApplyFilters(filters);
+    sessionStorage.setItem(FILTERS_STORAGE_KEY, JSON.stringify(filters));
     onOpenChange(false);
   };
 
   const handleResetFilters = () => {
     setFilters({});
     onApplyFilters({});
+    sessionStorage.removeItem(FILTERS_STORAGE_KEY);
     onOpenChange(false);
   };
 

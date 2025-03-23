@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -14,6 +15,14 @@ type EmailFilterProps = {
 const EmailFilter: React.FC<EmailFilterProps> = ({ value, onChange }) => {
   const [operator, setOperator] = useState<string>(value?.operator || 'is');
   const [emailValue, setEmailValue] = useState<string>((value?.value as string) || '');
+
+  // Update state when value prop changes
+  useEffect(() => {
+    if (value) {
+      setOperator(value.operator);
+      setEmailValue((value.value as string) || '');
+    }
+  }, [value]);
 
   const handleOperatorChange = (newOperator: string) => {
     setOperator(newOperator);

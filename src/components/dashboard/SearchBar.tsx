@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Search, Filter, X, FilterX, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -6,6 +5,9 @@ import { cn } from '@/lib/utils';
 import FilterDialog, { FilterState } from './Filters/FilterDialog';
 import { Badge } from '@/components/ui/badge';
 import { format, sub } from 'date-fns';
+
+const FILTERS_STORAGE_KEY = 'contacts-filters';
+const SEARCH_QUERY_STORAGE_KEY = 'contacts-search-query';
 
 type SearchBarProps = {
   onSearch: (query: string) => void;
@@ -30,14 +32,36 @@ const SearchBar: React.FC<SearchBarProps> = ({
   const [activeFilters, setActiveFilters] = useState<FilterState>({});
   const [filterCount, setFilterCount] = useState(0);
   
+  useEffect(() => {
+    const savedQuery = sessionStorage.getItem(SEARCH_QUERY_STORAGE_KEY);
+    if (savedQuery) {
+      setQuery(savedQuery);
+      onSearch(savedQuery);
+    }
+    
+    const savedFilters = sessionStorage.getItem(FILTERS_STORAGE_KEY);
+    if (savedFilters) {
+      try {
+        const parsedFilters = JSON.parse(savedFilters);
+        setActiveFilters(parsedFilters);
+        onFilterChange(parsedFilters);
+        updateFilterCount(parsedFilters);
+      } catch (e) {
+        console.error('Error parsing saved filters', e);
+      }
+    }
+  }, [onSearch, onFilterChange]);
+  
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     onSearch(query);
+    sessionStorage.setItem(SEARCH_QUERY_STORAGE_KEY, query);
   };
   
   const clearSearch = () => {
     setQuery('');
     onSearch('');
+    sessionStorage.removeItem(SEARCH_QUERY_STORAGE_KEY);
   };
   
   const applyFilters = (filters: FilterState) => {
@@ -50,6 +74,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
     setActiveFilters({});
     onFilterChange({});
     setFilterCount(0);
+    sessionStorage.removeItem(FILTERS_STORAGE_KEY);
   };
 
   const removeFilter = (key: keyof FilterState) => {
@@ -58,6 +83,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
     setActiveFilters(newFilters);
     onFilterChange(newFilters);
     updateFilterCount(newFilters);
+    sessionStorage.setItem(FILTERS_STORAGE_KEY, JSON.stringify(newFilters));
   };
 
   const updateFilterCount = (filters: FilterState) => {
