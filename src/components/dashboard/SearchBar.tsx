@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, X, FilterX } from 'lucide-react';
+import { Search, Filter, X, FilterX, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import FilterDialog, { FilterState } from './Filters/FilterDialog';
@@ -13,6 +13,7 @@ type SearchBarProps = {
   className?: string;
   isActive?: boolean;
   onActiveChange?: (isActive: boolean) => void;
+  totalCount?: number;
 };
 
 const SearchBar: React.FC<SearchBarProps> = ({ 
@@ -20,7 +21,8 @@ const SearchBar: React.FC<SearchBarProps> = ({
   onFilterChange,
   className,
   isActive = false,
-  onActiveChange = () => {}
+  onActiveChange = () => {},
+  totalCount = 0
 }) => {
   const [query, setQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
@@ -50,63 +52,71 @@ const SearchBar: React.FC<SearchBarProps> = ({
     setFilterCount(0);
   };
 
+  const removeFilter = (key: keyof FilterState) => {
+    const newFilters = { ...activeFilters };
+    delete newFilters[key];
+    setActiveFilters(newFilters);
+    onFilterChange(newFilters);
+    updateFilterCount(newFilters);
+  };
+
   const updateFilterCount = (filters: FilterState) => {
     const count = Object.keys(filters).filter(key => filters[key as keyof FilterState] !== undefined).length;
     setFilterCount(count);
   };
 
-  const getFilterSummary = (): string[] => {
-    const summary: string[] = [];
+  const getFilterSummary = (): Array<{key: keyof FilterState, label: string}> => {
+    const summary: Array<{key: keyof FilterState, label: string}> = [];
 
     if (activeFilters.phone) {
       const { operator, value } = activeFilters.phone;
       if (operator === 'is' && value) {
-        summary.push(`Phone: ${value}`);
+        summary.push({key: 'phone', label: `Phone: ${value}`});
       } else if (operator === 'isNot' && value) {
-        summary.push(`Phone is not ${value}`);
+        summary.push({key: 'phone', label: `Phone is not ${value}`});
       } else if (operator === 'isEmpty') {
-        summary.push('Phone is empty');
+        summary.push({key: 'phone', label: 'Phone is empty'});
       } else if (operator === 'isNotEmpty') {
-        summary.push('Phone is not empty');
+        summary.push({key: 'phone', label: 'Phone is not empty'});
       }
     }
 
     if (activeFilters.email) {
       const { operator, value } = activeFilters.email;
       if (operator === 'is' && value) {
-        summary.push(`Email: ${value}`);
+        summary.push({key: 'email', label: `Email: ${value}`});
       } else if (operator === 'isNot' && value) {
-        summary.push(`Email is not ${value}`);
+        summary.push({key: 'email', label: `Email is not ${value}`});
       } else if (operator === 'isEmpty') {
-        summary.push('Email is empty');
+        summary.push({key: 'email', label: 'Email is empty'});
       } else if (operator === 'isNotEmpty') {
-        summary.push('Email is not empty');
+        summary.push({key: 'email', label: 'Email is not empty'});
       }
     }
 
     if (activeFilters.tag) {
       const { operator, value } = activeFilters.tag;
       if (operator === 'is' && value) {
-        summary.push(`Tag: ${value}`);
+        summary.push({key: 'tag', label: `Tag: ${value}`});
       } else if (operator === 'isNot' && value) {
-        summary.push(`Tag is not ${value}`);
+        summary.push({key: 'tag', label: `Tag is not ${value}`});
       } else if (operator === 'isEmpty') {
-        summary.push('Tag is empty');
+        summary.push({key: 'tag', label: 'Tag is empty'});
       } else if (operator === 'isNotEmpty') {
-        summary.push('Tag is not empty');
+        summary.push({key: 'tag', label: 'Tag is not empty'});
       } else if (operator === 'anyOf' && value) {
-        summary.push(`Tag is any of ${value}`);
+        summary.push({key: 'tag', label: `Tag is any of ${value}`});
       }
     }
 
     if (activeFilters.created) {
       const { operator, value, unit } = activeFilters.created;
       if (operator === 'moreThan' && value !== null) {
-        summary.push(`Created more than ${value} ${unit} ago`);
+        summary.push({key: 'created', label: `Created more than ${value} ${unit} ago`});
       } else if (operator === 'lessThan' && value !== null) {
-        summary.push(`Created less than ${value} ${unit} ago`);
+        summary.push({key: 'created', label: `Created less than ${value} ${unit} ago`});
       } else if (operator === 'range') {
-        summary.push('Created in date range');
+        summary.push({key: 'created', label: 'Created in date range'});
       }
     }
 
@@ -135,7 +145,12 @@ const SearchBar: React.FC<SearchBarProps> = ({
             onChange={(e) => setQuery(e.target.value)}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setTimeout(() => setIsFocused(false), 200)}
-            className="block w-full pl-10 pr-12 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary text-sm"
+            className={cn(
+              "block w-full pl-10 pr-12 py-2 border rounded-md shadow-sm text-sm",
+              filterCount > 0 
+                ? "border-primary focus:ring-primary focus:border-primary"
+                : "border-gray-300 focus:ring-primary focus:border-primary"
+            )}
             placeholder="Search contacts..."
           />
           
@@ -176,9 +191,16 @@ const SearchBar: React.FC<SearchBarProps> = ({
         
         {filterCount > 0 && (
           <div className="mt-2 flex flex-wrap gap-2 items-center">
-            {getFilterSummary().map((summary, index) => (
-              <Badge key={index} variant="outline" className="bg-primary/5 text-xs py-1">
-                {summary}
+            {getFilterSummary().map((filter, index) => (
+              <Badge key={index} variant="outline" className="bg-primary/5 text-xs py-1 pl-3 pr-1 flex items-center gap-1">
+                <span>{filter.label}</span>
+                <button
+                  type="button"
+                  onClick={() => removeFilter(filter.key)}
+                  className="ml-1 rounded-full hover:bg-gray-200 p-0.5"
+                >
+                  <X size={12} className="text-gray-500" />
+                </button>
               </Badge>
             ))}
             <Button 
@@ -199,6 +221,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
         onOpenChange={setShowFilters}
         onApplyFilters={applyFilters}
         currentFilters={activeFilters}
+        totalCount={totalCount}
       />
     </div>
   );

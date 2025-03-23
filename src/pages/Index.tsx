@@ -585,7 +585,8 @@ const Index = () => {
               onSearch={handleSearch}
               onFilterChange={handleFilterChange}
               onActiveChange={(active) => setIsSearchActive(active)}
-              className="transition-all duration-300 ease-in-out" 
+              className="transition-all duration-300 ease-in-out"
+              totalCount={totalCount}
             />
             <div className="flex gap-2 transition-all duration-300 ease-in-out">
               <ActionButtons 

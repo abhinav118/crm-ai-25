@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, X } from 'lucide-react';
+import { ArrowLeft, X, Pencil, Trash2 } from 'lucide-react';
 import PhoneFilter from './PhoneFilter';
 import EmailFilter from './EmailFilter';
 import TagFilter from './TagFilter';
@@ -29,13 +29,15 @@ type FilterDialogProps = {
   onOpenChange: (open: boolean) => void;
   onApplyFilters: (filters: FilterState) => void;
   currentFilters: FilterState;
+  totalCount?: number;
 };
 
 const FilterDialog: React.FC<FilterDialogProps> = ({
   open,
   onOpenChange,
   onApplyFilters,
-  currentFilters
+  currentFilters,
+  totalCount = 0
 }) => {
   const [currentView, setCurrentView] = useState<FilterType>('main');
   const [filters, setFilters] = useState<FilterState>(currentFilters || {});
@@ -51,6 +53,14 @@ const FilterDialog: React.FC<FilterDialogProps> = ({
     }));
   };
 
+  const handleRemoveFilter = (key: keyof FilterState) => {
+    setFilters(prev => {
+      const newFilters = { ...prev };
+      delete newFilters[key];
+      return newFilters;
+    });
+  };
+
   const handleApplyFilters = () => {
     onApplyFilters(filters);
     onOpenChange(false);
@@ -60,6 +70,89 @@ const FilterDialog: React.FC<FilterDialogProps> = ({
     setFilters({});
     onApplyFilters({});
     onOpenChange(false);
+  };
+
+  const getFilterCount = () => {
+    return Object.keys(filters).filter(key => filters[key as keyof FilterState] !== undefined).length;
+  };
+
+  const getFilterLabel = (type: keyof FilterState): string => {
+    if (!filters[type]) return '';
+    
+    const { operator, value } = filters[type]!;
+    
+    switch (type) {
+      case 'email':
+        if (operator === 'is' && value) return `Email: Is ${value}`;
+        if (operator === 'isNot' && value) return `Email: Is not ${value}`;
+        if (operator === 'isEmpty') return 'Email: Is empty';
+        if (operator === 'isNotEmpty') return 'Email: Is not empty';
+        break;
+      case 'phone':
+        if (operator === 'is' && value) return `Phone: Is ${value}`;
+        if (operator === 'isNot' && value) return `Phone: Is not ${value}`;
+        if (operator === 'isEmpty') return 'Phone: Is empty';
+        if (operator === 'isNotEmpty') return 'Phone: Is not empty';
+        break;
+      case 'tag':
+        if (operator === 'is' && value) return `Tag: Is ${value}`;
+        if (operator === 'isNot' && value) return `Tag: Is not ${value}`;
+        if (operator === 'isEmpty') return 'Tag: Is empty';
+        if (operator === 'isNotEmpty') return 'Tag: Is not empty';
+        if (operator === 'anyOf' && value) return `Tag: Is any of ${value}`;
+        break;
+      case 'created':
+        if (operator === 'moreThan' && value !== null) {
+          const unit = filters[type]?.unit || '';
+          return `Created: More than ${value} ${unit} ago`;
+        }
+        if (operator === 'lessThan' && value !== null) {
+          const unit = filters[type]?.unit || '';
+          return `Created: Less than ${value} ${unit} ago`;
+        }
+        if (operator === 'range') return 'Created: In date range';
+        break;
+    }
+    
+    return '';
+  };
+
+  const renderAppliedFilters = () => {
+    const filterKeys = Object.keys(filters).filter(
+      key => filters[key as keyof FilterState] !== undefined
+    ) as Array<keyof FilterState>;
+    
+    if (filterKeys.length === 0) return null;
+    
+    return (
+      <div className="border-t py-4 space-y-3">
+        {filterKeys.map(key => (
+          <div key={key} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <div className="font-medium">{getFilterLabel(key)}</div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => {
+                  setCurrentView(key);
+                }}
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-destructive"
+                onClick={() => handleRemoveFilter(key)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
   };
 
   const renderContent = () => {
@@ -95,7 +188,13 @@ const FilterDialog: React.FC<FilterDialogProps> = ({
       default:
         return (
           <div className="space-y-6 py-6">
-            <div className="text-muted-foreground text-sm">Apply filters to contacts</div>
+            <div className="text-muted-foreground text-sm mb-2">
+              {getFilterCount() > 0 ? 
+                `Showing ${totalCount.toLocaleString()} records` : 
+                "Apply filters to contacts"}
+            </div>
+            
+            {renderAppliedFilters()}
             
             <div className="space-y-4">
               <FilterOption 
@@ -121,12 +220,14 @@ const FilterDialog: React.FC<FilterDialogProps> = ({
             </div>
             
             <div className="flex justify-end space-x-2 pt-4">
-              {(filters.phone || filters.email || filters.tag || filters.created) && (
+              {getFilterCount() > 0 && (
                 <Button 
                   variant="outline" 
                   onClick={handleResetFilters}
+                  className="gap-1.5"
                 >
-                  Reset
+                  <X className="h-4 w-4" />
+                  Clear all filters
                 </Button>
               )}
               <Button onClick={handleApplyFilters}>Apply Filters</Button>
