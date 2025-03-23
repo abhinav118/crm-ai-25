@@ -6,7 +6,7 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-// Added getInitials function to extract initials from a name
+// Function to extract initials from a name
 export function getInitials(name: string): string {
   if (!name) return '';
   
