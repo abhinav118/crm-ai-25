@@ -3,12 +3,12 @@ import React from 'react';
 import { LogEntry } from '../hooks/useBulkActionsData';
 
 const DescriptionCell = ({ log }: { log: LogEntry }) => {
-  // Make sure description exists with a fallback
-  const description = log.description || 'No description available';
+  // Check if log is undefined before accessing its properties
+  if (!log || !log.description) {
+    return <span className="text-muted-foreground text-sm">No description available</span>;
+  }
   
-  return (
-    <p className="text-sm text-gray-600">{description}</p>
-  );
+  return <span className="text-sm">{log.description}</span>;
 };
 
 export default DescriptionCell;

@@ -36,7 +36,22 @@ export const useBulkActionsData = () => {
         const formattedLogs = validLogs.length > 0 
           ? validLogs.map(log => {
               try {
-                return formatLogEntry(log);
+                // Ensure formatLogEntry returns a complete LogEntry
+                const formattedLog = formatLogEntry(log);
+                
+                // Validate that required fields exist, use fallbacks if they don't
+                return {
+                  id: formattedLog.id || String(Date.now()),
+                  description: formattedLog.description || 'No description available',
+                  date: formattedLog.date || new Date().toLocaleString(),
+                  action: formattedLog.action || 'unknown',
+                  contact: formattedLog.contact || {
+                    name: 'Unknown Contact',
+                    status: 'inactive',
+                    email: ''
+                  },
+                  timestamp: formattedLog.timestamp || new Date().toISOString()
+                };
               } catch (error) {
                 console.error('Error formatting log entry:', error, log);
                 // Return a default log entry with required fields

@@ -1,44 +1,36 @@
 
 import React from 'react';
 import { LogEntry } from '../hooks/useBulkActionsData';
-import Avatar from '@/components/dashboard/Avatar';
-
-// Type helper to validate status
-const validateStatus = (status: string | undefined): 'active' | 'inactive' | 'busy' | 'away' => {
-  const validStatuses = ['active', 'inactive', 'busy', 'away'];
-  if (status && validStatuses.includes(status)) {
-    return status as 'active' | 'inactive' | 'busy' | 'away';
-  }
-  return 'inactive'; // Default fallback
-};
+import { Avatar } from '@/components/ui/avatar';
+import { AvatarFallback } from '@/components/ui/avatar';
+import { getInitials } from '@/lib/utils';
 
 const ContactCell = ({ log }: { log: LogEntry }) => {
-  // Add defensive code to handle potentially undefined contact
+  // Check if log or log.contact is undefined
   if (!log || !log.contact) {
     return (
-      <div className="flex items-center space-x-2">
-        <Avatar name="Unknown" status="inactive" />
+      <div className="flex items-center gap-2">
+        <Avatar className="h-8 w-8 bg-gray-100">
+          <AvatarFallback className="text-xs">?</AvatarFallback>
+        </Avatar>
         <div>
-          <p className="text-sm font-medium">Unknown Contact</p>
-          <p className="text-xs text-gray-500">No data available</p>
+          <p className="text-sm font-medium">Unknown</p>
+          <p className="text-xs text-muted-foreground">No data</p>
         </div>
       </div>
     );
   }
-
-  const { contact } = log;
-  // Ensure status is one of the valid types accepted by Avatar
-  const validStatus = validateStatus(contact.status);
+  
+  const { name, status, email } = log.contact;
   
   return (
-    <div className="flex items-center space-x-2">
-      <Avatar 
-        name={contact.name || 'Unknown'} 
-        status={validStatus} 
-      />
+    <div className="flex items-center gap-2">
+      <Avatar className={`h-8 w-8 ${status === 'active' ? 'bg-green-100' : 'bg-gray-100'}`}>
+        <AvatarFallback className="text-xs">{getInitials(name)}</AvatarFallback>
+      </Avatar>
       <div>
-        <p className="text-sm font-medium">{contact.name || 'Unknown Contact'}</p>
-        <p className="text-xs text-gray-500">{contact.email || 'No email'}</p>
+        <p className="text-sm font-medium">{name}</p>
+        <p className="text-xs text-muted-foreground">{email || 'No email'}</p>
       </div>
     </div>
   );
