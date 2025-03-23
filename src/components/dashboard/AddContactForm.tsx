@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Form } from '@/components/ui/form';
@@ -15,11 +16,11 @@ import { logContactAction } from '@/utils/contactLogger';
 
 interface AddContactFormProps {
   open: boolean;
-  onClose: () => void;
+  onOpenChange: (open: boolean) => void;
   onSubmit: (data: ContactData) => Promise<void>;
 }
 
-const AddContactForm: React.FC<AddContactFormProps> = ({ open, onClose, onSubmit }) => {
+const AddContactForm: React.FC<AddContactFormProps> = ({ open, onOpenChange, onSubmit }) => {
   const {
     form,
     isLoading,
@@ -53,11 +54,11 @@ const AddContactForm: React.FC<AddContactFormProps> = ({ open, onClose, onSubmit
         throw error;
       }
     }, 
-    onClose 
+    onClose: () => onOpenChange(false)
   });
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add New Contact</DialogTitle>
@@ -94,7 +95,7 @@ const AddContactForm: React.FC<AddContactFormProps> = ({ open, onClose, onSubmit
             <DndPreferenceSection form={form} />
 
             {/* Form Actions */}
-            <FormActions isLoading={isLoading} onCancel={onClose} />
+            <FormActions isLoading={isLoading} onCancel={() => onOpenChange(false)} />
           </form>
         </Form>
       </DialogContent>
