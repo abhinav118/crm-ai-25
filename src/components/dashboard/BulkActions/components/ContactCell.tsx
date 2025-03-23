@@ -26,10 +26,10 @@ const ContactCell = ({ log }: { log: LogEntry }) => {
   return (
     <div className="flex items-center gap-2">
       <Avatar className={`h-8 w-8 ${status === 'active' ? 'bg-green-100' : 'bg-gray-100'}`}>
-        <AvatarFallback className="text-xs">{getInitials(name)}</AvatarFallback>
+        <AvatarFallback className="text-xs">{getInitials(name || '')}</AvatarFallback>
       </Avatar>
       <div>
-        <p className="text-sm font-medium">{name}</p>
+        <p className="text-sm font-medium">{name || 'Unknown'}</p>
         <p className="text-xs text-muted-foreground">{email || 'No email'}</p>
       </div>
     </div>
