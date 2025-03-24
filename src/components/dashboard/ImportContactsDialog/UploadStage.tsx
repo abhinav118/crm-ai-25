@@ -1,11 +1,12 @@
 import React, { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import Papa from 'papaparse';
-import { UploadCloud } from 'lucide-react';
+import { UploadCloud, FileDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CsvColumn } from './types';
+import { SAMPLE_CSV_CONTACTS } from '@/data/sampleContacts';
 
 interface UploadStageProps {
   onFileSelected: (file: File, columns: CsvColumn[], data: Record<string, string>[]) => void;
@@ -50,6 +51,23 @@ const UploadStage: React.FC<UploadStageProps> = ({ onFileSelected }) => {
       complete: (results) => {
         setUploadProgress(100);
         
+        console.log("Parse complete:", results);
+        console.log("Headers:", results.meta.fields);
+        console.log("Data sample:", results.data.slice(0, 3));
+        
+        // Verify we have data and fields
+        if (!results.meta.fields || results.meta.fields.length === 0) {
+          setError('No columns found in the CSV file. Please make sure your CSV has headers.');
+          setIsUploading(false);
+          return;
+        }
+        
+        if (!results.data || results.data.length === 0) {
+          setError('No data found in the CSV file. Please make sure your CSV contains data rows.');
+          setIsUploading(false);
+          return;
+        }
+        
         // Get the first few rows for better sample data
         const sampleRows = results.data.slice(0, Math.min(5, results.data.length));
         
@@ -82,6 +100,7 @@ const UploadStage: React.FC<UploadStageProps> = ({ onFileSelected }) => {
         setIsUploading(false);
       },
       error: (error) => {
+        console.error("CSV parsing error:", error);
         setError(`Error parsing CSV: ${error.message}`);
         setIsUploading(false);
       },
@@ -92,6 +111,27 @@ const UploadStage: React.FC<UploadStageProps> = ({ onFileSelected }) => {
         setUploadProgress(progress);
       },
     });
+  };
+
+  const downloadSampleCSV = () => {
+    // Define the sample headers and data
+    const headers = ['name', 'email', 'phone', 'company', 'status', 'tags'];
+    
+    // Convert to CSV
+    const csv = Papa.unparse({
+      fields: headers,
+      data: SAMPLE_CSV_CONTACTS
+    });
+    
+    // Create a download link
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'sample_contacts.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
@@ -135,10 +175,21 @@ const UploadStage: React.FC<UploadStageProps> = ({ onFileSelected }) => {
         </div>
       )}
       
-      <div className="text-sm text-muted-foreground">
-        <p>Supported format: CSV</p>
-        <p>Maximum file size: 10MB</p>
-        <p>Ensure your CSV file has headers that can be mapped to contact fields</p>
+      <div className="flex flex-col space-y-4">
+        <div className="text-sm text-muted-foreground">
+          <p>Supported format: CSV</p>
+          <p>Maximum file size: 10MB</p>
+          <p>Ensure your CSV file has headers that can be mapped to contact fields</p>
+        </div>
+        
+        <Button 
+          variant="outline" 
+          className="flex items-center gap-2 w-full sm:w-auto"
+          onClick={downloadSampleCSV}
+        >
+          <FileDown size={16} />
+          Download Sample CSV
+        </Button>
       </div>
     </div>
   );

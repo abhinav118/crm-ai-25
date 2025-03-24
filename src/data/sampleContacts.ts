@@ -1,4 +1,3 @@
-
 import { Contact } from '@/components/dashboard/ContactsTable';
 
 export const SAMPLE_CONTACTS: Contact[] = [
@@ -526,5 +525,49 @@ export const SAMPLE_CONTACTS: Contact[] = [
     lastActivity: '2023-05-16T15:15:00',
     tags: ['IT', 'Enterprise'],
     createdAt: '2023-01-27T14:30:00',
+  }
+];
+
+// Sample CSV format contacts for import example
+export const SAMPLE_CSV_CONTACTS = [
+  {
+    name: 'John Smith',
+    email: 'john@example.com',
+    phone: '(555) 123-4567',
+    company: 'Acme Inc',
+    status: 'active',
+    tags: 'customer,lead'
+  },
+  {
+    name: 'Jane Doe',
+    email: 'jane@example.com',
+    phone: '(555) 234-5678',
+    company: 'XYZ Corp',
+    status: 'inactive',
+    tags: 'prospect'
+  },
+  {
+    name: 'Alex Johnson',
+    email: 'alex@example.com',
+    phone: '(555) 345-6789',
+    company: 'ABC Solutions',
+    status: 'active',
+    tags: 'partner,customer'
+  },
+  {
+    name: 'Sarah Wilson',
+    email: 'sarah@example.com',
+    phone: '(555) 456-7890',
+    company: 'Tech Innovators',
+    status: 'active',
+    tags: 'customer,enterprise'
+  },
+  {
+    name: 'Michael Brown',
+    email: 'michael@example.com',
+    phone: '(555) 567-8901',
+    company: 'Global Services',
+    status: 'inactive',
+    tags: 'lead'
   }
 ];

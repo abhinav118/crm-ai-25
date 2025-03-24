@@ -29,6 +29,14 @@ const ImportDialogActions: React.FC<ImportDialogActionsProps> = ({
     }
     return 'Next';
   };
+  
+  // Determine if the next button should be disabled
+  const isNextDisabled = () => {
+    if (isImporting) return true;
+    if (stage === 'upload' && !hasFile) return true;
+    if (stage === 'map' && !hasSelectedColumns) return true;
+    return false;
+  };
 
   return (
     <div className="flex justify-between mt-4">
@@ -52,11 +60,7 @@ const ImportDialogActions: React.FC<ImportDialogActionsProps> = ({
       
       <Button
         onClick={onNext}
-        disabled={
-          (stage === 'upload' && !hasFile) ||
-          (stage === 'map' && !hasSelectedColumns) ||
-          isImporting
-        }
+        disabled={isNextDisabled()}
         isLoading={isImporting && stage === 'verify'}
       >
         {getButtonText()}
