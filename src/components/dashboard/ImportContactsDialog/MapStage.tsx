@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { CsvColumn } from './types';
 import { CheckCircle, HelpCircle, XCircle } from 'lucide-react';
@@ -55,33 +54,47 @@ const MapStage: React.FC<MapStageProps> = ({ columns, setColumns }) => {
   const handleSelectColumn = (index: number, selected: boolean) => {
     const updatedColumns = [...columns];
     updatedColumns[index].selected = selected;
+    
+    // If deselecting, also clear the mapping
+    if (!selected) {
+      updatedColumns[index].mappedTo = null;
+    }
+    
     setColumns(updatedColumns);
   };
 
   const handleMapColumn = (index: number, mappedTo: string | null) => {
     const updatedColumns = [...columns];
-    updatedColumns[index].mappedTo = mappedTo;
+    updatedColumns[index].mappedTo = mappedTo !== "" ? mappedTo : null;
     setColumns(updatedColumns);
   };
 
   const handleUpdateEmptyValues = (index: number, updateEmptyValues: boolean) => {
     const updatedColumns = [...columns];
-    if (!updatedColumns[index].updateEmptyValues) {
-      updatedColumns[index].updateEmptyValues = updateEmptyValues;
-    } else {
-      updatedColumns[index].updateEmptyValues = updateEmptyValues;
-    }
+    updatedColumns[index].updateEmptyValues = updateEmptyValues;
     setColumns(updatedColumns);
   };
 
   const autoMapColumns = () => {
-    const updatedColumns = columns.map(column => {
-      // Try multiple matching strategies
+    if (!columns || columns.length === 0) {
+      console.log("No columns to map");
+      return;
+    }
+    
+    console.log("Auto-mapping columns:", columns);
+    
+    const updatedColumns = [...columns].map(column => {
+      // Skip columns without headers
+      if (!column.header) {
+        return { ...column, selected: false, mappedTo: null };
+      }
+      
+      const headerLower = column.header.toLowerCase().trim();
       
       // 1. Direct match by lowercase field name
       const directMatch = contactFields.find(field => 
-        field.id.toLowerCase() === column.header.toLowerCase() ||
-        field.label.toLowerCase() === column.header.toLowerCase()
+        field.id.toLowerCase() === headerLower ||
+        field.label.toLowerCase() === headerLower
       );
       
       if (directMatch) {
@@ -93,24 +106,40 @@ const MapStage: React.FC<MapStageProps> = ({ columns, setColumns }) => {
       }
       
       // 2. Partial match (contains)
-      const partialMatches = contactFields.filter(field => 
-        column.header.toLowerCase().includes(field.id.toLowerCase()) ||
-        field.id.toLowerCase().includes(column.header.toLowerCase()) ||
-        column.header.toLowerCase().includes(field.label.toLowerCase()) ||
-        field.label.toLowerCase().includes(column.header.toLowerCase())
-      );
+      // Common field synonyms
+      const nameFields = ['name', 'full name', 'fullname', 'person', 'contact'];
+      const emailFields = ['email', 'e-mail', 'mail', 'email address'];
+      const phoneFields = ['phone', 'telephone', 'mobile', 'cell', 'contact number', 'tel', 'phone number'];
+      const companyFields = ['company', 'organization', 'business', 'employer', 'org', 'firm'];
+      const statusFields = ['status', 'state', 'active', 'inactive'];
+      const tagFields = ['tag', 'category', 'group', 'label'];
       
-      // If we have exactly one partial match, use it
-      if (partialMatches.length === 1) {
-        return {
-          ...column,
-          selected: true,
-          mappedTo: partialMatches[0].id
-        };
+      if (nameFields.some(term => headerLower.includes(term))) {
+        return { ...column, selected: true, mappedTo: 'name' };
       }
       
-      // 3. Special cases for common field names
-      if (column.header.toLowerCase().includes('first') && column.header.toLowerCase().includes('name')) {
+      if (emailFields.some(term => headerLower.includes(term))) {
+        return { ...column, selected: true, mappedTo: 'email' };
+      }
+      
+      if (phoneFields.some(term => headerLower.includes(term))) {
+        return { ...column, selected: true, mappedTo: 'phone' };
+      }
+      
+      if (companyFields.some(term => headerLower.includes(term))) {
+        return { ...column, selected: true, mappedTo: 'company' };
+      }
+      
+      if (statusFields.some(term => headerLower.includes(term))) {
+        return { ...column, selected: true, mappedTo: 'status' };
+      }
+      
+      if (tagFields.some(term => headerLower.includes(term))) {
+        return { ...column, selected: true, mappedTo: 'tags' };
+      }
+      
+      // 3. Special case for first name and last name
+      if (headerLower.includes('first') && headerLower.includes('name')) {
         return {
           ...column,
           selected: true,
@@ -118,9 +147,8 @@ const MapStage: React.FC<MapStageProps> = ({ columns, setColumns }) => {
         };
       }
       
-      if (column.header.toLowerCase().includes('last') && column.header.toLowerCase().includes('name')) {
+      if (headerLower.includes('last') && headerLower.includes('name')) {
         // For last name, we'll keep it selected but not mapped yet
-        // It could be combined with first name in a later step
         return {
           ...column,
           selected: true,
@@ -128,57 +156,15 @@ const MapStage: React.FC<MapStageProps> = ({ columns, setColumns }) => {
         };
       }
       
-      if (column.header.toLowerCase().includes('mobile') || 
-          column.header.toLowerCase().includes('cell') || 
-          column.header.toLowerCase().includes('tel')) {
-        return {
-          ...column,
-          selected: true,
-          mappedTo: 'phone'
-        };
-      }
-      
-      if (column.header.toLowerCase().includes('mail')) {
-        return {
-          ...column,
-          selected: true,
-          mappedTo: 'email'
-        };
-      }
-      
-      if (column.header.toLowerCase().includes('org') || 
-          column.header.toLowerCase().includes('business')) {
-        return {
-          ...column,
-          selected: true,
-          mappedTo: 'company'
-        };
-      }
-      
-      if (column.header.toLowerCase().includes('tag') || 
-          column.header.toLowerCase().includes('category') ||
-          column.header.toLowerCase().includes('group')) {
-        return {
-          ...column,
-          selected: true,
-          mappedTo: 'tags'
-        };
-      }
-      
-      if (column.header.toLowerCase().includes('state') || 
-          column.header.toLowerCase().includes('active') ||
-          column.header.toLowerCase().includes('status')) {
-        return {
-          ...column,
-          selected: true,
-          mappedTo: 'status'
-        };
-      }
-      
-      // If no match found, leave as is
-      return column;
+      // If no match found, still show the column but don't select it
+      return {
+        ...column,
+        selected: false,
+        mappedTo: null
+      };
     });
     
+    console.log("Updated columns after mapping:", updatedColumns);
     setColumns(updatedColumns);
     setAutoMapApplied(true);
     
@@ -198,9 +184,11 @@ const MapStage: React.FC<MapStageProps> = ({ columns, setColumns }) => {
       });
     }
     
+    const mappedCount = updatedColumns.filter(col => col.selected && col.mappedTo).length;
+    
     toast({
       title: "Auto-mapping applied",
-      description: `${updatedColumns.filter(col => col.selected && col.mappedTo).length} of ${updatedColumns.length} fields were automatically mapped.`,
+      description: `${mappedCount} of ${updatedColumns.length} fields were automatically mapped.`,
     });
   };
 
@@ -232,9 +220,8 @@ const MapStage: React.FC<MapStageProps> = ({ columns, setColumns }) => {
           type="button"
           className="text-sm text-primary hover:underline"
           onClick={autoMapColumns}
-          disabled={autoMapApplied}
         >
-          {autoMapApplied ? 'Auto-mapping applied' : 'Auto-map columns'}
+          {autoMapApplied ? 'Re-apply auto-mapping' : 'Auto-map columns'}
         </button>
       </div>
 
@@ -288,7 +275,7 @@ const MapStage: React.FC<MapStageProps> = ({ columns, setColumns }) => {
                 <TableCell>
                   <Select
                     value={column.mappedTo || ''}
-                    onValueChange={(value) => handleMapColumn(index, value || null)}
+                    onValueChange={(value) => handleMapColumn(index, value)}
                     disabled={!column.selected}
                   >
                     <SelectTrigger className="w-[180px]">

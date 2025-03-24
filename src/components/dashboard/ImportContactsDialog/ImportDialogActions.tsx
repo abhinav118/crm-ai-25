@@ -22,12 +22,21 @@ const ImportDialogActions: React.FC<ImportDialogActionsProps> = ({
   onNext,
   onClose,
 }) => {
+  // Set button text based on the current stage
+  const getButtonText = () => {
+    if (stage === 'verify') {
+      return isImporting ? 'Importing...' : 'Import Contacts';
+    }
+    return 'Next';
+  };
+
   return (
     <div className="flex justify-between mt-4">
       {stage !== 'upload' ? (
         <Button
           variant="outline"
           onClick={onPrevious}
+          disabled={isImporting}
         >
           Back
         </Button>
@@ -35,6 +44,7 @@ const ImportDialogActions: React.FC<ImportDialogActionsProps> = ({
         <Button
           variant="outline"
           onClick={onClose}
+          disabled={isImporting}
         >
           Cancel
         </Button>
@@ -47,8 +57,9 @@ const ImportDialogActions: React.FC<ImportDialogActionsProps> = ({
           (stage === 'map' && !hasSelectedColumns) ||
           isImporting
         }
+        isLoading={isImporting && stage === 'verify'}
       >
-        {stage === 'verify' ? (isImporting ? 'Importing...' : 'Import Contacts') : 'Next'}
+        {getButtonText()}
       </Button>
     </div>
   );

@@ -28,6 +28,16 @@ export function useImportContacts({ onImportSuccess }: { onImportSuccess?: () =>
     if (stage === 'upload') {
       setStage('map');
     } else if (stage === 'map') {
+      // Validate at least one column is mapped before proceeding
+      const hasMappedColumns = columns.some(col => col.selected && col.mappedTo);
+      if (!hasMappedColumns) {
+        toast({
+          title: "Mapping required",
+          description: "Please map at least one column to a contact field before proceeding.",
+          variant: "destructive"
+        });
+        return;
+      }
       setStage('verify');
     } else if (stage === 'verify') {
       importContacts();
@@ -43,6 +53,10 @@ export function useImportContacts({ onImportSuccess }: { onImportSuccess?: () =>
   };
 
   const handleFileSelected = (selectedFile: File, parsedColumns: CsvColumn[], parsedData: Record<string, string>[]) => {
+    console.log("File selected:", selectedFile.name);
+    console.log("Parsed columns:", parsedColumns);
+    console.log("Sample data:", parsedData.slice(0, 2));
+    
     setFile(selectedFile);
     setColumns(parsedColumns);
     setData(parsedData);
@@ -57,11 +71,23 @@ export function useImportContacts({ onImportSuccess }: { onImportSuccess?: () =>
       return map;
     }, {} as Record<string, string>);
 
+    console.log("Header to field map:", headerToFieldMap);
+    
+    // Special case for first name + last name combination
+    const firstNameHeader = columns.find(col => 
+      col.selected && col.header.toLowerCase().includes('first') && col.header.toLowerCase().includes('name')
+    )?.header;
+    
+    const lastNameHeader = columns.find(col => 
+      col.selected && col.header.toLowerCase().includes('last') && col.header.toLowerCase().includes('name')
+    )?.header;
+    
     // Transform the data according to the mapping
     return data.map(row => {
       const transformedRow: Record<string, any> = {
-        // Ensure name field has a default value if it's not mapped
-        name: 'Imported Contact'
+        // Default values
+        name: 'Imported Contact',
+        status: 'active',
       };
       
       // Apply mappings from CSV to database fields
@@ -69,9 +95,25 @@ export function useImportContacts({ onImportSuccess }: { onImportSuccess?: () =>
         const fieldName = headerToFieldMap[header];
         const value = row[header];
         
-        // Only add non-empty values
-        if (value !== undefined && value !== null && value !== '') {
+        // Special handling for combining first and last names
+        if (fieldName === 'name' && firstNameHeader && lastNameHeader) {
+          // If this is a first name column and we also have a last name column
+          if (header === firstNameHeader) {
+            const firstName = row[firstNameHeader] || '';
+            const lastName = row[lastNameHeader] || '';
+            
+            if (firstName || lastName) {
+              transformedRow.name = `${firstName} ${lastName}`.trim();
+            }
+          }
+        } else if (value !== undefined && value !== null && value !== '') {
+          // Normal field mapping for non-empty values
           transformedRow[fieldName] = value;
+        } else if (columns.find(c => c.header === header)?.updateEmptyValues) {
+          // Handle columns marked for empty value replacement
+          if (fieldName === 'name') transformedRow.name = 'Imported Contact';
+          else if (fieldName === 'status') transformedRow.status = 'active';
+          else if (fieldName === 'tags') transformedRow.tags = [];
         }
       });
       
@@ -80,6 +122,7 @@ export function useImportContacts({ onImportSuccess }: { onImportSuccess?: () =>
         transformedRow.name = 'Imported Contact';
       }
       
+      console.log("Transformed row:", transformedRow);
       return transformedRow;
     });
   };
@@ -99,6 +142,8 @@ export function useImportContacts({ onImportSuccess }: { onImportSuccess?: () =>
         });
         return;
       }
+
+      console.log(`Importing ${contactsToImport.length} contacts...`);
 
       // Check if phone number is being mapped
       const hasPhoneMapping = columns.some(col => col.selected && col.mappedTo === 'phone');
