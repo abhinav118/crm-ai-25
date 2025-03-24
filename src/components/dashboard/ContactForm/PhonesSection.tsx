@@ -20,6 +20,28 @@ const PhonesSection: React.FC<PhonesSectionProps> = ({
   onAddPhone,
   onRemovePhone
 }) => {
+  // Helper to format phone numbers as they're typed
+  const formatPhoneNumber = (value: string): string => {
+    // Remove all non-digit characters
+    const digits = value.replace(/\D/g, '');
+    
+    // Apply formatting based on number of digits
+    if (digits.length <= 3) {
+      return digits;
+    } else if (digits.length <= 6) {
+      return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+    } else if (digits.length <= 10) {
+      return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
+    } else {
+      return `+${digits.slice(0, 1)} (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7, 11)}`;
+    }
+  };
+
+  const handlePhoneInputChange = (index: number, value: string) => {
+    // Format the phone number as it's being typed
+    onPhoneChange(index, 'number', value);
+  };
+
   return (
     <div className="space-y-2">
       <Label>Phone Numbers</Label>
@@ -41,7 +63,7 @@ const PhonesSection: React.FC<PhonesSectionProps> = ({
           <Input
             placeholder="Phone number"
             value={phone.number}
-            onChange={(e) => onPhoneChange(index, 'number', e.target.value)}
+            onChange={(e) => handlePhoneInputChange(index, e.target.value)}
             className="flex-1"
           />
           {phones.length > 1 && (

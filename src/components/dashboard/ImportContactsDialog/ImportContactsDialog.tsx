@@ -125,33 +125,126 @@ const ImportContactsDialog: React.FC<ImportContactsDialogProps> = ({
         });
         return;
       }
+
+      // Check if phone number is being mapped
+      const hasPhoneMapping = columns.some(col => col.selected && col.mappedTo === 'phone');
       
-      // Type the contacts properly for the database insert
-      const typedContacts = contactsToImport.map(contact => {
-        return {
-          name: contact.name || 'Imported Contact', // Ensure name is always set
-          email: contact.email as string | null,
-          phone: contact.phone as string | null,
-          company: contact.company as string | null,
-          status: contact.status as string | null,
-          tags: contact.tags as string[] | null,
-          // We don't set created_at and updated_at as Supabase will use the defaults
-        };
-      });
-      
-      // Insert contacts into the database
-      const { error } = await supabase
-        .from('contacts')
-        .insert(typedContacts);
-      
-      if (error) {
-        throw error;
+      if (!hasPhoneMapping) {
+        // Regular import without update logic (original behavior)
+        const typedContacts = contactsToImport.map(contact => {
+          return {
+            name: contact.name || 'Imported Contact',
+            email: contact.email as string | null,
+            phone: contact.phone as string | null,
+            company: contact.company as string | null,
+            status: contact.status as string | null,
+            tags: contact.tags as string[] | null,
+            updated_at: new Date().toISOString()
+          };
+        });
+        
+        const { error } = await supabase
+          .from('contacts')
+          .insert(typedContacts);
+        
+        if (error) throw error;
+        
+        toast({
+          title: "Import successful",
+          description: `Successfully imported ${contactsToImport.length} contacts`,
+        });
+      } else {
+        // Import with update logic based on phone numbers
+        let created = 0;
+        let updated = 0;
+        const timestamp = new Date().toISOString();
+        
+        // Process each contact
+        for (const contact of contactsToImport) {
+          // Skip entries without phone numbers
+          if (!contact.phone) {
+            continue;
+          }
+          
+          // Standardize phone format to improve matching (optional)
+          const phoneNumber = contact.phone.replace(/\D/g, ''); // Remove non-digits
+          
+          if (phoneNumber.length < 5) {
+            // Skip invalid phone numbers
+            continue;
+          }
+          
+          // Check if contact with this phone number already exists
+          const { data: existingContacts, error: fetchError } = await supabase
+            .from('contacts')
+            .select('id, phone')
+            .ilike('phone', `%${phoneNumber}%`) // Use ilike for fuzzy matching
+            .limit(1);
+          
+          if (fetchError) {
+            console.error('Error checking for existing contact:', fetchError);
+            continue;
+          }
+          
+          if (existingContacts && existingContacts.length > 0) {
+            // Contact exists - update it
+            const contactId = existingContacts[0].id;
+            
+            // Prepare update data
+            const updateData: Record<string, any> = {
+              updated_at: timestamp
+            };
+            
+            // Only update non-empty fields
+            Object.entries(contact).forEach(([key, value]) => {
+              if (value !== null && value !== undefined && value !== '') {
+                updateData[key] = value;
+              }
+            });
+            
+            // Execute update
+            const { error: updateError } = await supabase
+              .from('contacts')
+              .update(updateData)
+              .eq('id', contactId);
+            
+            if (updateError) {
+              console.error('Error updating contact:', updateError);
+              continue;
+            }
+            
+            updated++;
+          } else {
+            // Contact doesn't exist - create it
+            const newContact = {
+              name: contact.name || 'Imported Contact',
+              email: contact.email as string | null,
+              phone: contact.phone as string | null,
+              company: contact.company as string | null,
+              status: contact.status as string | null || 'active',
+              tags: contact.tags as string[] | null || [],
+              created_at: timestamp,
+              updated_at: timestamp
+            };
+            
+            const { error: insertError } = await supabase
+              .from('contacts')
+              .insert(newContact);
+            
+            if (insertError) {
+              console.error('Error creating contact:', insertError);
+              continue;
+            }
+            
+            created++;
+          }
+        }
+        
+        toast({
+          title: "Import successful",
+          description: `Created ${created} new contacts and updated ${updated} existing contacts`,
+        });
       }
-      
-      toast({
-        title: "Import successful",
-        description: `Successfully imported ${contactsToImport.length} contacts`,
-      });
       
       // Call success callback if provided
       if (onImportSuccess) {
