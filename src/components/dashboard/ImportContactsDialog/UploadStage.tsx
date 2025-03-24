@@ -1,4 +1,3 @@
-
 import React, { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import Papa from 'papaparse';
@@ -6,7 +5,7 @@ import { UploadCloud } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { CsvColumn } from './ImportContactsDialog';
+import { CsvColumn } from './types';
 
 interface UploadStageProps {
   onFileSelected: (file: File, columns: CsvColumn[], data: Record<string, string>[]) => void;

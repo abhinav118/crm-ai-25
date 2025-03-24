@@ -1,7 +1,6 @@
-
 import React from 'react';
 import { CheckCircle, CircleIcon, UploadIcon, MapIcon, CheckIcon } from 'lucide-react';
-import { ImportStage } from './ImportContactsDialog';
+import { ImportStage } from './types';
 
 interface ImportBreadcrumbsProps {
   currentStage: ImportStage;

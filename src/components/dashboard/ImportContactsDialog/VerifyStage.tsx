@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { CsvColumn } from './ImportContactsDialog';
+import { CsvColumn } from './types';
 import {
   Table,
   TableBody,

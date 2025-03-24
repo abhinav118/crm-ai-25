@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { CsvColumn } from './ImportContactsDialog';
+import { CsvColumn } from './types';
 import { CheckCircle, HelpCircle, XCircle } from 'lucide-react';
 import {
   Table,
