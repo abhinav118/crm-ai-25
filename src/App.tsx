@@ -8,6 +8,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
+import Analytics from "./pages/Analytics";
 
 // Configure QueryClient with better error handling
 const queryClient = new QueryClient({
@@ -52,7 +53,7 @@ const App = () => {
             <Route path="/contacts" element={<Index />} />
             <Route path="/conversations" element={<Index />} />
             <Route path="/calendar" element={<Index />} />
-            <Route path="/analytics" element={<Index />} />
+            <Route path="/analytics" element={<Analytics />} />
             <Route path="/payments" element={<Index />} />
             <Route path="/settings" element={<Index />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
