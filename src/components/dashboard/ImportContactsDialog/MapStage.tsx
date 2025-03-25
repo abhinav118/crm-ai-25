@@ -25,6 +25,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { toast } from "@/components/ui/use-toast";
+import { Label } from '@/components/ui/label';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface MapStageProps {
   columns: CsvColumn[];
@@ -213,76 +215,78 @@ const MapStage: React.FC<MapStageProps> = ({ columns, setColumns }) => {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h3 className="text-lg font-medium">Map CSV Columns to Contact Fields</h3>
-        <button
-          type="button"
-          className="text-sm text-primary hover:underline"
-          onClick={autoMapColumns}
-        >
-          {autoMapApplied ? 'Re-apply auto-mapping' : 'Auto-map columns'}
-        </button>
-      </div>
-
-      <div className="bg-muted/40 p-3 rounded-md flex items-center space-x-4">
-        <span className="text-sm text-muted-foreground">
-          <strong>{countMappedColumns()}</strong> of <strong>{countTotalColumns()}</strong> columns mapped
-        </span>
-        <div className="flex items-center space-x-2">
-          <span className="flex items-center text-xs text-green-600">
-            <CheckCircle size={14} className="mr-1" /> Mapped
-          </span>
-          <span className="flex items-center text-xs text-amber-600">
-            <HelpCircle size={14} className="mr-1" /> Unmapped
-          </span>
-          <span className="flex items-center text-xs text-muted-foreground">
-            <XCircle size={14} className="mr-1" /> Skipped
-          </span>
-        </div>
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-medium">Map Columns to Contact Fields</h3>
+        <p className="text-sm text-muted-foreground mb-4">
+          Select which CSV columns to import and map them to contact fields.
+        </p>
       </div>
       
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-12">Import</TableHead>
-            <TableHead>CSV Column</TableHead>
-            <TableHead>Map To</TableHead>
-            <TableHead>Sample Data</TableHead>
-            <TableHead className="w-32">Empty Values</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {columns.map((column, index) => {
-            const status = getColumnStatus(column);
-            
-            return (
-              <TableRow key={index}>
-                <TableCell>
-                  <Checkbox
+      <ScrollArea className="h-[400px] pr-4">
+        <div className="space-y-6">
+          {columns.map((column, index) => (
+            <div key={index} className="border rounded-md p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id={`column-${index}`}
                     checked={column.selected}
-                    onCheckedChange={(checked) => handleSelectColumn(index, !!checked)}
+                    onCheckedChange={(checked) => handleSelectColumn(index, checked === true)}
                   />
-                </TableCell>
-                <TableCell className="font-medium">
-                  <div className="flex items-center">
-                    {status === 'mapped' && <CheckCircle size={14} className="mr-2 text-green-600" />}
-                    {status === 'unmapped' && <HelpCircle size={14} className="mr-2 text-amber-600" />}
-                    {status === 'skipped' && <XCircle size={14} className="mr-2 text-muted-foreground" />}
+                  <Label 
+                    htmlFor={`column-${index}`}
+                    className="font-medium"
+                  >
                     {column.header}
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Label htmlFor={`update-empty-${index}`} className="text-xs text-muted-foreground">
+                    Update empty values
+                  </Label>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <HelpCircle size={14} className="text-muted-foreground" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="text-xs max-w-[200px]">
+                          If enabled, this will update empty values in your contacts with default values.
+                          For example, empty names will be set to "Imported Contact".
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <Switch 
+                    id={`update-empty-${index}`}
+                    checked={column.updateEmptyValues || false}
+                    onCheckedChange={(checked) => handleUpdateEmptyValues(index, checked)}
+                    disabled={!column.selected}
+                  />
+                </div>
+              </div>
+              
+              <div className="pl-6 space-y-2">
+                {column.sample && (
+                  <div>
+                    <span className="text-xs text-muted-foreground">Sample: </span>
+                    <span className="text-xs">{column.sample}</span>
                   </div>
-                </TableCell>
-                <TableCell>
+                )}
+                
+                <div className="max-w-md">
                   <Select
-                    value={column.mappedTo || ''}
+                    value={column.mappedTo || undefined}
                     onValueChange={(value) => handleMapColumn(index, value)}
                     disabled={!column.selected}
                   >
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder="Select field" />
+                    <SelectTrigger>
+                      <SelectValue placeholder="Map to field..." />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">-- Don't Map --</SelectItem>
+                      {/* Add a dummy non-empty value to avoid the Radix UI error */}
+                      <SelectItem value="_none_">-- Don't Map --</SelectItem>
                       {contactFields.map(field => (
                         <SelectItem key={field.id} value={field.id}>
                           {field.label} {field.required && '*'}
@@ -290,34 +294,12 @@ const MapStage: React.FC<MapStageProps> = ({ columns, setColumns }) => {
                       ))}
                     </SelectContent>
                   </Select>
-                </TableCell>
-                <TableCell className="text-muted-foreground text-sm truncate max-w-[200px]">
-                  {column.sample || '-'}
-                </TableCell>
-                <TableCell>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div className="flex items-center space-x-2">
-                          <Switch
-                            checked={column.updateEmptyValues || false}
-                            onCheckedChange={(checked) => handleUpdateEmptyValues(index, checked)}
-                            disabled={!column.selected || !column.mappedTo}
-                          />
-                          <span className="text-sm">Replace</span>
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Replace empty values with defaults</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </ScrollArea>
     </div>
   );
 };

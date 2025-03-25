@@ -1,7 +1,7 @@
-
 import React from 'react';
-import { Button } from "@/components/ui/button";
+import { Button } from '@/components/ui/button';
 import { ImportStage } from './types';
+import { Loader2 } from 'lucide-react';
 
 interface ImportDialogActionsProps {
   stage: ImportStage;
@@ -22,49 +22,76 @@ const ImportDialogActions: React.FC<ImportDialogActionsProps> = ({
   onNext,
   onClose,
 }) => {
-  // Set button text based on the current stage
-  const getButtonText = () => {
-    if (stage === 'verify') {
-      return isImporting ? 'Importing...' : 'Import Contacts';
+  const getNextButtonText = () => {
+    switch (stage) {
+      case 'upload':
+        return 'Map Fields';
+      case 'map':
+        return 'Verify Data';
+      case 'verify':
+        return isImporting ? 'Importing...' : 'Import Contacts';
+      default:
+        return 'Next';
     }
-    return 'Next';
   };
   
-  // Determine if the next button should be disabled
-  const isNextDisabled = () => {
+  const getNextButtonDisabled = () => {
     if (isImporting) return true;
-    if (stage === 'upload' && !hasFile) return true;
-    if (stage === 'map' && !hasSelectedColumns) return true;
-    return false;
+    
+    switch (stage) {
+      case 'upload':
+        return !hasFile;
+      case 'map':
+        return !hasSelectedColumns;
+      default:
+        return false;
+    }
   };
-
+  
   return (
-    <div className="flex justify-between mt-4">
-      {stage !== 'upload' ? (
-        <Button
-          variant="outline"
-          onClick={onPrevious}
-          disabled={isImporting}
-        >
-          Back
-        </Button>
-      ) : (
-        <Button
-          variant="outline"
-          onClick={onClose}
-          disabled={isImporting}
-        >
-          Cancel
-        </Button>
-      )}
+    <div className="flex justify-between mt-6">
+      <div>
+        {stage !== 'upload' && !isImporting && (
+          <Button 
+            variant="outline" 
+            onClick={onPrevious}
+          >
+            Back
+          </Button>
+        )}
+      </div>
       
-      <Button
-        onClick={onNext}
-        disabled={isNextDisabled()}
-        isLoading={isImporting && stage === 'verify'}
-      >
-        {getButtonText()}
-      </Button>
+      <div className="flex space-x-2">
+        {stage !== 'import' && !isImporting && (
+          <Button 
+            variant="outline" 
+            onClick={onClose}
+          >
+            Cancel
+          </Button>
+        )}
+        
+        {stage === 'verify' && isImporting ? (
+          <Button disabled className="min-w-[150px]">
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            {getNextButtonText()}
+          </Button>
+        ) : stage !== 'import' ? (
+          <Button 
+            onClick={onNext}
+            disabled={getNextButtonDisabled()}
+            className="min-w-[150px]"
+          >
+            {getNextButtonText()}
+          </Button>
+        ) : (
+          <Button 
+            onClick={onClose}
+          >
+            Close
+          </Button>
+        )}
+      </div>
     </div>
   );
 };

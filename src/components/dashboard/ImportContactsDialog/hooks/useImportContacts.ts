@@ -1,15 +1,25 @@
-
 import { useState } from 'react';
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { CsvColumn, ImportStage } from '../types';
 
-export function useImportContacts({ onImportSuccess }: { onImportSuccess?: () => void }) {
+interface UseImportContactsProps {
+  onImportSuccess?: () => void;
+}
+
+export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) => {
   const [stage, setStage] = useState<ImportStage>('upload');
   const [file, setFile] = useState<File | null>(null);
   const [columns, setColumns] = useState<CsvColumn[]>([]);
   const [data, setData] = useState<Record<string, string>[]>([]);
   const [isImporting, setIsImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState(0);
+  const [importStats, setImportStats] = useState({
+    total: 0,
+    created: 0,
+    updated: 0,
+    errors: 0,
+  });
 
   const resetState = () => {
     setStage('upload');
@@ -17,30 +27,53 @@ export function useImportContacts({ onImportSuccess }: { onImportSuccess?: () =>
     setColumns([]);
     setData([]);
     setIsImporting(false);
+    setImportProgress(0);
+    setImportStats({
+      total: 0,
+      created: 0,
+      updated: 0,
+      errors: 0,
+    });
   };
 
   const handleClose = (onOpenChange: (open: boolean) => void) => {
+    if (isImporting) {
+      toast({
+        title: 'Import in progress',
+        description: 'Please wait for the import to complete before closing.',
+      });
+      return;
+    }
+    
     resetState();
     onOpenChange(false);
   };
 
-  const goToNextStage = () => {
+  const goToNextStage = async () => {
     if (stage === 'upload') {
+      if (!file) {
+        toast({
+          title: 'No file selected',
+          description: 'Please select a CSV file to import.',
+          variant: 'destructive',
+        });
+        return;
+      }
       setStage('map');
     } else if (stage === 'map') {
-      // Validate at least one column is mapped before proceeding
-      const hasMappedColumns = columns.some(col => col.selected && col.mappedTo);
-      if (!hasMappedColumns) {
+      // Validate that at least one column is mapped
+      const mappedColumns = columns.filter(col => col.selected && col.mappedTo);
+      if (mappedColumns.length === 0) {
         toast({
-          title: "Mapping required",
-          description: "Please map at least one column to a contact field before proceeding.",
-          variant: "destructive"
+          title: 'No columns mapped',
+          description: 'Please map at least one column to a contact field.',
+          variant: 'destructive',
         });
         return;
       }
       setStage('verify');
     } else if (stage === 'verify') {
-      importContacts();
+      await importContacts();
     }
   };
 
@@ -60,6 +93,7 @@ export function useImportContacts({ onImportSuccess }: { onImportSuccess?: () =>
     setFile(selectedFile);
     setColumns(parsedColumns);
     setData(parsedData);
+    setStage('map');
   };
 
   const prepareDataForImport = () => {
@@ -128,157 +162,209 @@ export function useImportContacts({ onImportSuccess }: { onImportSuccess?: () =>
   };
 
   const importContacts = async () => {
+    setIsImporting(true);
+    setImportProgress(0);
+    
+    // Reset import stats
+    const stats = {
+      total: 0,
+      created: 0,
+      updated: 0,
+      errors: 0,
+    };
+    
     try {
-      setIsImporting(true);
+      // Get selected and mapped columns
+      const selectedColumns = columns.filter(col => col.selected && col.mappedTo);
       
-      // Prepare data for import
-      const contactsToImport = prepareDataForImport();
+      // Check if we have any key fields to match existing contacts
+      const emailColumn = selectedColumns.find(col => col.mappedTo === 'email');
+      const phoneColumn = selectedColumns.find(col => col.mappedTo === 'phone');
       
-      if (contactsToImport.length === 0) {
-        toast({
-          title: "No data to import",
-          description: "Please select at least one column to import",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      console.log(`Importing ${contactsToImport.length} contacts...`);
-
-      // Check if phone number is being mapped
-      const hasPhoneMapping = columns.some(col => col.selected && col.mappedTo === 'phone');
+      // Find existing contacts by email or phone to update instead of create
+      let existingContacts: Record<string, any> = {};
       
-      if (!hasPhoneMapping) {
-        // Regular import without update logic (original behavior)
-        const typedContacts = contactsToImport.map(contact => {
-          return {
-            name: contact.name || 'Imported Contact',
-            email: contact.email as string | null,
-            phone: contact.phone as string | null,
-            company: contact.company as string | null,
-            status: contact.status as string | null,
-            tags: contact.tags as string[] | null,
-            updated_at: new Date().toISOString()
-          };
-        });
+      if (emailColumn || phoneColumn) {
+        // Collect all unique email/phone values
+        const emailValues = emailColumn 
+          ? data
+              .map(row => row[emailColumn.header])
+              .filter(Boolean)
+              .map(val => val.trim())
+          : [];
         
-        const { error } = await supabase
-          .from('contacts')
-          .insert(typedContacts);
+        const phoneValues = phoneColumn
+          ? data
+              .map(row => row[phoneColumn.header])
+              .filter(Boolean)
+              .map(val => val.trim())
+          : [];
         
-        if (error) throw error;
-        
-        toast({
-          title: "Import successful",
-          description: `Successfully imported ${contactsToImport.length} contacts`,
-        });
-      } else {
-        // Import with update logic based on phone numbers
-        let created = 0;
-        let updated = 0;
-        const timestamp = new Date().toISOString();
-        
-        // Process each contact
-        for (const contact of contactsToImport) {
-          // Skip entries without phone numbers
-          if (!contact.phone) {
-            continue;
-          }
-          
-          // Standardize phone format to improve matching (optional)
-          const phoneNumber = contact.phone.replace(/\D/g, ''); // Remove non-digits
-          
-          if (phoneNumber.length < 5) {
-            // Skip invalid phone numbers
-            continue;
-          }
-          
-          // Check if contact with this phone number already exists
-          const { data: existingContacts, error: fetchError } = await supabase
+        // Fetch existing contacts by email or phone
+        if (emailValues.length > 0) {
+          const { data: emailContacts } = await supabase
             .from('contacts')
-            .select('id, phone')
-            .ilike('phone', `%${phoneNumber}%`) // Use ilike for fuzzy matching
-            .limit(1);
+            .select('id, email')
+            .in('email', emailValues);
           
-          if (fetchError) {
-            console.error('Error checking for existing contact:', fetchError);
-            continue;
-          }
-          
-          if (existingContacts && existingContacts.length > 0) {
-            // Contact exists - update it
-            const contactId = existingContacts[0].id;
-            
-            // Prepare update data
-            const updateData: Record<string, any> = {
-              updated_at: timestamp
-            };
-            
-            // Only update non-empty fields
-            Object.entries(contact).forEach(([key, value]) => {
-              if (value !== null && value !== undefined && value !== '') {
-                updateData[key] = value;
+          if (emailContacts) {
+            emailContacts.forEach(contact => {
+              if (contact.email) {
+                existingContacts[contact.email.toLowerCase()] = contact;
               }
             });
-            
-            // Execute update
-            const { error: updateError } = await supabase
-              .from('contacts')
-              .update(updateData)
-              .eq('id', contactId);
-            
-            if (updateError) {
-              console.error('Error updating contact:', updateError);
-              continue;
-            }
-            
-            updated++;
-          } else {
-            // Contact doesn't exist - create it
-            const newContact = {
-              name: contact.name || 'Imported Contact',
-              email: contact.email as string | null,
-              phone: contact.phone as string | null,
-              company: contact.company as string | null,
-              status: contact.status as string | null || 'active',
-              tags: contact.tags as string[] | null || [],
-              created_at: timestamp,
-              updated_at: timestamp
-            };
-            
-            const { error: insertError } = await supabase
-              .from('contacts')
-              .insert(newContact);
-            
-            if (insertError) {
-              console.error('Error creating contact:', insertError);
-              continue;
-            }
-            
-            created++;
           }
         }
         
-        toast({
-          title: "Import successful",
-          description: `Created ${created} new contacts and updated ${updated} existing contacts`,
-        });
+        if (phoneValues.length > 0) {
+          const { data: phoneContacts } = await supabase
+            .from('contacts')
+            .select('id, phone')
+            .in('phone', phoneValues);
+          
+          if (phoneContacts) {
+            phoneContacts.forEach(contact => {
+              if (contact.phone) {
+                existingContacts[contact.phone] = contact;
+              }
+            });
+          }
+        }
       }
       
-      // Call success callback if provided
+      // Process contacts in batches
+      const batchSize = 10;
+      const totalRows = data.length;
+      stats.total = totalRows;
+      
+      for (let i = 0; i < totalRows; i += batchSize) {
+        const batch = data.slice(i, i + batchSize);
+        const createBatch = [];
+        const updateBatch = [];
+        
+        // Process each row in the batch
+        for (const row of batch) {
+          // Create a contact object
+          const contact: Record<string, any> = {
+            status: 'active', // Default status
+          };
+          
+          // Apply mapped values
+          for (const column of selectedColumns) {
+            if (!column.mappedTo) continue;
+            
+            const value = row[column.header]?.trim() || null;
+            
+            // Skip empty values
+            if (value === null) continue;
+            
+            // Special case for tags
+            if (column.mappedTo === 'tags' && value) {
+              // Split tags by comma, handling quoted values
+              try {
+                // First try to parse as a comma-separated list
+                contact.tags = value.split(',').map(tag => tag.trim()).filter(Boolean);
+              } catch (e) {
+                // If that fails, just use the value as is
+                contact.tags = [value];
+              }
+              continue;
+            }
+            
+            // Normal fields
+            contact[column.mappedTo] = value;
+          }
+          
+          // Check if this is a new contact or an update
+          let isUpdate = false;
+          let existingId = null;
+          
+          // Check by email
+          if (emailColumn && row[emailColumn.header]) {
+            const email = row[emailColumn.header].trim().toLowerCase();
+            if (existingContacts[email]) {
+              isUpdate = true;
+              existingId = existingContacts[email].id;
+            }
+          }
+          
+          // Check by phone if not already identified as an update
+          if (!isUpdate && phoneColumn && row[phoneColumn.header]) {
+            const phone = row[phoneColumn.header].trim();
+            if (existingContacts[phone]) {
+              isUpdate = true;
+              existingId = existingContacts[phone].id;
+            }
+          }
+          
+          // Add to appropriate batch
+          if (isUpdate && existingId) {
+            updateBatch.push({
+              id: existingId,
+              ...contact,
+            });
+          } else {
+            createBatch.push(contact);
+          }
+        }
+        
+        // Process creates
+        if (createBatch.length > 0) {
+          const { data: created, error } = await supabase
+            .from('contacts')
+            .insert(createBatch)
+            .select();
+          
+          if (error) {
+            console.error('Error creating contacts:', error);
+            stats.errors += createBatch.length;
+          } else {
+            stats.created += created?.length || 0;
+          }
+        }
+        
+        // Process updates
+        if (updateBatch.length > 0) {
+          for (const contact of updateBatch) {
+            const { id, ...updateData } = contact;
+            const { error } = await supabase
+              .from('contacts')
+              .update(updateData)
+              .eq('id', id);
+            
+            if (error) {
+              console.error(`Error updating contact ${id}:`, error);
+              stats.errors++;
+            } else {
+              stats.updated++;
+            }
+          }
+        }
+        
+        // Update progress
+        const progress = Math.min(100, Math.round(((i + batch.length) / totalRows) * 100));
+        setImportProgress(progress);
+      }
+      
+      // Import complete
+      setImportStats(stats);
+      
+      // Show success message
+      toast({
+        title: 'Import Complete',
+        description: `Successfully imported ${stats.total - stats.errors} contacts (${stats.created} created, ${stats.updated} updated).`,
+      });
+      
+      // Call success callback
       if (onImportSuccess) {
         onImportSuccess();
       }
-      
-      // Reset state
-      resetState();
-      
-    } catch (error: any) {
-      console.error('Error importing contacts:', error);
+    } catch (error) {
+      console.error('Import error:', error);
       toast({
-        title: "Import failed",
-        description: error.message || "An error occurred while importing contacts",
-        variant: "destructive"
+        title: 'Import Failed',
+        description: 'An error occurred during the import process. Please try again.',
+        variant: 'destructive',
       });
     } finally {
       setIsImporting(false);
@@ -287,15 +373,17 @@ export function useImportContacts({ onImportSuccess }: { onImportSuccess?: () =>
 
   return {
     stage,
+    setStage,
     file,
     columns,
+    setColumns,
     data,
     isImporting,
-    setColumns,
-    handleClose,
+    importProgress,
+    importStats,
+    handleFileSelected,
     goToNextStage,
     goToPreviousStage,
-    handleFileSelected,
-    setStage,
+    handleClose,
   };
-}
+};

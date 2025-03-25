@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React from 'react';
 import { CsvColumn } from './types';
 import {
   Table,
@@ -9,8 +8,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { CheckCircle, XCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Info } from 'lucide-react';
 
 interface VerifyStageProps {
   columns: CsvColumn[];
@@ -18,94 +18,114 @@ interface VerifyStageProps {
 }
 
 const VerifyStage: React.FC<VerifyStageProps> = ({ columns, data }) => {
-  const [showAll, setShowAll] = useState(false);
+  const mappedColumns = columns.filter(col => col.selected && col.mappedTo);
   
-  // Show a maximum of 5 records initially
-  const displayData = showAll ? data : data.slice(0, 5);
+  // Count unique values for matching
+  const countUniqueEmails = () => {
+    const emailColumn = columns.find(col => col.mappedTo === 'email');
+    if (!emailColumn) return 0;
+    
+    const uniqueEmails = new Set(
+      data
+        .map(row => row[emailColumn.header])
+        .filter(Boolean)
+        .map(email => email.trim().toLowerCase())
+    );
+    
+    return uniqueEmails.size;
+  };
   
-  // Filter out columns that aren't selected or mapped
-  const selectedColumns = columns.filter(col => col.selected && col.mappedTo);
-  
-  const getValueValidationStatus = (value: string) => {
-    return value && value.trim() !== '' ? 'valid' : 'invalid';
+  const countUniquePhones = () => {
+    const phoneColumn = columns.find(col => col.mappedTo === 'phone');
+    if (!phoneColumn) return 0;
+    
+    const uniquePhones = new Set(
+      data
+        .map(row => row[phoneColumn.header])
+        .filter(Boolean)
+        .map(phone => phone.trim())
+    );
+    
+    return uniquePhones.size;
+  };
+
+  // Count missing required values
+  const countMissingValues = () => {
+    // Name is the only required field
+    const nameColumn = columns.find(col => col.mappedTo === 'name');
+    if (!nameColumn) return data.length; // If no name column, all are missing
+    
+    return data.filter(row => !row[nameColumn.header]).length;
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h3 className="text-lg font-medium">Verify Import Data</h3>
-        <div className="text-sm text-muted-foreground">
-          Showing {displayData.length} of {data.length} records
+    <div className="space-y-6">
+      <h3 className="text-lg font-medium">Verify Import Data</h3>
+      
+      <Alert>
+        <Info className="h-4 w-4" />
+        <AlertTitle>Ready to Import</AlertTitle>
+        <AlertDescription>
+          Review the data below before proceeding with the import. This will import {data.length} contacts.
+        </AlertDescription>
+      </Alert>
+      
+      <div className="grid grid-cols-3 gap-4">
+        <div className="bg-muted/30 p-3 rounded-md">
+          <p className="text-sm text-muted-foreground">Total Contacts</p>
+          <p className="text-2xl font-semibold">{data.length}</p>
+        </div>
+        
+        <div className="bg-muted/30 p-3 rounded-md">
+          <p className="text-sm text-muted-foreground">Unique Emails</p>
+          <p className="text-2xl font-semibold">{countUniqueEmails()}</p>
+        </div>
+        
+        <div className="bg-muted/30 p-3 rounded-md">
+          <p className="text-sm text-muted-foreground">Unique Phones</p>
+          <p className="text-2xl font-semibold">{countUniquePhones()}</p>
         </div>
       </div>
       
-      <div className="rounded-md border overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              {selectedColumns.map((column, index) => (
-                <TableHead key={index} className="whitespace-nowrap">
-                  {column.mappedTo} 
-                  <span className="text-muted-foreground ml-1">
-                    ({column.header})
-                  </span>
-                </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {displayData.length > 0 ? (
-              displayData.map((row, rowIndex) => (
-                <TableRow key={rowIndex}>
-                  {selectedColumns.map((column, colIndex) => {
-                    const value = row[column.header];
-                    const status = getValueValidationStatus(value);
-                    
-                    return (
-                      <TableCell key={colIndex} className="whitespace-nowrap">
-                        <div className="flex items-center">
-                          {status === 'valid' ? (
-                            <CheckCircle size={14} className="mr-2 text-green-600 flex-shrink-0" />
-                          ) : (
-                            <XCircle size={14} className="mr-2 text-red-600 flex-shrink-0" />
-                          )}
-                          <span className={status === 'invalid' ? 'text-muted-foreground italic' : ''}>
-                            {value || '(empty)'}
-                          </span>
-                        </div>
-                      </TableCell>
-                    );
-                  })}
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={selectedColumns.length} className="text-center py-4">
-                  No data to display
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
-      
-      {data.length > 5 && !showAll && (
-        <div className="flex justify-center">
-          <Button variant="outline" onClick={() => setShowAll(true)}>
-            Show All {data.length} Records
-          </Button>
-        </div>
+      {countMissingValues() > 0 && (
+        <Alert variant="warning">
+          <AlertTitle>Missing Required Values</AlertTitle>
+          <AlertDescription>
+            {countMissingValues()} records are missing a name. These contacts may be imported with blank names.
+          </AlertDescription>
+        </Alert>
       )}
       
-      <div className="bg-muted/40 p-4 rounded-md">
-        <h4 className="font-medium mb-2">Import Summary</h4>
-        <ul className="space-y-1 text-sm">
-          <li>Total records: {data.length}</li>
-          <li>Fields to import: {selectedColumns.length}</li>
-          <li>
-            Fields mapping: {selectedColumns.map(col => `${col.header} → ${col.mappedTo}`).join(', ')}
-          </li>
-        </ul>
+      <div>
+        <h4 className="text-sm font-medium mb-2">Data Preview (first 5 rows)</h4>
+        
+        <ScrollArea className="h-[300px] border rounded-md">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                {mappedColumns.map((column, index) => (
+                  <TableHead key={index}>
+                    {column.header}
+                    <div className="text-xs text-muted-foreground">
+                      {column.mappedTo}
+                    </div>
+                  </TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {data.slice(0, 5).map((row, rowIndex) => (
+                <TableRow key={rowIndex}>
+                  {mappedColumns.map((column, colIndex) => (
+                    <TableCell key={colIndex}>
+                      {row[column.header] || '—'}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </ScrollArea>
       </div>
     </div>
   );
