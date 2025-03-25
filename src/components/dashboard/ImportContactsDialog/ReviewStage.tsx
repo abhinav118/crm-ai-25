@@ -1,5 +1,5 @@
 import React from 'react';
-import { ProcessedContact } from './ImportContactsDialog';
+import { ProcessedContact } from './types';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import {

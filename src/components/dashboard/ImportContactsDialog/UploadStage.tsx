@@ -54,23 +54,23 @@ const UploadStage: React.FC<UploadStageProps> = ({ onFileSelected }) => {
   const createColumnsAndProceed = (file: File, headers: string[], data: Record<string, string>[]) => {
     // Get the first few rows for sample data
     const sampleRows = data.slice(0, Math.min(5, data.length));
-    
-    // Create column definitions from headers
-    const columns: CsvColumn[] = headers.map(header => {
-      // Get non-empty samples across the first few rows
-      let sample = '';
-      for (const row of sampleRows) {
+        
+        // Create column definitions from headers
+        const columns: CsvColumn[] = headers.map(header => {
+          // Get non-empty samples across the first few rows
+          let sample = '';
+          for (const row of sampleRows) {
         if (row[header] && row[header].trim() !== '') {
           sample = row[header];
-          break;
-        }
-      }
-      
-      return {
-        header,
-        selected: true,
-        mappedTo: null,
-        sample,
+              break;
+            }
+          }
+          
+          return {
+            header,
+            selected: true,
+            mappedTo: null,
+            sample,
         updateEmptyValues: false,
       };
     });
@@ -274,7 +274,7 @@ const UploadStage: React.FC<UploadStageProps> = ({ onFileSelected }) => {
           
           if (validHeaders.length === 0) {
             setError('No valid headers found in the CSV file. Please make sure your headers don\'t contain only whitespace.');
-            setIsUploading(false);
+        setIsUploading(false);
             return;
           }
           
@@ -297,12 +297,12 @@ const UploadStage: React.FC<UploadStageProps> = ({ onFileSelected }) => {
           console.log("Final data sample:", csvData.slice(0, 2));
           
           createColumnsAndProceed(file, validHeaders, csvData);
-        },
-        error: (error) => {
+      },
+      error: (error) => {
           console.error("CSV parsing error:", error);
           setError(`Error parsing CSV: ${error.message}. Try downloading and using our sample CSV format.`);
-          setIsUploading(false);
-        },
+        setIsUploading(false);
+      },
       });
     };
     
@@ -422,7 +422,7 @@ const UploadStage: React.FC<UploadStageProps> = ({ onFileSelected }) => {
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
           >
-            <div className="flex flex-col items-center justify-center space-y-4">
+        <div className="flex flex-col items-center justify-center space-y-4">
               <div className="p-3 rounded-full bg-muted">
                 <Upload className="h-6 w-6 text-muted-foreground" />
               </div>
@@ -431,9 +431,9 @@ const UploadStage: React.FC<UploadStageProps> = ({ onFileSelected }) => {
                   Drag and drop your CSV file here
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  or click to browse files
-                </p>
-              </div>
+              or click to browse files
+            </p>
+          </div>
               <Button
                 type="button"
                 variant="secondary"
@@ -442,9 +442,9 @@ const UploadStage: React.FC<UploadStageProps> = ({ onFileSelected }) => {
               >
                 <FileUp size={14} className="mr-1" />
                 Browse files
-              </Button>
-            </div>
-          </div>
+          </Button>
+        </div>
+      </div>
           <Input
             ref={fileInputRef}
             type="file"
