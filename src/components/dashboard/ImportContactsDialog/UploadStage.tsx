@@ -369,7 +369,7 @@ const UploadStage: React.FC<UploadStageProps> = ({ onFileSelected }) => {
           
           const sampleSize = Math.min(5, results.data.length);
           for (let i = 0; i < sampleSize; i++) {
-            const row = results.data[i];
+            const row = results.data[i] as Record<string, string>;
             fields.forEach(field => {
               if (row[field] && sampleValues[field].length < 5) {
                 sampleValues[field].push(row[field]);
