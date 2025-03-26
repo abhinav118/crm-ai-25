@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CsvColumn } from './types';
-import { CheckCircle, HelpCircle, XCircle } from 'lucide-react';
+import { CheckCircle, HelpCircle, XCircle, Info } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -27,6 +27,7 @@ import {
 import { toast } from "@/components/ui/use-toast";
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { formatPhoneNumber } from './hooks/useImportContacts';
 
 interface MapStageProps {
   columns: CsvColumn[];
@@ -45,6 +46,7 @@ const MapStage: React.FC<MapStageProps> = ({ columns, setColumns }) => {
   ];
 
   const [autoMapApplied, setAutoMapApplied] = useState(false);
+  const [showPreview, setShowPreview] = useState(true);
 
   // Auto-apply the mapping on component mount
   useEffect(() => {
@@ -67,7 +69,7 @@ const MapStage: React.FC<MapStageProps> = ({ columns, setColumns }) => {
 
   const handleMapColumn = (index: number, mappedTo: string | null) => {
     const updatedColumns = [...columns];
-    updatedColumns[index].mappedTo = mappedTo !== "" ? mappedTo : null;
+    updatedColumns[index].mappedTo = mappedTo !== "none" ? mappedTo : null;
     setColumns(updatedColumns);
   };
 
@@ -214,6 +216,23 @@ const MapStage: React.FC<MapStageProps> = ({ columns, setColumns }) => {
     return columns.length;
   };
 
+  // Calculate sample data for preview
+  const sampleData = columns.reduce((samples, column) => {
+    // Get sample values from the header if any
+    const sampleValues = column.sampleValues || [];
+    
+    // Format phone numbers if this column is mapped to 'phone'
+    if (column.mappedTo === 'phone' && column.sampleValues) {
+      samples[column.header] = column.sampleValues.map(value => {
+        return value ? formatPhoneNumber(value) : '';
+      });
+    } else {
+      samples[column.header] = sampleValues;
+    }
+    
+    return samples;
+  }, {} as Record<string, string[]>);
+
   return (
     <div className="space-y-6">
       <div>
@@ -223,83 +242,132 @@ const MapStage: React.FC<MapStageProps> = ({ columns, setColumns }) => {
         </p>
       </div>
       
-      <ScrollArea className="h-[400px] pr-4">
-        <div className="space-y-6">
-          {columns.map((column, index) => (
-            <div key={index} className="border rounded-md p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id={`column-${index}`}
-                    checked={column.selected}
-                    onCheckedChange={(checked) => handleSelectColumn(index, checked === true)}
-                  />
-                  <Label 
-                    htmlFor={`column-${index}`}
-                    className="font-medium"
-                  >
-                    {column.header}
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Label htmlFor={`update-empty-${index}`} className="text-xs text-muted-foreground">
-                    Update empty values
-                  </Label>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <HelpCircle size={14} className="text-muted-foreground" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p className="text-xs max-w-[200px]">
-                          If enabled, this will update empty values in your contacts with default values.
-                          For example, empty names will be set to "Imported Contact".
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  <Switch 
-                    id={`update-empty-${index}`}
-                    checked={column.updateEmptyValues || false}
-                    onCheckedChange={(checked) => handleUpdateEmptyValues(index, checked)}
-                    disabled={!column.selected}
-                  />
-                </div>
-              </div>
-              
-              <div className="pl-6 space-y-2">
-                {column.sample && (
-                  <div>
-                    <span className="text-xs text-muted-foreground">Sample: </span>
-                    <span className="text-xs">{column.sample}</span>
-                  </div>
-                )}
-                
-                <div className="max-w-md">
-                  <Select
-                    value={column.mappedTo || undefined}
-                    onValueChange={(value) => handleMapColumn(index, value)}
-                    disabled={!column.selected}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Map to field..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {/* Add a dummy non-empty value to avoid the Radix UI error */}
-                      <SelectItem value="_none_">-- Don't Map --</SelectItem>
-                      {contactFields.map(field => (
-                        <SelectItem key={field.id} value={field.id}>
-                          {field.label} {field.required && '*'}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
-          ))}
+      <div className="space-y-4">
+        <div className="grid grid-cols-[auto_1fr_auto_auto] gap-4 items-center border-b pb-2 font-medium text-sm">
+          <div>Import</div>
+          <div>Map CSV Column</div>
+          <div className="flex items-center">
+            <span>Replace Empty</span>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="h-4 w-4 ml-1 text-muted-foreground" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="w-[220px] text-xs">
+                    If checked, empty values will be replaced with defaults (e.g., "Imported Contact" for names).
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+          <div className="flex gap-2 items-center">
+            <span>Preview</span>
+            <Switch 
+              checked={showPreview} 
+              onCheckedChange={setShowPreview}
+            />
+          </div>
         </div>
-      </ScrollArea>
+      
+        <ScrollArea className="h-[400px] pr-4">
+          <div className="space-y-4">
+            {columns.map((column, index) => (
+              <div key={index} className="grid grid-cols-[auto_1fr_auto_1fr] gap-4 items-center">
+                <Checkbox 
+                  id={`column-${index}`}
+                  checked={column.selected}
+                  onCheckedChange={() => handleSelectColumn(index, !column.selected)}
+                />
+                <div>
+                  <Label htmlFor={`column-${index}`} className="font-medium">{column.header}</Label>
+                  {showPreview && column.sampleValues && column.sampleValues.length > 0 && (
+                    <div className="text-xs text-muted-foreground mt-1">
+                      e.g.{' '}
+                      {column.mappedTo === 'phone' 
+                        ? formatPhoneNumber(column.sampleValues[0] || '')
+                        : column.sampleValues[0]}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  {column.selected && (
+                    <Switch 
+                      checked={column.updateEmptyValues || false}
+                      onCheckedChange={(checked) => handleUpdateEmptyValues(index, checked)}
+                    />
+                  )}
+                </div>
+                <Select
+                  value={column.mappedTo || 'none'}
+                  onValueChange={(value) => handleMapColumn(index, value)}
+                  disabled={!column.selected}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select a field" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">-- Not mapped --</SelectItem>
+                    {contactFields.map(field => (
+                      <SelectItem key={field.id} value={field.id}>
+                        {field.label} {field.required && '*'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ))}
+          </div>
+        </ScrollArea>
+      </div>
+      
+      {showPreview && (
+        <div>
+          <h4 className="text-sm font-medium mb-2">Preview</h4>
+          <div className="border rounded-md p-4">
+            <div className="text-xs text-muted-foreground mb-2">First 3 rows with selected fields:</div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b">
+                    {columns.filter(col => col.selected).map((column, index) => (
+                      <th key={index} className="text-left p-2 text-xs font-medium">
+                        {column.header}
+                        <div className="text-muted-foreground">
+                          {column.mappedTo || 'Not mapped'}
+                        </div>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {[0, 1, 2].map(rowIndex => (
+                    <tr key={rowIndex} className="border-b">
+                      {columns.filter(col => col.selected).map((column, colIndex) => {
+                        const sampleValue = sampleData[column.header]?.[rowIndex] || '';
+                        // Apply phone formatting for phone fields in the preview
+                        const displayValue = column.mappedTo === 'phone' && sampleValue
+                          ? formatPhoneNumber(sampleValue)
+                          : sampleValue;
+                        
+                        return (
+                          <td key={colIndex} className="p-2 text-xs">
+                            {column.mappedTo === 'phone' ? (
+                              <span className="font-medium">{displayValue || '—'}</span>
+                            ) : (
+                              displayValue || '—'
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

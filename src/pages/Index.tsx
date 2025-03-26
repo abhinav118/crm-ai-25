@@ -4,7 +4,7 @@ import TopBar from '@/components/dashboard/TopBar';
 import SearchBar from '@/components/dashboard/SearchBar';
 import ActionButtons from '@/components/dashboard/ActionButtons';
 import ContactsTable, { Contact } from '@/components/dashboard/ContactsTable';
-import BulkActionsTable from '@/components/dashboard/BulkActionsTable';
+import { BulkActionsTab } from '@/components/dashboard/BulkActions';
 import ChatInterface from '@/components/dashboard/ChatInterface';
 import Pagination from '@/components/dashboard/Pagination';
 import { useToast } from '@/hooks/use-toast';
@@ -697,7 +697,14 @@ const Index = () => {
               </div>
             </TabsContent>
             <TabsContent value="bulk-actions" className="pt-4">
-              <BulkActionsTable />
+              <BulkActionsTab 
+                selectedContacts={Array.from(selectedRows)}
+                onActionComplete={() => {
+                  setSelectedRows(new Set());
+                  setSelectedCount(0);
+                  fetchContacts();
+                }}
+              />
             </TabsContent>
           </Tabs>
         </main>

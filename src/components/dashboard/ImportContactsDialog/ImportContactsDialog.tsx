@@ -1,5 +1,5 @@
-import React from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import React, { useState, useEffect } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useImportContacts } from './hooks/useImportContacts';
 import UploadStage from './UploadStage';
 import MapStage from './MapStage';
@@ -8,7 +8,8 @@ import ImportBreadcrumbs from './ImportBreadcrumbs';
 import ImportDialogActions from './ImportDialogActions';
 import { ImportContactsDialogProps } from './types';
 import { Progress } from '@/components/ui/progress';
-import { CheckCircle, Loader2, AlertCircle, Phone } from 'lucide-react';
+import { CheckCircle, Loader2, AlertCircle, Phone, ChevronDown, ChevronUp } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 const ImportContactsDialog: React.FC<ImportContactsDialogProps> = ({ 
   open, 
@@ -31,6 +32,8 @@ const ImportContactsDialog: React.FC<ImportContactsDialogProps> = ({
     setStage,
   } = useImportContacts({ onImportSuccess });
 
+  const [showErrorDetails, setShowErrorDetails] = useState(false);
+
   const renderContent = () => {
     if (stage === 'upload') {
       return <UploadStage onFileSelected={handleFileSelected} />;
@@ -41,7 +44,19 @@ const ImportContactsDialog: React.FC<ImportContactsDialogProps> = ({
     }
     
     if (stage === 'verify') {
-      return <VerifyStage columns={columns.filter(col => col.selected)} data={data} />;
+      return (
+        <VerifyStage 
+          columns={columns.filter(col => col.selected)} 
+          data={data} 
+          selectedColumns={columns.filter(col => col.selected && col.mappedTo)}
+          onComplete={() => setStage('import')}
+          onBack={goToPreviousStage}
+          setImportResult={() => {
+            goToNextStage();
+          }}
+          fileName={file?.name}
+        />
+      );
     }
     
     if (stage === 'import') {
@@ -58,8 +73,16 @@ const ImportContactsDialog: React.FC<ImportContactsDialogProps> = ({
             </>
           ) : (
             <>
-              <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
-              <h3 className="text-xl font-medium">Import Complete!</h3>
+              {importStats.errors > 0 ? (
+                <AlertCircle className="h-12 w-12 text-amber-500 mx-auto" />
+              ) : (
+                <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
+              )}
+              
+              <h3 className="text-xl font-medium">
+                {importStats.errors > 0 ? 'Import Completed with Errors' : 'Import Complete!'}
+              </h3>
+              
               <div className="grid grid-cols-5 gap-4 max-w-2xl mx-auto">
                 <div className="bg-muted/30 p-3 rounded-md">
                   <p className="text-sm text-muted-foreground">Total</p>
@@ -88,11 +111,40 @@ const ImportContactsDialog: React.FC<ImportContactsDialogProps> = ({
                   <div className="max-w-md mx-auto bg-red-50 p-3 rounded-md">
                     <div className="flex items-start">
                       <AlertCircle className="h-5 w-5 text-red-500 mr-2 mt-0.5" />
-                      <div>
-                        <p className="text-sm font-medium text-red-700">Import Errors</p>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-medium text-red-700">Import Errors</p>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-6 px-2"
+                            onClick={() => setShowErrorDetails(!showErrorDetails)}
+                          >
+                            {showErrorDetails ? (
+                              <ChevronUp className="h-4 w-4 text-red-700" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4 text-red-700" />
+                            )}
+                          </Button>
+                        </div>
                         <p className="text-sm text-red-600">
                           {importStats.errors} rows could not be imported due to errors.
                         </p>
+                        
+                        {showErrorDetails && (
+                          <div className="mt-2 text-left bg-white/50 p-2 rounded">
+                            <p className="text-xs font-medium text-red-700 mb-1">Common causes of import errors:</p>
+                            <ul className="text-xs text-red-600 list-disc pl-4 space-y-1">
+                              <li>Required fields are missing (such as name)</li>
+                              <li>Data format issues (especially in dates or numeric fields)</li>
+                              <li>Data exceeds maximum field length</li>
+                              <li>Duplicate entries that conflict with existing contacts</li>
+                            </ul>
+                            <p className="text-xs text-red-700 mt-2">
+                              Check your browser console for detailed error logs.
+                            </p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -115,7 +167,7 @@ const ImportContactsDialog: React.FC<ImportContactsDialogProps> = ({
               </div>
               
               <p className="text-sm text-muted-foreground mt-4">
-                All contacts have been imported with standardized (XXX) XXX-XXXX phone number format.
+                All imported contacts have been standardized to (XXX) XXX-XXXX phone number format.
               </p>
             </>
           )}
@@ -131,6 +183,9 @@ const ImportContactsDialog: React.FC<ImportContactsDialogProps> = ({
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Import Contacts</DialogTitle>
+          <DialogDescription>
+            Upload a CSV file to import contacts into your database.
+          </DialogDescription>
         </DialogHeader>
         
         <ImportBreadcrumbs 

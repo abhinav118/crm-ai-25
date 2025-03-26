@@ -1,9 +1,11 @@
+export type ImportStage = 'upload' | 'map' | 'verify' | 'import';
+
 export interface CsvColumn {
   header: string;
-  sample: string | null;
   selected: boolean;
   mappedTo: string | null;
   updateEmptyValues?: boolean;
+  sampleValues?: string[]; // Sample values for preview
 }
 
 export interface ImportContactsDialogProps {
@@ -11,5 +13,3 @@ export interface ImportContactsDialogProps {
   onOpenChange: (open: boolean) => void;
   onImportSuccess?: () => void;
 }
-
-export type ImportStage = 'upload' | 'map' | 'verify' | 'import';

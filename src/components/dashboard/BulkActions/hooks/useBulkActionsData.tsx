@@ -42,7 +42,7 @@ export const useBulkActionsData = () => {
                 // Validate that required fields exist, use fallbacks if they don't
                 return {
                   id: formattedLog.id || String(Date.now()),
-                  description: formattedLog.description || 'No description available',
+                  description: formattedLog.description || 'No description',
                   date: formattedLog.date || new Date().toLocaleString(),
                   action: formattedLog.action || 'unknown',
                   contact: formattedLog.contact || {

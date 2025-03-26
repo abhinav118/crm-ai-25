@@ -363,6 +363,82 @@ const UploadStage: React.FC<UploadStageProps> = ({ onFileSelected }) => {
     URL.revokeObjectURL(url);
   };
 
+  const handleParseFile = (file: File) => {
+    setIsUploading(true);
+    setError(null);
+    
+    if (!file) {
+      setError("No file selected");
+      setIsUploading(false);
+      return;
+    }
+    
+    console.log("Parsing file:", file.name);
+    
+    // Parse the CSV file using PapaParse
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        console.log("Parse complete:", results);
+        
+        if (results.errors.length > 0) {
+          console.error("Parse errors:", results.errors);
+          setError(`Error parsing CSV: ${results.errors[0].message}`);
+          setIsUploading(false);
+          return;
+        }
+        
+        if (!results.meta.fields || results.meta.fields.length === 0) {
+          setError("No headers found in CSV file");
+          setIsUploading(false);
+          return;
+        }
+        
+        // For each column, extract a sample of values for preview
+        const sampleValues: Record<string, string[]> = {};
+        
+        if (results.data.length > 0) {
+          // Get all field names from the CSV header
+          const fields = results.meta.fields;
+          
+          // Initialize the sample values object
+          fields.forEach(field => {
+            sampleValues[field] = [];
+          });
+          
+          // Extract up to 5 non-empty sample values for each field
+          const sampleSize = Math.min(5, results.data.length);
+          for (let i = 0; i < sampleSize; i++) {
+            const row = results.data[i];
+            fields.forEach(field => {
+              if (row[field] && sampleValues[field].length < 5) {
+                sampleValues[field].push(row[field]);
+              }
+            });
+          }
+        }
+        
+        // Create column objects from the headers
+        const columns = results.meta.fields.map(header => ({
+          header,
+          selected: false,
+          mappedTo: null,
+          updateEmptyValues: false,
+          sampleValues: sampleValues[header] || []
+        }));
+        
+        onFileSelected(file, columns, results.data);
+        setIsUploading(false);
+      },
+      error: (error) => {
+        console.error("Parse error:", error);
+        setError(`Error parsing CSV: ${error.message}`);
+        setIsUploading(false);
+      }
+    });
+  };
+
   return (
     <div className="space-y-4">
       <h3 className="text-lg font-medium">Upload Contact Data</h3>

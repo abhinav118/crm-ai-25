@@ -10,18 +10,39 @@ import {
 } from "@/components/ui/table";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Info, AlertTriangle, Phone } from 'lucide-react';
+import { Info, AlertTriangle, Phone, CheckCircle2, FileText } from 'lucide-react';
 import { formatPhoneNumber, isValidPhoneFormat } from './hooks/useImportContacts';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
 
 interface VerifyStageProps {
   columns: CsvColumn[];
   data: Record<string, string>[];
+  selectedColumns: CsvColumn[];
+  onComplete: () => void;
+  onBack: () => void;
+  setImportResult: (result: string) => void;
+  fileName?: string;
 }
 
-const VerifyStage: React.FC<VerifyStageProps> = ({ columns, data }) => {
+const VerifyStage: React.FC<VerifyStageProps> = ({
+  columns,
+  data,
+  selectedColumns,
+  onComplete,
+  onBack,
+  setImportResult,
+  fileName
+}) => {
   const mappedColumns = columns.filter(col => col.selected && col.mappedTo);
   const [duplicateCount, setDuplicateCount] = useState(0);
   const [invalidPhoneCount, setInvalidPhoneCount] = useState(0);
+  const [validPhoneCount, setValidPhoneCount] = useState(0);
+  const [batchId] = useState<string>(crypto.randomUUID());
+  const [batchName] = useState<string>(fileName || `Imported contacts ${new Date().toLocaleString()}`);
+  const [isImporting, setIsImporting] = useState(false);
   
   // Count unique values for matching
   const countUniqueEmails = () => {
@@ -46,7 +67,8 @@ const VerifyStage: React.FC<VerifyStageProps> = ({ columns, data }) => {
       data
         .map(row => row[phoneColumn.header])
         .filter(Boolean)
-        .map(phone => phone.trim())
+        .map(phone => formatPhoneNumber(phone.trim())) // Use formatted phones for counting
+        .filter(phone => isValidPhoneFormat(phone)) // Only count valid phones
     );
     
     return uniquePhones.size;
@@ -69,6 +91,7 @@ const VerifyStage: React.FC<VerifyStageProps> = ({ columns, data }) => {
     // Reset counters
     let duplicates = 0;
     let invalidPhones = 0;
+    let validPhones = 0;
     
     // Track unique combinations
     const uniqueCombinations = new Set<string>();
@@ -78,13 +101,18 @@ const VerifyStage: React.FC<VerifyStageProps> = ({ columns, data }) => {
         const email = emailColumn ? (row[emailColumn.header] || '').toLowerCase().trim() : '';
         const phone = phoneColumn ? (row[phoneColumn.header] || '').trim() : '';
         
-        // Check for invalid phone formats
-        if (phone && !isValidPhoneFormat(phone)) {
-          invalidPhones++;
+        // Check for phone formats
+        if (phone) {
+          if (isValidPhoneFormat(phone)) {
+            validPhones++;
+          } else {
+            invalidPhones++;
+          }
         }
         
         // Create a unique key based on email and phone
-        const key = `${email}:${phone}`;
+        const formattedPhone = phone ? formatPhoneNumber(phone) : '';
+        const key = `${email}:${formattedPhone}`;
         
         // Skip rows where both email and phone are empty
         if (!email && !phone) return;
@@ -99,6 +127,7 @@ const VerifyStage: React.FC<VerifyStageProps> = ({ columns, data }) => {
       
       setDuplicateCount(duplicates);
       setInvalidPhoneCount(invalidPhones);
+      setValidPhoneCount(validPhones);
     }
   }, [columns, data]);
 
@@ -123,9 +152,51 @@ const VerifyStage: React.FC<VerifyStageProps> = ({ columns, data }) => {
     return Array.from(phoneFormats.entries());
   };
 
+  const handleImport = async () => {
+    setIsImporting(true);
+    try {
+      // Call the provided setImportResult function to trigger the import
+      // The actual import logic is in the useImportContacts hook
+      // which now includes the contact_logs functionality
+      setImportResult("Import started");
+      onComplete();
+    } catch (error) {
+      console.error("Error starting import:", error);
+      setImportResult("Import failed");
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <h3 className="text-lg font-medium">Verify Import Data</h3>
+      <div className="space-y-2">
+        <h2 className="text-xl font-semibold">Verify Your Data</h2>
+        <p className="text-muted-foreground">
+          Review the data before importing. We'll import only unique contacts with valid information.
+        </p>
+      </div>
+      
+      {/* Batch information */}
+      <Card className="border-blue-200 bg-blue-50">
+        <CardContent className="pt-6">
+          <div className="flex items-start">
+            <FileText className="h-5 w-5 text-blue-500 mr-3 mt-0.5" />
+            <div>
+              <h3 className="font-medium text-blue-700">Import Batch Details</h3>
+              <div className="mt-2 space-y-1 text-sm text-blue-700">
+                <p><strong>Batch ID:</strong> {batchId.substring(0, 8)}...</p>
+                <p><strong>Batch Name:</strong> {batchName}</p>
+                <p><strong>Created At:</strong> {new Date().toLocaleString()}</p>
+                <p><strong>Unique Records:</strong> {data.length - duplicateCount} (out of {data.length} total)</p>
+              </div>
+              <p className="mt-2 text-xs text-blue-600">
+                These details will be saved in the contact_logs table for tracking purposes.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
       
       <Alert>
         <Info className="h-4 w-4" />
@@ -160,6 +231,16 @@ const VerifyStage: React.FC<VerifyStageProps> = ({ columns, data }) => {
           </p>
         </div>
       </div>
+      
+      {validPhoneCount > 0 && (
+        <Alert className="bg-green-50 border-green-200">
+          <CheckCircle2 className="h-4 w-4 text-green-500" />
+          <AlertTitle className="text-green-700">Phone Number Formatting</AlertTitle>
+          <AlertDescription className="text-green-700">
+            {validPhoneCount} phone numbers will be standardized to (XXX) XXX-XXXX format during import.
+          </AlertDescription>
+        </Alert>
+      )}
       
       {duplicateCount > 0 && (
         <Alert>
@@ -218,6 +299,11 @@ const VerifyStage: React.FC<VerifyStageProps> = ({ columns, data }) => {
                     {column.header}
                     <div className="text-xs text-muted-foreground">
                       {column.mappedTo}
+                      {column.mappedTo === 'phone' && (
+                        <Badge variant="outline" className="ml-1 text-xs">
+                          Will Format
+                        </Badge>
+                      )}
                     </div>
                   </TableHead>
                 ))}
@@ -229,11 +315,16 @@ const VerifyStage: React.FC<VerifyStageProps> = ({ columns, data }) => {
                   {mappedColumns.map((column, colIndex) => (
                     <TableCell key={colIndex}>
                       {column.mappedTo === 'phone' && row[column.header] ? (
-                        <span className={isValidPhoneFormat(row[column.header]) ? '' : 'text-red-500'}>
-                          {isValidPhoneFormat(row[column.header]) 
-                            ? formatPhoneNumber(row[column.header]) 
-                            : row[column.header] + ' (invalid)'}
-                        </span>
+                        <div>
+                          <span className={isValidPhoneFormat(row[column.header]) ? 'text-green-600' : 'text-red-500'}>
+                            {isValidPhoneFormat(row[column.header]) 
+                              ? formatPhoneNumber(row[column.header]) 
+                              : row[column.header] + ' (invalid)'}
+                          </span>
+                          {!isValidPhoneFormat(row[column.header]) && (
+                            <div className="text-xs text-red-500 mt-1">Will be skipped</div>
+                          )}
+                        </div>
                       ) : (
                         row[column.header] || '—'
                       )}
@@ -244,6 +335,38 @@ const VerifyStage: React.FC<VerifyStageProps> = ({ columns, data }) => {
             </TableBody>
           </Table>
         </ScrollArea>
+      </div>
+      
+      {/* Import button section */}
+      <div className="flex justify-between">
+        <Button variant="outline" onClick={onBack}>
+          Back
+        </Button>
+        <Button 
+          onClick={handleImport} 
+          disabled={isImporting}
+          className="min-w-[120px]"
+        >
+          {isImporting ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Importing...
+            </>
+          ) : (
+            <>Import {data.length - duplicateCount} Contacts</>
+          )}
+        </Button>
+      </div>
+      
+      {/* Explanation of logging */}
+      <div className="pt-4 text-sm text-muted-foreground border-t">
+        <p className="font-medium">What happens when you import:</p>
+        <ul className="list-disc list-inside mt-2 space-y-1">
+          <li>Each contact will be created or updated in the contacts table</li>
+          <li>A log entry will be created in the contact_logs table for each contact</li>
+          <li>All contacts in this import will share the same batch ID and name</li>
+          <li>You can track this import batch in the Bulk Actions tab</li>
+        </ul>
       </div>
     </div>
   );
