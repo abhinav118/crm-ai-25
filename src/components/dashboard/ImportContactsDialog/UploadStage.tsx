@@ -30,7 +30,6 @@ const UploadStage: React.FC<UploadStageProps> = ({ onFileSelected }) => {
   const validateAndSetFile = (selectedFile: File) => {
     setError(null);
     
-    // Validate file type - more permissive now, accepting any file that could be CSV
     const isCSV = selectedFile.type === 'text/csv' || 
                   selectedFile.name.endsWith('.csv') || 
                   selectedFile.type === 'application/vnd.ms-excel' ||
@@ -41,7 +40,6 @@ const UploadStage: React.FC<UploadStageProps> = ({ onFileSelected }) => {
       return;
     }
     
-    // Validate file size (max 5MB)
     if (selectedFile.size > 5 * 1024 * 1024) {
       setError('File size exceeds 5MB limit.');
       return;
@@ -52,30 +50,26 @@ const UploadStage: React.FC<UploadStageProps> = ({ onFileSelected }) => {
   };
 
   const createColumnsAndProceed = (file: File, headers: string[], data: Record<string, string>[]) => {
-    // Get the first few rows for sample data
     const sampleRows = data.slice(0, Math.min(5, data.length));
         
-        // Create column definitions from headers
-        const columns: CsvColumn[] = headers.map(header => {
-          // Get non-empty samples across the first few rows
-          let sample = '';
-          for (const row of sampleRows) {
+    const columns: CsvColumn[] = headers.map(header => {
+      let sample = '';
+      for (const row of sampleRows) {
         if (row[header] && row[header].trim() !== '') {
           sample = row[header];
-              break;
-            }
-          }
-          
-          return {
-            header,
-            selected: true,
-            mappedTo: null,
-            sample,
+          break;
+        }
+      }
+      
+      return {
+        header,
+        selected: true,
+        mappedTo: null,
+        sample,
         updateEmptyValues: false,
       };
     });
     
-    // Call the callback with the parsed data
     onFileSelected(file, columns, data);
     setIsUploading(false);
   };
@@ -84,13 +78,11 @@ const UploadStage: React.FC<UploadStageProps> = ({ onFileSelected }) => {
     setIsUploading(true);
     setUploadProgress(0);
     
-    // Read the file as text first
     const reader = new FileReader();
     reader.onload = (e) => {
       const content = e.target?.result as string;
       console.log("CSV content preview:", content.substring(0, 200) + "...");
       
-      // Try to detect delimiter by checking for commas, tabs, and semicolons
       let delimiter = ','; // default
       const firstLines = content.split('\n').slice(0, 3).join('\n');
       const commaCount = (firstLines.match(/,/g) || []).length;
@@ -105,7 +97,6 @@ const UploadStage: React.FC<UploadStageProps> = ({ onFileSelected }) => {
       
       console.log(`Detected delimiter: ${delimiter === '\t' ? 'tab' : delimiter}`);
       
-      // Try to detect if the first row could be headers
       const lines = content.split('\n').filter(line => line.trim());
       let firstRowMightBeHeaders = true;
       
@@ -113,31 +104,26 @@ const UploadStage: React.FC<UploadStageProps> = ({ onFileSelected }) => {
         const firstRow = lines[0].split(delimiter);
         const secondRow = lines[1].split(delimiter);
         
-        // Check if first row contains only text (not numbers)
         const firstRowContainsOnlyText = firstRow.every(item => {
           const trimmed = item.trim();
-          // Check if it's not a number and not empty
           return trimmed !== '' && isNaN(Number(trimmed));
         });
         
         console.log("First row text only:", firstRowContainsOnlyText);
         
-        // If first row is all text, it's very likely to be headers
         if (firstRowContainsOnlyText) {
           firstRowMightBeHeaders = true;
         } 
-        // If first row is all numbers and second row isn't, first row is likely data
         else {
           const firstRowNumerical = firstRow.every(item => !isNaN(Number(item.trim())));
           const secondRowNumerical = secondRow.every(item => !isNaN(Number(item.trim())));
           
           if (firstRowNumerical && !secondRowNumerical) {
-            firstRowMightBeHeaders = false; // First row looks like data, not headers
+            firstRowMightBeHeaders = false;
           }
         }
       }
       
-      // Now parse with PapaParse using the string content directly
       Papa.parse(content, {
         header: firstRowMightBeHeaders,
         skipEmptyLines: true,
@@ -150,11 +136,9 @@ const UploadStage: React.FC<UploadStageProps> = ({ onFileSelected }) => {
           console.log("Detected headers:", results.meta.fields);
           console.log("Data sample:", results.data.slice(0, 3));
           
-          // Check for parsing errors
           if (results.errors && results.errors.length > 0) {
             console.error("CSV parsing errors:", results.errors);
             
-            // Only show error if it's severe enough to prevent import
             if (results.errors.some(e => 
               e.code === "MissingQuotes" || 
               e.code === "UndetectableDelimiter" || 
@@ -164,39 +148,25 @@ const UploadStage: React.FC<UploadStageProps> = ({ onFileSelected }) => {
               setIsUploading(false);
               return;
             }
-            // Other errors might be non-critical, so continue
-          }
-          
-          // Add more detailed information to console for debugging
-          console.log("Is data an array?", Array.isArray(results.data));
-          if (results.data.length > 0) {
-            console.log("First row type:", typeof results.data[0]);
-            console.log("First row content:", results.data[0]);
           }
           
           let csvHeaders: string[] = [];
           let csvData: Record<string, string>[] = [];
           
-          // If headers were detected, use them
           if (results.meta.fields && results.meta.fields.length > 0) {
             csvHeaders = results.meta.fields;
             csvData = results.data as Record<string, string>[];
           } 
-          // If no headers were detected but we have data in array format
           else if (Array.isArray(results.data) && results.data.length > 0) {
-            // If data is array of arrays, likely no headers were found
             if (Array.isArray(results.data[0])) {
               const data = results.data as unknown as string[][];
               
-              // Generate default headers (Column1, Column2, etc.)
               if (data[0] && data[0].length > 0) {
                 csvHeaders = data[0].map((_, i) => `Column${i + 1}`);
                 
-                // Convert to object format - use all rows as data
                 csvData = data.map(row => {
                   const rowObj: Record<string, string> = {};
                   row.forEach((value, index) => {
-                    // Make sure index is within csvHeaders range
                     if (index < csvHeaders.length) {
                       rowObj[csvHeaders[index]] = value;
                     }
@@ -205,18 +175,21 @@ const UploadStage: React.FC<UploadStageProps> = ({ onFileSelected }) => {
                 });
               }
             }
-            // If data is array of objects but no fields were detected
             else if (typeof results.data[0] === 'object' && results.data[0] !== null) {
               const firstRow = results.data[0] as Record<string, any>;
               
-              // Try to extract headers from the first object
               try {
                 csvHeaders = Object.keys(firstRow);
-                csvData = results.data as Record<string, string>[];
+                csvData = results.data.map((item: any) => {
+                  const stringRecord: Record<string, string> = {};
+                  for (const key of csvHeaders) {
+                    stringRecord[key] = item[key]?.toString() || '';
+                  }
+                  return stringRecord;
+                });
               } catch (e) {
                 console.error("Error extracting headers from first row:", e);
                 
-                // Last resort - create a single dummy column
                 csvHeaders = ["Data"];
                 csvData = results.data.map((item: any) => ({ 
                   "Data": typeof item === 'string' ? item : JSON.stringify(item) 
@@ -225,19 +198,15 @@ const UploadStage: React.FC<UploadStageProps> = ({ onFileSelected }) => {
             }
           }
           
-          // For debugging - dump the raw parsed data
           console.log("Raw parsed data structure:", JSON.stringify(results.data).substring(0, 500));
           
-          // Manual parsing as last resort - if PapaParse couldn't parse it properly
           if ((csvHeaders.length === 0 || !csvHeaders) && lines.length > 0) {
             console.log("Using manual parsing as fallback");
             
-            // Use the lines we split earlier
             const headers = lines[0].split(delimiter).map(h => h.trim() || `Column${h.length + 1}`);
             
-            csvHeaders = headers.filter(h => h);  // Remove empty headers
+            csvHeaders = headers.filter(h => h);
             
-            // Process data rows
             const dataLines = firstRowMightBeHeaders ? lines.slice(1) : lines;
             csvData = dataLines.map(line => {
               const values = line.split(delimiter);
@@ -255,7 +224,6 @@ const UploadStage: React.FC<UploadStageProps> = ({ onFileSelected }) => {
             });
           }
           
-          // Final validation
           if (!csvHeaders || csvHeaders.length === 0) {
             console.error("No columns found after all parsing attempts");
             setError('No columns found in the CSV file. Please make sure your CSV has headers or contains data in a recognized format.');
@@ -269,16 +237,14 @@ const UploadStage: React.FC<UploadStageProps> = ({ onFileSelected }) => {
             return;
           }
           
-          // Filter out any empty headers
           const validHeaders = csvHeaders.filter(h => h && h.trim() !== '');
           
           if (validHeaders.length === 0) {
             setError('No valid headers found in the CSV file. Please make sure your headers don\'t contain only whitespace.');
-        setIsUploading(false);
+            setIsUploading(false);
             return;
           }
           
-          // If some headers were empty, we need to rebuild the data objects
           if (validHeaders.length !== csvHeaders.length) {
             const newData: Record<string, string>[] = [];
             csvData.forEach(row => {
@@ -297,12 +263,12 @@ const UploadStage: React.FC<UploadStageProps> = ({ onFileSelected }) => {
           console.log("Final data sample:", csvData.slice(0, 2));
           
           createColumnsAndProceed(file, validHeaders, csvData);
-      },
-      error: (error) => {
+        },
+        error: (error) => {
           console.error("CSV parsing error:", error);
           setError(`Error parsing CSV: ${error.message}. Try downloading and using our sample CSV format.`);
-        setIsUploading(false);
-      },
+          setIsUploading(false);
+        },
       });
     };
     
@@ -345,13 +311,11 @@ const UploadStage: React.FC<UploadStageProps> = ({ onFileSelected }) => {
   };
 
   const handleDownloadTemplate = () => {
-    // Create a sample CSV template
     const headers = 'name,email,phone,company,status,tags\n';
     const row1 = 'John Doe,john@example.com,(555) 123-4567,Acme Inc,active,"lead,website"\n';
     const row2 = 'Jane Smith,jane@example.com,(555) 987-6543,XYZ Corp,active,"customer,referral"';
     const csvContent = headers + row1 + row2;
     
-    // Create a blob and download it
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -375,7 +339,6 @@ const UploadStage: React.FC<UploadStageProps> = ({ onFileSelected }) => {
     
     console.log("Parsing file:", file.name);
     
-    // Parse the CSV file using PapaParse
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
@@ -395,19 +358,15 @@ const UploadStage: React.FC<UploadStageProps> = ({ onFileSelected }) => {
           return;
         }
         
-        // For each column, extract a sample of values for preview
         const sampleValues: Record<string, string[]> = {};
         
         if (results.data.length > 0) {
-          // Get all field names from the CSV header
           const fields = results.meta.fields;
           
-          // Initialize the sample values object
           fields.forEach(field => {
             sampleValues[field] = [];
           });
           
-          // Extract up to 5 non-empty sample values for each field
           const sampleSize = Math.min(5, results.data.length);
           for (let i = 0; i < sampleSize; i++) {
             const row = results.data[i];
@@ -419,7 +378,6 @@ const UploadStage: React.FC<UploadStageProps> = ({ onFileSelected }) => {
           }
         }
         
-        // Create column objects from the headers
         const columns = results.meta.fields.map(header => ({
           header,
           selected: false,
@@ -428,7 +386,8 @@ const UploadStage: React.FC<UploadStageProps> = ({ onFileSelected }) => {
           sampleValues: sampleValues[header] || []
         }));
         
-        onFileSelected(file, columns, results.data);
+        const typedData = results.data as Record<string, string>[];
+        onFileSelected(file, columns, typedData);
         setIsUploading(false);
       },
       error: (error) => {
@@ -498,7 +457,7 @@ const UploadStage: React.FC<UploadStageProps> = ({ onFileSelected }) => {
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
           >
-        <div className="flex flex-col items-center justify-center space-y-4">
+            <div className="flex flex-col items-center justify-center space-y-4">
               <div className="p-3 rounded-full bg-muted">
                 <Upload className="h-6 w-6 text-muted-foreground" />
               </div>
@@ -507,9 +466,9 @@ const UploadStage: React.FC<UploadStageProps> = ({ onFileSelected }) => {
                   Drag and drop your CSV file here
                 </p>
                 <p className="text-xs text-muted-foreground">
-              or click to browse files
-            </p>
-          </div>
+                  or click to browse files
+                </p>
+              </div>
               <Button
                 type="button"
                 variant="secondary"
@@ -518,9 +477,9 @@ const UploadStage: React.FC<UploadStageProps> = ({ onFileSelected }) => {
               >
                 <FileUp size={14} className="mr-1" />
                 Browse files
-          </Button>
-        </div>
-      </div>
+              </Button>
+            </div>
+          </div>
           <Input
             ref={fileInputRef}
             type="file"
