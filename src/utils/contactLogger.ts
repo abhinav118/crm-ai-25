@@ -39,6 +39,58 @@ export const logContactAction = async (
   }
 };
 
+// Function to log a batch operation (e.g., SMS sent to multiple contacts)
+export const logBatchAction = async (
+  action: string,
+  batchName: string,
+  contactsInfo: any[]
+): Promise<void> => {
+  try {
+    if (!contactsInfo || contactsInfo.length === 0) {
+      console.warn('No contacts provided for batch logging');
+      return;
+    }
+    
+    // Generate a batch ID
+    const batchId = crypto.randomUUID();
+    const timestamp = new Date().toISOString();
+    
+    // Create log entries for each contact
+    const logEntries = contactsInfo.map(contact => {
+      // Make sure contact info is JSON-compatible
+      const contactInfo = JSON.parse(JSON.stringify(contact));
+      
+      // Add timestamp if not provided
+      if (!contactInfo.timestamp) {
+        contactInfo.timestamp = timestamp;
+      }
+      
+      return {
+        action,
+        contact_info: contactInfo,
+        batch_id: batchId,
+        batch_name: batchName,
+        created_at: timestamp
+      };
+    });
+    
+    // Insert all log entries
+    const { error } = await supabase
+      .from('contact_logs')
+      .insert(logEntries);
+    
+    if (error) {
+      console.error(`Error logging batch ${action} action:`, error);
+      throw error;
+    }
+    
+    console.log(`Batch ${action} action logged successfully for ${contactsInfo.length} contacts`);
+  } catch (error) {
+    console.error(`Failed to log batch ${action} action:`, error);
+    // We don't want to break the main functionality if logging fails
+  }
+};
+
 export const fetchContactLogs = async () => {
   try {
     const { data, error } = await supabase
@@ -89,6 +141,9 @@ export const formatLogEntry = (log: any) => {
       break;
     case 'message_sent':
       description = `Message sent to "${contact.name}"${contact.channel ? ` via ${contact.channel}` : ''}`;
+      if (contact.message) {
+        description += `: "${contact.message.substring(0, 50)}${contact.message.length > 50 ? '...' : ''}"`;
+      }
       break;
     case 'message_received':
       description = `Message received from "${contact.name}"${contact.channel ? ` via ${contact.channel}` : ''}`;

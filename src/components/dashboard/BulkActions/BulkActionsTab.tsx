@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -14,10 +14,11 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   Loader2, Search, Filter, ChevronsUpDown, ArrowUpDown, 
   User, Mail, Phone, Tag, MessageCircle, History, 
-  CheckCircle, AlertCircle, Info, Calendar, Clock
+  CheckCircle, AlertCircle, Info, Calendar, Clock, Send
 } from "lucide-react";
 import { format } from 'date-fns';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import BulkActions from './BulkActions';
 
 interface BulkActionsTabProps {
   selectedContacts: string[];
@@ -49,7 +50,7 @@ const BulkActionsTab: React.FC<BulkActionsTabProps> = ({
   selectedContacts,
   onActionComplete
 }) => {
-  const [activeTab, setActiveTab] = useState("logs");
+  const [activeTab, setActiveTab] = useState("summary");
   const [message, setMessage] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [tags, setTags] = useState<string[]>([]);
@@ -71,31 +72,12 @@ const BulkActionsTab: React.FC<BulkActionsTabProps> = ({
   const [logTypeFilter, setLogTypeFilter] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   
-  // Load contact info when contacts are selected
-  // useEffect(() => {
-  //   if (selectedContacts.length > 0) {
-  //     fetchSelectedContacts();
-  //   }
-  // }, [selectedContacts]);
-  
   // Load contact logs
   useEffect(() => {
     if (activeTab === 'logs') {
       fetchContactLogs();
     }
   }, [activeTab, selectedContacts, logsPage, logTypeFilter, sortOrder]);
-  
-  // Search logs when search query changes (with debounce)
-  // useEffect(() => {
-  //   if (activeTab === 'logs') {
-  //     const timer = setTimeout(() => {
-  //       setLogsPage(1); // Reset to first page on new search
-  //       fetchContactLogs(true);
-  //     }, 300);
-      
-  //     return () => clearTimeout(timer);
-  //   }
-  // }, [logSearchQuery]);
   
   const fetchSelectedContacts = async () => {
     if (selectedContacts.length === 0) return;
@@ -402,6 +384,7 @@ const BulkActionsTab: React.FC<BulkActionsTabProps> = ({
       case 'contact_updated': return 'Update';
       case 'note_added': return 'Note';
       case 'sms_sent': return 'SMS';
+      case 'message_sent': return 'SMS';
       case 'email_sent': return 'Email';
       case 'call_logged': return 'Call';
       default: return action.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
@@ -411,6 +394,7 @@ const BulkActionsTab: React.FC<BulkActionsTabProps> = ({
   const getActionBadgeColor = (action: string) => {
     switch (action) {
       case 'sms_sent': return 'bg-blue-100 text-blue-800';
+      case 'message_sent': return 'bg-blue-100 text-blue-800';
       case 'contact_updated': return 'bg-amber-100 text-amber-800';
       case 'note_added': return 'bg-purple-100 text-purple-800';
       case 'email_sent': return 'bg-green-100 text-green-800';
@@ -643,11 +627,9 @@ const BulkActionsTab: React.FC<BulkActionsTabProps> = ({
   
   return (
     <div className="space-y-6">
-    
-      
       {/* Operations tabs */}
       <Tabs
-        defaultValue="logs"
+        defaultValue="summary"
         value={activeTab}
         onValueChange={setActiveTab}
         className="w-full"
@@ -661,7 +643,7 @@ const BulkActionsTab: React.FC<BulkActionsTabProps> = ({
           </TabsTrigger>
           <TabsTrigger value="sms">
             <div className="flex items-center">
-              <MessageCircle className="h-4 w-4 mr-2" />
+              <Send className="h-4 w-4 mr-2" />
               Send SMS
             </div>
           </TabsTrigger>
@@ -673,7 +655,7 @@ const BulkActionsTab: React.FC<BulkActionsTabProps> = ({
           </TabsTrigger>
         </TabsList>
         
-        {/* <TabsContent value="summary">
+        <TabsContent value="summary">
           <Card>
             <CardHeader>
               <CardTitle>Update Contacts</CardTitle>
@@ -764,61 +746,14 @@ const BulkActionsTab: React.FC<BulkActionsTabProps> = ({
               </div>
             </CardContent>
           </Card>
-        </TabsContent> */}
+        </TabsContent>
         
-        {/* <TabsContent value="sms">
-          <Card>
-            <CardHeader>
-              <CardTitle>Send SMS Message</CardTitle>
-              <CardDescription>
-                Send a text message to all selected contacts.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="message">Message</Label>
-                  <Textarea
-                    id="message"
-                    placeholder="Type your message here..."
-                    rows={5}
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                  />
-                  <p className="text-xs text-muted-foreground text-right">
-                    {message.length} characters
-                  </p>
-                </div>
-                
-                <div className="bg-blue-50 border-l-4 border-blue-500 p-3 text-sm">
-                  <div className="flex items-start">
-                    <Info className="h-4 w-4 text-blue-500 mr-2 mt-0.5" />
-                    <p className="text-blue-700">
-                      Message will be sent to {contacts.filter(c => c.phone).length} contact(s) with phone numbers. 
-                      {contacts.length - contacts.filter(c => c.phone).length > 0 && 
-                        ` ${contacts.length - contacts.filter(c => c.phone).length} contact(s) without phone numbers will be skipped.`}
-                    </p>
-                  </div>
-                </div>
-                
-                <Button 
-                  className="w-full" 
-                  onClick={handleSendSMS}
-                  disabled={isSending}
-                >
-                  {isSending ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Sending...
-                    </>
-                  ) : (
-                    <>Send Message</>
-                  )}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent> */}
+        <TabsContent value="sms">
+          <BulkActions 
+            selectedContacts={selectedContacts} 
+            onContactsUpdated={onActionComplete}
+          />
+        </TabsContent>
         
         <TabsContent value="logs">
           <Card>
@@ -912,4 +847,4 @@ const BulkActionsTab: React.FC<BulkActionsTabProps> = ({
 export { BulkActionsTab };
 
 // Maintain the default export
-export default BulkActionsTab; 
+export default BulkActionsTab;
