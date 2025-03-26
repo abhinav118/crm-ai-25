@@ -12,10 +12,25 @@ import { supabase } from "@/integrations/supabase/client";
 import { Separator } from "@/components/ui/separator";
 import { 
   Loader2, Send, Tag, Users, TagsIcon, 
-  Smile, PaperclipIcon, ImageIcon, AlertCircle
+  Smile, PaperclipIcon, ImageIcon, AlertCircle, 
+  Check, ChevronsUpDown
 } from "lucide-react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
 import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
 import { logContactAction } from '@/utils/contactLogger';
@@ -39,6 +54,7 @@ const BulkActions: React.FC<BulkActionsProps> = ({
   const [availableTags, setAvailableTags] = useState<string[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [filteredContactIds, setFilteredContactIds] = useState<string[]>(selectedContacts);
+  const [openTagSelector, setOpenTagSelector] = useState(false);
   const { toast } = useToast();
 
   // Fetch contacts data for the selected contacts
@@ -235,33 +251,142 @@ const BulkActions: React.FC<BulkActionsProps> = ({
         </CardHeader>
         <CardContent>
           <div className="space-y-6">
-            {/* Tag filtering section */}
+            {/* Tag filtering section - REPLACED with multi-select dropdown */}
             <div className="space-y-2">
               <Label className="text-sm font-medium">Filter by Tags</Label>
-              <div className="flex flex-wrap gap-2">
-                {availableTags.map(tag => (
-                  <div
-                    key={tag}
-                    onClick={() => handleTagSelection(tag)}
-                    className={`
-                      px-3 py-1 rounded-full text-sm cursor-pointer transition-colors
-                      ${selectedTags.includes(tag) 
-                        ? 'bg-primary text-primary-foreground' 
-                        : 'bg-gray-100 hover:bg-gray-200 text-gray-800'}
-                    `}
+              <Popover open={openTagSelector} onOpenChange={setOpenTagSelector}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={openTagSelector}
+                    className="w-full justify-between"
                   >
-                    <span className="flex items-center">
-                      <Tag className="mr-1 h-3 w-3" />
+                    {selectedTags.length > 0 ? (
+                      <div className="flex flex-wrap gap-1 max-w-[90%] overflow-hidden">
+                        {selectedTags.length <= 2 ? (
+                          selectedTags.map(tag => (
+                            <Badge key={tag} variant="secondary" className="mr-1">
+                              {tag}
+                            </Badge>
+                          ))
+                        ) : (
+                          <>
+                            <Badge variant="secondary" className="mr-1">
+                              {selectedTags[0]}
+                            </Badge>
+                            <Badge variant="secondary">
+                              +{selectedTags.length - 1} more
+                            </Badge>
+                          </>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground">Select tags to filter contacts</span>
+                    )}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Search tags..." />
+                    <CommandList>
+                      <CommandEmpty>No tags found.</CommandEmpty>
+                      <CommandGroup>
+                        <ScrollArea className="h-60">
+                          {availableTags.map((tag) => (
+                            <CommandItem
+                              key={tag}
+                              value={tag}
+                              onSelect={() => handleTagSelection(tag)}
+                            >
+                              <div className="flex items-center">
+                                <Checkbox
+                                  checked={selectedTags.includes(tag)}
+                                  className="mr-2 h-4 w-4"
+                                  onCheckedChange={(checked) => {
+                                    if (checked) {
+                                      handleTagSelection(tag);
+                                    } else {
+                                      handleTagSelection(tag);
+                                    }
+                                  }}
+                                />
+                                <span className="flex items-center">
+                                  <Tag className="mr-2 h-3 w-3" />
+                                  {tag}
+                                </span>
+                              </div>
+                              <Check
+                                className={cn(
+                                  "ml-auto h-4 w-4",
+                                  selectedTags.includes(tag) ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                            </CommandItem>
+                          ))}
+                        </ScrollArea>
+                      </CommandGroup>
+                    </CommandList>
+                    <div className="border-t p-2 flex justify-between">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelectedTags([])}
+                        className="text-xs"
+                      >
+                        Clear selection
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelectedTags(availableTags)}
+                        className="text-xs"
+                      >
+                        Select all
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => setOpenTagSelector(false)}
+                        className="text-xs"
+                      >
+                        Apply filter
+                      </Button>
+                    </div>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+              
+              {selectedTags.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {selectedTags.map(tag => (
+                    <Badge 
+                      key={tag} 
+                      variant="secondary"
+                      className="flex items-center gap-1"
+                    >
                       {tag}
-                    </span>
-                  </div>
-                ))}
-                {availableTags.length === 0 && (
-                  <div className="text-sm text-muted-foreground italic">
-                    No tags found for selected contacts
-                  </div>
-                )}
-              </div>
+                      <button 
+                        className="ml-1 rounded-full hover:bg-gray-200 p-0.5"
+                        onClick={() => handleTagSelection(tag)}
+                      >
+                        <AlertCircle className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                  {selectedTags.length > 0 && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => setSelectedTags([])}
+                      className="h-5 text-xs px-2"
+                    >
+                      Clear all
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
             
             {/* Recipient count indicator */}
@@ -274,16 +399,6 @@ const BulkActions: React.FC<BulkActionsProps> = ({
                     : `${filteredContactIds.length} recipient${filteredContactIds.length !== 1 ? 's' : ''}`}
                 </span>
               </div>
-              
-              {selectedTags.length > 0 && (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => setSelectedTags([])}
-                >
-                  Clear Filters
-                </Button>
-              )}
             </div>
             
             <Separator />
