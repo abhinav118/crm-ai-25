@@ -161,3 +161,62 @@ export const formatLogEntry = (log: any) => {
     timestamp: created_at
   };
 };
+
+// New utility function to fix the error in bulkActionsUtils.ts
+export const getContactsByIds = async (contactIds: string[]) => {
+  try {
+    const { data, error } = await supabase
+      .from('contacts')
+      .select('*')
+      .in('id', contactIds);
+    
+    if (error) throw error;
+    
+    return { data, error: null };
+  } catch (error) {
+    console.error('Error fetching contacts by IDs:', error);
+    return { data: [], error };
+  }
+};
+
+// Utility function for bulk action logging to fix the error in bulkActionsUtils.ts
+export const bulkLogAction = async (action: string, contactIds: string[], details: Record<string, any> = {}) => {
+  try {
+    if (!contactIds.length) return;
+    
+    // First get the contact data for all the IDs
+    const { data: contacts } = await getContactsByIds(contactIds);
+    if (!contacts.length) return;
+    
+    // Create log entries
+    const logEntries = contacts.map(contact => {
+      return {
+        action: action,
+        contact_info: {
+          id: contact.id,
+          name: contact.name,
+          email: contact.email,
+          phone: contact.phone,
+          company: contact.company,
+          status: contact.status,
+          tags: contact.tags || [],
+          details: details,
+          timestamp: new Date().toISOString()
+        },
+        created_at: new Date().toISOString()
+      };
+    });
+    
+    // Insert the logs
+    const { error } = await supabase
+      .from('contact_logs')
+      .insert(logEntries);
+    
+    if (error) throw error;
+    
+    console.log(`Bulk logged ${action} for ${contactIds.length} contacts`);
+    
+  } catch (error) {
+    console.error(`Error logging bulk action ${action}:`, error);
+  }
+};

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -54,7 +55,20 @@ const BulkActions: React.FC<BulkActionsProps> = ({
         if (error) throw error;
         
         if (data) {
-          setContacts(data as Contact[]);
+          // Map database fields to Contact type
+          const formattedContacts: Contact[] = data.map(contact => ({
+            id: contact.id,
+            name: contact.name,
+            email: contact.email || '',
+            phone: contact.phone || '',
+            company: contact.company || '',
+            status: contact.status as 'active' | 'inactive',
+            tags: contact.tags || [],
+            lastActivity: contact.last_activity || contact.created_at,
+            createdAt: contact.created_at
+          }));
+          
+          setContacts(formattedContacts);
           
           // Extract all unique tags from contacts
           const tags = new Set<string>();

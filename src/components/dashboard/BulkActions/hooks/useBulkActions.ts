@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Contact } from '../../ContactsTable';
@@ -35,30 +36,11 @@ export const useBulkActions = ({ onContactsUpdated }: UseBulkActionsProps = {}) 
     
     setLoading(true);
     try {
-      const { data: contacts } = await bulkActionsUtils.getContactsByIds(selectedContacts);
+      const result = await bulkActionsUtils.addTagToContacts(selectedContacts, tag);
       
-      // Update each contact's tags
-      for (const contact of contacts) {
-        const currentTags = contact.tags || [];
-        if (!currentTags.includes(tag)) {
-          const updatedTags = [...currentTags, tag];
-          
-          await supabase
-            .from('contacts')
-            .update({ tags: updatedTags })
-            .eq('id', contact.id);
-        }
+      if (result.success && onContactsUpdated) {
+        onContactsUpdated();
       }
-      
-      // Log the action
-      await bulkActionsUtils.logBulkAction(
-        'add_tag', 
-        selectedContacts, 
-        { tag }
-      );
-      
-      // Notify parent component to refresh contacts
-      if (onContactsUpdated) onContactsUpdated();
     } catch (error) {
       console.error('Error adding tag to contacts:', error);
     } finally {
@@ -72,20 +54,11 @@ export const useBulkActions = ({ onContactsUpdated }: UseBulkActionsProps = {}) 
     
     setLoading(true);
     try {
-      await supabase
-        .from('contacts')
-        .update({ status })
-        .in('id', selectedContacts);
+      const result = await bulkActionsUtils.setContactsStatus(selectedContacts, status);
       
-      // Log the action
-      await bulkActionsUtils.logBulkAction(
-        'change_status', 
-        selectedContacts, 
-        { status }
-      );
-      
-      // Notify parent component to refresh contacts
-      if (onContactsUpdated) onContactsUpdated();
+      if (result.success && onContactsUpdated) {
+        onContactsUpdated();
+      }
     } catch (error) {
       console.error('Error changing contacts status:', error);
     } finally {
@@ -99,22 +72,15 @@ export const useBulkActions = ({ onContactsUpdated }: UseBulkActionsProps = {}) 
     
     setLoading(true);
     try {
-      await supabase
-        .from('contacts')
-        .delete()
-        .in('id', selectedContacts);
+      const result = await bulkActionsUtils.deleteContacts(selectedContacts);
       
-      // Log the action
-      await bulkActionsUtils.logBulkAction(
-        'delete', 
-        selectedContacts
-      );
-      
-      // Clear selection after deletion
-      setSelectedContacts([]);
-      
-      // Notify parent component to refresh contacts
-      if (onContactsUpdated) onContactsUpdated();
+      if (result.success) {
+        // Clear selection after deletion
+        setSelectedContacts([]);
+        
+        // Notify parent component to refresh contacts
+        if (onContactsUpdated) onContactsUpdated();
+      }
     } catch (error) {
       console.error('Error deleting contacts:', error);
     } finally {
@@ -132,4 +98,4 @@ export const useBulkActions = ({ onContactsUpdated }: UseBulkActionsProps = {}) 
     deleteContacts,
     clearSelection: () => setSelectedContacts([])
   };
-}; 
+};

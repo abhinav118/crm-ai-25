@@ -1,3 +1,4 @@
+
 // This is a compatibility file to maintain backward compatibility
 // It re-exports BulkActionsTab as BulkActionsTable
 
