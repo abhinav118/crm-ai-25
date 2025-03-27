@@ -14,6 +14,7 @@ export const getBulkActionsColumns = () => {
         const log = row.original as unknown as LogEntry;
         return <ContactCell log={log} />;
       },
+      enableSorting: true,
     },
     {
       id: 'action',
@@ -22,6 +23,7 @@ export const getBulkActionsColumns = () => {
         const log = row.original as unknown as LogEntry;
         return <ActionCell log={log} />;
       },
+      enableSorting: true,
     },
     {
       id: 'description',
@@ -31,11 +33,13 @@ export const getBulkActionsColumns = () => {
         const log = row.original as unknown as LogEntry;
         return <DescriptionCell log={log} />;
       },
+      enableSorting: true,
     },
     {
       id: 'date',
       header: 'Date',
       accessorKey: 'date',
+      enableSorting: true,
     },
   ];
 };

@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { cn } from '@/lib/utils';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowDownAZ, ArrowUpAZ } from 'lucide-react';
 
 export type ColumnDef<T> = {
   id: string;
@@ -73,26 +73,33 @@ export function DataTable<T>({
     onSelectAll?.(isSelected);
   };
   
-  const renderHeaderCell = (column: ColumnDef<T>) => {
-    const isSorted = column.accessorKey && sortConfig.key === column.accessorKey;
-    const sortIcon = isSorted ? (
-      sortConfig.direction === 'asc' ? (
-        <ChevronUp size={14} />
-      ) : (
-        <ChevronDown size={14} />
-      )
-    ) : null;
+  const renderSortIcon = (column: ColumnDef<T>) => {
+    if (!column.enableSorting || !column.accessorKey) return null;
     
+    const isSorted = sortConfig.key === column.accessorKey;
+    
+    if (isSorted) {
+      if (sortConfig.direction === 'asc') {
+        return <ArrowUpAZ size={16} className="ml-1 text-primary" />;
+      } else {
+        return <ArrowDownAZ size={16} className="ml-1 text-primary" />;
+      }
+    }
+    
+    return <ArrowUpAZ size={16} className="ml-1 text-gray-300" />;
+  };
+  
+  const renderHeaderCell = (column: ColumnDef<T>) => {
     return (
       <div
         className={cn(
-          "flex items-center gap-1",
-          column.enableSorting && "cursor-pointer"
+          "flex items-center",
+          column.enableSorting && "cursor-pointer hover:text-primary"
         )}
         onClick={() => column.enableSorting && handleSort(column)}
       >
-        {column.header}
-        {sortIcon && <span className="text-gray-500">{sortIcon}</span>}
+        <span>{column.header}</span>
+        {column.enableSorting && renderSortIcon(column)}
       </div>
     );
   };

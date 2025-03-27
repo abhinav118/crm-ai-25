@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { cn } from '@/lib/utils';
 import Avatar from './Avatar';
@@ -111,6 +112,7 @@ const ContactsTable: React.FC<ContactsTableProps> = ({
       id: 'phone',
       header: 'Phone',
       accessorKey: 'phone',
+      enableSorting: true,
       cell: ({ row }) => (
         row.phone ? (
           <div className="flex items-center gap-2">
@@ -126,6 +128,7 @@ const ContactsTable: React.FC<ContactsTableProps> = ({
       id: 'email',
       header: 'Email',
       accessorKey: 'email',
+      enableSorting: true,
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
           <Mail size={14} className="text-gray-400" />
@@ -137,6 +140,7 @@ const ContactsTable: React.FC<ContactsTableProps> = ({
       id: 'lastActivity',
       header: 'Last Activity',
       accessorKey: 'lastActivity',
+      enableSorting: true,
       cell: ({ row }) => (
         row.lastActivity ? (
           <div className="flex flex-col">
@@ -152,6 +156,7 @@ const ContactsTable: React.FC<ContactsTableProps> = ({
       id: 'tags',
       header: 'Tags',
       accessorKey: 'tags',
+      enableSorting: false, // Disabled sorting for tags as requested
       cell: ({ row }) => (
         <div className="flex flex-wrap gap-1">
           {row.tags && row.tags.length > 0 ? (

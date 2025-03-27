@@ -115,6 +115,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      format_phone_e164: {
+        Args: {
+          phone: string
+        }
+        Returns: string
+      }
       format_phone_number: {
         Args: {
           phone: string
