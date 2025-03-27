@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import Avatar from '@/components/dashboard/Avatar';
 import { Button } from '@/components/ui/button';
@@ -50,14 +49,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollAreaContainerRef = useRef<HTMLDivElement>(null);
 
-  // Scroll to bottom without animation
   const scrollToBottom = () => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
     }
   };
 
-  // Fetch messages from Supabase when contact changes
   useEffect(() => {
     const fetchMessages = async () => {
       if (!contact?.id) return;
@@ -85,7 +82,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
           
           setMessages(formattedMessages);
           
-          // Scroll without animation after messages are loaded
           setTimeout(scrollToBottom, 100);
         }
       } catch (error) {
@@ -103,7 +99,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
     fetchMessages();
   }, [contact, toast]);
 
-  // Set up real-time subscription for new messages
   useEffect(() => {
     if (!contact?.id) return;
     
@@ -132,10 +127,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
           console.log('Adding new message to state:', formattedMessage);
           setMessages(prev => [...prev, formattedMessage]);
           
-          // Scroll without animation for new messages
           setTimeout(scrollToBottom, 50);
 
-          // Log received message to contact_logs if it's from the contact
           if (newMessage.sender === 'contact') {
             logContactAction('message_received', {
               id: contact.id,
@@ -156,12 +149,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
   }, [contact?.id]);
 
   const handleSend = async (e: React.FormEvent) => {
-    // Prevent default form submission to avoid page reload
     e.preventDefault();
     
     if (!messageText.trim()) return;
     
-    // First, create a temporary message to show in the UI
     const tempId = Date.now().toString();
     const newMessage: Message = {
       id: tempId,
@@ -175,11 +166,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
     setMessageText('');
     setIsLoading(true);
     
-    // Scroll without animation after message is added
     scrollToBottom();
     
     try {
-      // Prepare the message data
       const messageInsert = {
         contact_id: updatedContact.id,
         content: messageText,
@@ -189,7 +178,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
       
       console.log('Inserting message:', messageInsert);
       
-      // Store the message in Supabase
       const { data: messageData, error: messageError } = await supabase
         .from('messages')
         .insert(messageInsert)
@@ -201,11 +189,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
         throw messageError;
       }
       
-      // Handle channel-specific sending logic
       if (activeChannel === 'sms' && updatedContact.phone) {
         console.log('Sending SMS via Supabase Edge Function');
         
-        // Call our Supabase Edge Function to send SMS
         const { data: twilioResponse, error: twilioError } = await supabase.functions.invoke('send-sms', {
           body: {
             to: updatedContact.phone,
@@ -224,7 +210,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
           throw new Error(`Twilio error: ${twilioResponse.error || 'Unknown error'}`);
         }
       } else if (activeChannel === 'email' && updatedContact.email) {
-        // Log that email functionality is not fully implemented
         console.log('Email sending would happen here');
         toast({
           title: 'Email Feature',
@@ -233,7 +218,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
         });
       }
       
-      // Log the message sending action
       await logContactAction('message_sent', {
         id: updatedContact.id,
         name: updatedContact.name,
@@ -242,7 +226,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
         timestamp: new Date().toISOString()
       });
       
-      // Replace the temporary message with the one from the database
       if (messageData && messageData.length > 0) {
         setMessages(prev => 
           prev.map(msg => 
@@ -259,7 +242,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
         );
       }
       
-      // Update contact's last_activity in Supabase
       await supabase
         .from('contacts')
         .update({ last_activity: new Date().toISOString() })
@@ -276,7 +258,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
     } catch (error) {
       console.error('Error sending message:', error);
       
-      // Remove the temporary message on failure
       setMessages(prev => prev.filter(msg => msg.id !== tempId));
       
       toast({
@@ -292,7 +273,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      // Directly call handleSend with a synthetic event
       handleSend(e as unknown as React.FormEvent);
     }
   };
@@ -329,7 +309,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-lg w-full max-w-5xl h-[90vh] flex flex-col">
-        {/* Header */}
         <div className="p-4 border-b flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Avatar name={updatedContact.name} status={updatedContact.status as any} />
@@ -346,19 +325,15 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
           </Button>
         </div>
         
-        {/* Split View: Profile and Chat */}
         <div className="flex flex-1 overflow-hidden">
-          {/* Left Side - Profile */}
-          <div className="w-1/3 border-r">
+          <div className="w-[320px] min-w-[320px] border-r">
             <UserProfile 
               contact={updatedContact}
               onSave={handleContactUpdate}
             />
           </div>
 
-          {/* Right Side - Chat */}
-          <div className="w-2/3 flex flex-col">
-            {/* Channel Tabs */}
+          <div className="flex-1 flex flex-col">
             <Tabs 
               defaultValue="sms" 
               className="flex-1 flex flex-col"
@@ -377,7 +352,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
                 </TabsList>
               </div>
 
-              {/* Messages Container - with fixed height */}
               <div className="flex-1 overflow-hidden p-4 flex flex-col">
                 <TabsContent value="sms" className="mt-0 h-full flex flex-col">
                   {!contact.phone && (
@@ -484,7 +458,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
                 </TabsContent>
               </div>
 
-              {/* Message Input - Fixed to the bottom */}
               <div className="p-4 border-t">
                 <form onSubmit={handleSend} className="flex flex-col space-y-2">
                   <div className="flex items-center gap-2 mb-2">

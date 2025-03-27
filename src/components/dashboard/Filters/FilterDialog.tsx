@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
@@ -67,8 +68,6 @@ const FilterDialog: React.FC<FilterDialogProps> = ({
 
   const handleResetFilters = () => {
     setFilters({});
-    onApplyFilters({});
-    onOpenChange(false);
   };
 
   const getFilterCount = () => {
@@ -221,7 +220,7 @@ const FilterDialog: React.FC<FilterDialogProps> = ({
             <div className="flex justify-between space-x-2 pt-4">
               <Button 
                 variant="outline" 
-                onClick={() => setFilters({})}
+                onClick={handleResetFilters}
                 className="gap-1.5"
               >
                 Clear Filters
