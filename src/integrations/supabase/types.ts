@@ -12,18 +12,24 @@ export type Database = {
       contact_logs: {
         Row: {
           action: string
+          batch_id: string | null
+          batch_name: string | null
           contact_info: Json
           created_at: string
           id: string
         }
         Insert: {
           action: string
+          batch_id?: string | null
+          batch_name?: string | null
           contact_info: Json
           created_at?: string
           id?: string
         }
         Update: {
           action?: string
+          batch_id?: string | null
+          batch_name?: string | null
           contact_info?: Json
           created_at?: string
           id?: string
@@ -109,7 +115,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      format_phone_number: {
+        Args: {
+          phone: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
