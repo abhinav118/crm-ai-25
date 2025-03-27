@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, X, FilterX, Trash2 } from 'lucide-react';
+import { Search, Filter, X, FilterX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import FilterDialog, { FilterState } from './Filters/FilterDialog';
