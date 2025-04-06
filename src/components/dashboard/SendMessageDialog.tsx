@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { 
   PaperclipIcon, 
   SmileIcon, 
@@ -103,6 +104,10 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
   const [searchEmoji, setSearchEmoji] = useState('');
   const [attachments, setAttachments] = useState<{ file: File; url?: string }[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [showAiPrompt, setShowAiPrompt] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
   
@@ -144,6 +149,77 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
   const handleEmojiClick = (emoji: string) => {
     setMessage(prev => prev + emoji);
     setShowEmojiPicker(false);
+  };
+
+  const handleGenerateAiText = async () => {
+    if (!aiPrompt.trim()) {
+      toast({
+        title: "Prompt is required",
+        description: "Please enter a prompt to generate text",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setIsGenerating(true);
+    setMessage('');
+    
+    try {
+      // Call the Supabase Edge Function with streaming
+      const response = await supabase.functions.invoke('generate-sms', {
+        body: { prompt: aiPrompt }
+      });
+      
+      if (!response.data) throw new Error('Failed to generate text');
+      
+      // Process the streamed response
+      const reader = response.data.getReader();
+      const decoder = new TextDecoder();
+      let generatedText = '';
+      
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n').filter(line => line.trim() !== '');
+        
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.substring(6);
+            if (data === '[DONE]') continue;
+            
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.choices && parsed.choices[0]?.delta?.content) {
+                generatedText += parsed.choices[0].delta.content;
+                setMessage(generatedText);
+              }
+            } catch (e) {
+              console.error('Error parsing SSE data:', e);
+            }
+          }
+        }
+      }
+      
+      setShowAiPrompt(false);
+      
+      toast({
+        title: "Text generated",
+        description: "AI has generated your text message"
+      });
+      
+    } catch (error) {
+      console.error('Error generating text:', error);
+      toast({
+        title: "Generation failed",
+        description: error instanceof Error ? error.message : "Failed to generate text",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGenerating(false);
+      setAiPrompt('');
+    }
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -414,9 +490,48 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
                       accept="image/*,video/*,audio/*,.pdf,.doc,.docx"
                     />
                   </button>
-                  <button className="p-1 rounded hover:bg-gray-100">
-                    <ZapIcon size={18} className="text-gray-500" />
-                  </button>
+                  <Popover open={showAiPrompt} onOpenChange={setShowAiPrompt}>
+                    <PopoverTrigger asChild>
+                      <button 
+                        className={`p-1 rounded hover:bg-gray-100 ${showAiPrompt ? 'bg-gray-100' : ''}`}
+                        aria-label="Generate text with AI"
+                      >
+                        <ZapIcon size={18} className={showAiPrompt ? "text-indigo-600" : "text-gray-500"} />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-80 p-4">
+                      <div className="space-y-4">
+                        <h4 className="font-medium">Generate SMS with AI</h4>
+                        <p className="text-sm text-gray-500">
+                          Describe what you want the AI to generate. The text will be optimized for SMS (140 characters).
+                        </p>
+                        <Textarea
+                          placeholder="E.g., 'Create a promotional SMS for a 20% off sale on summer clothing'"
+                          value={aiPrompt}
+                          onChange={(e) => setAiPrompt(e.target.value)}
+                          className="min-h-[100px]"
+                          disabled={isGenerating}
+                        />
+                        <Button 
+                          onClick={handleGenerateAiText}
+                          className="w-full bg-indigo-600 hover:bg-indigo-700"
+                          disabled={isGenerating || !aiPrompt.trim()}
+                        >
+                          {isGenerating ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Generating...
+                            </>
+                          ) : (
+                            <>
+                              <ZapIcon className="mr-2 h-4 w-4" />
+                              Generate
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                   
                   {/* Emoji Picker */}
                   {showEmojiPicker && (
@@ -499,6 +614,13 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
                 </div>
               </div>
             </div>
+            
+            {isGenerating && (
+              <div className="flex items-center justify-center space-x-2 text-sm text-indigo-600">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>AI is generating your text...</span>
+              </div>
+            )}
             
             {attachments.length > 0 && (
               <div className="space-y-2">
