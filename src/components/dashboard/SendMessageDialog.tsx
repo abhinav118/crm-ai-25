@@ -162,55 +162,48 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
     try {
       console.log("Calling Supabase function with prompt:", aiPrompt);
       
-      const { data, error } = await supabase.functions.invoke('generate-sms', {
-        body: { prompt: aiPrompt }
+      const response = await supabase.functions.invoke('generate-sms', {
+        body: { prompt: aiPrompt },
+        responseType: 'stream'
       });
       
-      if (error) {
-        console.error("Error calling function:", error);
-        throw new Error(`Failed to generate text: ${error.message}`);
+      if (!response.data) {
+        console.error("Response data is undefined:", response);
+        throw new Error('No response data received');
       }
       
-      if (!data) {
-        console.error("Failed to generate text - no data in response");
-        throw new Error('Failed to generate text - no response data');
-      }
-      
-      console.log("Response received:", data);
-      
-      const reader = data.getReader?.();
-      
-      if (!reader) {
-        console.error("Error: data.getReader is not a function", data);
-        throw new Error("Couldn't process streaming response. Please try again.");
-      }
-      
-      const decoder = new TextDecoder();
+      const reader = response.data.getReader();
       let generatedText = '';
+      const decoder = new TextDecoder();
       
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
         
-        const chunk = decoder.decode(value);
-        console.log("Received chunk:", chunk);
-        const lines = chunk.split('\n').filter(line => line.trim() !== '');
-        
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.substring(6);
-            if (data === '[DONE]') continue;
-            
-            try {
-              const parsed = JSON.parse(data);
-              if (parsed.choices && parsed.choices[0]?.delta?.content) {
-                generatedText += parsed.choices[0].delta.content;
-                setMessage(generatedText);
+        try {
+          const chunk = decoder.decode(value, { stream: true });
+          console.log("Received chunk:", chunk);
+          
+          const lines = chunk.split('\n').filter(line => line.trim() !== '');
+          
+          for (const line of lines) {
+            if (line.startsWith('data:')) {
+              const data = line.substring(5).trim();
+              if (data === '[DONE]') continue;
+              
+              try {
+                const parsed = JSON.parse(data);
+                if (parsed.choices && parsed.choices[0]?.delta?.content) {
+                  generatedText += parsed.choices[0].delta.content;
+                  setMessage(generatedText);
+                }
+              } catch (e) {
+                console.error('Error parsing SSE data:', e, 'Raw data:', data);
               }
-            } catch (e) {
-              console.error('Error parsing SSE data:', e);
             }
           }
+        } catch (decodeError) {
+          console.error('Error decoding chunk:', decodeError);
         }
       }
       
@@ -225,7 +218,7 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
       console.error('Error generating text:', error);
       toast({
         title: "Generation failed",
-        description: error instanceof Error ? error.message : "Failed to generate text. Please check your API key.",
+        description: error instanceof Error ? error.message : "Couldn't process streaming response. Please try again.",
         variant: "destructive"
       });
     } finally {

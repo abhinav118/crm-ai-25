@@ -57,11 +57,13 @@ serve(async (req) => {
 
     console.log('OpenAI API responded successfully, streaming response');
 
-    // Return the stream directly
+    // Return the stream directly with proper headers
     return new Response(response.body, {
       headers: {
         ...corsHeaders,
-        'Content-Type': 'text/event-stream'
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive'
       }
     })
 
