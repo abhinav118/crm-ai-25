@@ -4,7 +4,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { 
   PaperclipIcon, 
   SmileIcon, 
@@ -18,6 +17,7 @@ import {
 import { Contact } from './ContactsTable';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
 interface SendMessageDialogProps {
   open: boolean;
@@ -490,28 +490,49 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
                       accept="image/*,video/*,audio/*,.pdf,.doc,.docx"
                     />
                   </button>
-                  <Popover open={showAiPrompt} onOpenChange={setShowAiPrompt}>
-                    <PopoverTrigger asChild>
+                  
+                  {/* Replace Popover with Sheet */}
+                  <Sheet open={showAiPrompt} onOpenChange={setShowAiPrompt}>
+                    <SheetTrigger asChild>
                       <button 
                         className={`p-1 rounded hover:bg-gray-100 ${showAiPrompt ? 'bg-gray-100' : ''}`}
                         aria-label="Generate text with AI"
                       >
                         <ZapIcon size={18} className={showAiPrompt ? "text-indigo-600" : "text-gray-500"} />
                       </button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-80 p-4">
-                      <div className="space-y-4">
-                        <h4 className="font-medium">Generate SMS with AI</h4>
-                        <p className="text-sm text-gray-500">
+                    </SheetTrigger>
+                    <SheetContent side="right" className="w-full sm:w-[400px] p-6">
+                      <SheetHeader>
+                        <SheetTitle>Generate SMS with AI</SheetTitle>
+                        <SheetDescription>
                           Describe what you want the AI to generate. The text will be optimized for SMS (140 characters).
-                        </p>
-                        <Textarea
-                          placeholder="E.g., 'Create a promotional SMS for a 20% off sale on summer clothing'"
-                          value={aiPrompt}
-                          onChange={(e) => setAiPrompt(e.target.value)}
-                          className="min-h-[100px]"
-                          disabled={isGenerating}
-                        />
+                        </SheetDescription>
+                      </SheetHeader>
+                      
+                      <div className="mt-6 space-y-6">
+                        <div className="space-y-2">
+                          <label htmlFor="aiPrompt" className="text-sm font-medium">
+                            Enter your prompt:
+                          </label>
+                          <Textarea
+                            id="aiPrompt"
+                            placeholder="E.g., 'Create a promotional SMS for a 20% off sale on summer clothing'"
+                            value={aiPrompt}
+                            onChange={(e) => setAiPrompt(e.target.value)}
+                            className="min-h-[120px]"
+                            disabled={isGenerating}
+                          />
+                        </div>
+                        
+                        <div className="text-sm text-gray-500">
+                          <p>Prompt examples:</p>
+                          <ul className="list-disc pl-5 space-y-1 mt-2">
+                            <li>"Write a welcome message for new customers"</li>
+                            <li>"Create an appointment reminder for tomorrow"</li>
+                            <li>"Draft a thank you message after a purchase"</li>
+                          </ul>
+                        </div>
+                        
                         <Button 
                           onClick={handleGenerateAiText}
                           className="w-full bg-indigo-600 hover:bg-indigo-700"
@@ -525,13 +546,13 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
                           ) : (
                             <>
                               <ZapIcon className="mr-2 h-4 w-4" />
-                              Generate
+                              Generate SMS
                             </>
                           )}
                         </Button>
                       </div>
-                    </PopoverContent>
-                  </Popover>
+                    </SheetContent>
+                  </Sheet>
                   
                   {/* Emoji Picker */}
                   {showEmojiPicker && (
