@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -162,48 +163,68 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
     try {
       console.log("Calling Supabase function with prompt:", aiPrompt);
       
-      const response = await supabase.functions.invoke('generate-sms', {
-        body: { prompt: aiPrompt },
-        responseType: 'stream'
+      // Use the standard invoke method without the responseType option
+      const { data, error } = await supabase.functions.invoke('generate-sms', {
+        body: { prompt: aiPrompt }
       });
       
-      if (!response.data) {
-        console.error("Response data is undefined:", response);
-        throw new Error('No response data received');
+      if (error) {
+        console.error("Error calling function:", error);
+        throw new Error(`Failed to generate text: ${error.message}`);
       }
       
-      const reader = response.data.getReader();
-      let generatedText = '';
-      const decoder = new TextDecoder();
+      if (!data) {
+        console.error("Failed to generate text - no data in response");
+        throw new Error('Failed to generate text - no response data');
+      }
       
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+      // Check if data is a ReadableStream
+      if (data.constructor && data.constructor.name === 'ReadableStream') {
+        console.log("Received stream response");
+        const reader = data.getReader();
+        let generatedText = '';
+        const decoder = new TextDecoder();
         
-        try {
-          const chunk = decoder.decode(value, { stream: true });
-          console.log("Received chunk:", chunk);
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
           
-          const lines = chunk.split('\n').filter(line => line.trim() !== '');
-          
-          for (const line of lines) {
-            if (line.startsWith('data:')) {
-              const data = line.substring(5).trim();
-              if (data === '[DONE]') continue;
-              
-              try {
-                const parsed = JSON.parse(data);
-                if (parsed.choices && parsed.choices[0]?.delta?.content) {
-                  generatedText += parsed.choices[0].delta.content;
-                  setMessage(generatedText);
+          try {
+            const chunk = decoder.decode(value, { stream: true });
+            console.log("Received chunk:", chunk);
+            
+            const lines = chunk.split('\n').filter(line => line.trim() !== '');
+            
+            for (const line of lines) {
+              if (line.startsWith('data:')) {
+                const data = line.substring(5).trim();
+                if (data === '[DONE]') continue;
+                
+                try {
+                  const parsed = JSON.parse(data);
+                  if (parsed.choices && parsed.choices[0]?.delta?.content) {
+                    generatedText += parsed.choices[0].delta.content;
+                    setMessage(generatedText);
+                  }
+                } catch (e) {
+                  console.error('Error parsing SSE data:', e, 'Raw data:', data);
                 }
-              } catch (e) {
-                console.error('Error parsing SSE data:', e, 'Raw data:', data);
               }
             }
+          } catch (decodeError) {
+            console.error('Error decoding chunk:', decodeError);
           }
-        } catch (decodeError) {
-          console.error('Error decoding chunk:', decodeError);
+        }
+      } else {
+        // Handle non-streaming response
+        console.log("Received non-stream response:", data);
+        if (typeof data === 'string') {
+          setMessage(data);
+        } else if (data.text || data.content || data.message) {
+          setMessage(data.text || data.content || data.message);
+        } else {
+          console.error("Unexpected data format:", data);
+          throw new Error('Unexpected response format from AI generation');
         }
       }
       
