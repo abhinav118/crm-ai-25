@@ -25,6 +25,8 @@ serve(async (req) => {
       throw new Error('OpenAI API key not configured')
     }
 
+    console.log('Calling OpenAI API with prompt:', prompt)
+
     // Call OpenAI API with streaming
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -47,6 +49,14 @@ serve(async (req) => {
       })
     })
 
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('OpenAI API error:', errorText);
+      throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
+    }
+
+    console.log('OpenAI API responded successfully, streaming response');
+
     // Return the stream directly
     return new Response(response.body, {
       headers: {
@@ -56,6 +66,7 @@ serve(async (req) => {
     })
 
   } catch (error) {
+    console.error('Error in generate-sms function:', error);
     return new Response(
       JSON.stringify({ error: error.message }),
       {

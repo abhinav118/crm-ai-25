@@ -165,12 +165,17 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
     setMessage('');
     
     try {
+      console.log("Calling Supabase function with prompt:", aiPrompt);
+      
       // Call the Supabase Edge Function with streaming
       const response = await supabase.functions.invoke('generate-sms', {
         body: { prompt: aiPrompt }
       });
       
-      if (!response.data) throw new Error('Failed to generate text');
+      if (!response.data) {
+        console.error("Failed to generate text - no data in response");
+        throw new Error('Failed to generate text - no response data');
+      }
       
       // Process the streamed response
       const reader = response.data.getReader();
@@ -182,6 +187,7 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
         if (done) break;
         
         const chunk = decoder.decode(value);
+        console.log("Received chunk:", chunk);
         const lines = chunk.split('\n').filter(line => line.trim() !== '');
         
         for (const line of lines) {
@@ -213,7 +219,7 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
       console.error('Error generating text:', error);
       toast({
         title: "Generation failed",
-        description: error instanceof Error ? error.message : "Failed to generate text",
+        description: error instanceof Error ? error.message : "Failed to generate text. Please check your API key.",
         variant: "destructive"
       });
     } finally {
