@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -30,7 +29,6 @@ type EmojiData = {
   description?: string;
 };
 
-// Emoji categories for the picker
 const emojiCategories = {
   "Smiles & People": [
     { emoji: "😀", description: "grinning" },
@@ -113,7 +111,6 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
   
   const { toast } = useToast();
   
-  // Reset form when dialog opens
   useEffect(() => {
     if (open) {
       setName('');
@@ -122,13 +119,11 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
     }
   }, [open]);
 
-  // Update character and word counts
   useEffect(() => {
     setCharCount(message.length);
     setWordCount(message.trim() ? message.trim().split(/\s+/).length : 0);
   }, [message]);
 
-  // Close emoji picker when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -167,18 +162,29 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
     try {
       console.log("Calling Supabase function with prompt:", aiPrompt);
       
-      // Call the Supabase Edge Function with streaming
-      const response = await supabase.functions.invoke('generate-sms', {
+      const { data, error } = await supabase.functions.invoke('generate-sms', {
         body: { prompt: aiPrompt }
       });
       
-      if (!response.data) {
+      if (error) {
+        console.error("Error calling function:", error);
+        throw new Error(`Failed to generate text: ${error.message}`);
+      }
+      
+      if (!data) {
         console.error("Failed to generate text - no data in response");
         throw new Error('Failed to generate text - no response data');
       }
       
-      // Process the streamed response
-      const reader = response.data.getReader();
+      console.log("Response received:", data);
+      
+      const reader = data.getReader?.();
+      
+      if (!reader) {
+        console.error("Error: data.getReader is not a function", data);
+        throw new Error("Couldn't process streaming response. Please try again.");
+      }
+      
       const decoder = new TextDecoder();
       let generatedText = '';
       
@@ -232,7 +238,6 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
       
-      // Basic validation - max size 5MB
       if (file.size > 5 * 1024 * 1024) {
         toast({
           title: "File too large",
@@ -242,10 +247,8 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
         return;
       }
       
-      // Add file to attachments array
       setAttachments(prev => [...prev, { file }]);
       
-      // Upload to Twilio Assets API
       uploadFile(file);
     }
   };
@@ -266,7 +269,6 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
       
       if (error) throw error;
       
-      // Update attachment with URL
       setAttachments(prev => 
         prev.map(att => 
           att.file === file 
@@ -286,7 +288,6 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
         description: "Failed to upload file. Please try again.",
         variant: "destructive"
       });
-      // Remove failed attachment
       setAttachments(prev => prev.filter(att => att.file !== file));
     } finally {
       setUploading(false);
@@ -334,11 +335,9 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
     setIsLoading(true);
 
     try {
-      // Track successful and failed sends
       let successCount = 0;
       let failedCount = 0;
       
-      // Store messages in the messages table and send SMS to each contact
       for (const contact of selectedContacts) {
         if (!contact.phone) {
           console.log(`Skipping contact ${contact.name} - no phone number`);
@@ -346,7 +345,6 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
           continue;
         }
 
-        // First, store the message in the database
         const { data: messageData, error: messageError } = await supabase
           .from('messages')
           .insert({
@@ -364,14 +362,12 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
           continue;
         }
 
-        // Prepare the message payload with attachments if any
         const messagePayload: any = {
           to: contact.phone,
           message: message,
           contactId: contact.id
         };
 
-        // Add media URLs if attachments exist
         if (attachments.length > 0) {
           const mediaUrls = attachments
             .filter(att => att.url)
@@ -382,7 +378,6 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
           }
         }
 
-        // Send the SMS via the Supabase Edge Function
         const { data, error } = await supabase.functions.invoke('send-sms', {
           body: messagePayload
         });
@@ -396,7 +391,6 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
         }
       }
 
-      // Show toast with results
       if (successCount > 0) {
         toast({
           title: "Messages sent",
@@ -411,7 +405,6 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
         });
       }
 
-      // Close the dialog
       onClose();
     } catch (error) {
       console.error("Error in send message flow:", error);
@@ -454,7 +447,6 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
         </DialogHeader>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
-          {/* Left column - Form */}
           <div className="space-y-4">
             <div className="space-y-2">
               <label htmlFor="name" className="text-sm font-medium flex items-center">
@@ -497,7 +489,6 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
                     />
                   </button>
                   
-                  {/* Replace Popover with Sheet */}
                   <Sheet open={showAiPrompt} onOpenChange={setShowAiPrompt}>
                     <SheetTrigger asChild>
                       <button 
@@ -560,7 +551,6 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
                     </SheetContent>
                   </Sheet>
                   
-                  {/* Emoji Picker */}
                   {showEmojiPicker && (
                     <div 
                       ref={emojiPickerRef}
@@ -688,7 +678,6 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
             </div>
           </div>
           
-          {/* Right column - Preview */}
           <div className="flex justify-center items-start">
             <div className="relative w-[280px] h-[540px] bg-black rounded-[36px] p-[12px] shadow-xl overflow-hidden">
               <div className="absolute inset-0 mx-auto w-[66%] h-[4%] top-0 bg-black rounded-b-2xl"></div>
