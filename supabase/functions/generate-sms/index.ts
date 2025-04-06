@@ -20,7 +20,7 @@ serve(async (req) => {
       throw new Error('Prompt is required')
     }
 
-    const openaiApiKey = Deno.env.get('OPENAI_API_KEY')
+    const openaiApiKey = Deno.env.get('OPEN_AI_KEY')
     if (!openaiApiKey) {
       throw new Error('OpenAI API key not configured')
     }
@@ -35,7 +35,7 @@ serve(async (req) => {
         'Authorization': `Bearer ${openaiApiKey}`
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4o',
         messages: [
           {
             role: 'system',
