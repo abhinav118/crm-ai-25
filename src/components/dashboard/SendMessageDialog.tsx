@@ -17,7 +17,6 @@ import {
 import { Contact } from './ContactsTable';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
 interface SendMessageDialogProps {
   open: boolean;
@@ -30,6 +29,7 @@ type EmojiData = {
   description?: string;
 };
 
+// Emoji categories for the picker
 const emojiCategories = {
   "Smiles & People": [
     { emoji: "😀", description: "grinning" },
@@ -103,15 +103,12 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
   const [searchEmoji, setSearchEmoji] = useState('');
   const [attachments, setAttachments] = useState<{ file: File; url?: string }[]>([]);
   const [uploading, setUploading] = useState(false);
-  const [aiPrompt, setAiPrompt] = useState('');
-  const [showAiPrompt, setShowAiPrompt] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
-  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
   
   const { toast } = useToast();
   
+  // Reset form when dialog opens
   useEffect(() => {
     if (open) {
       setName('');
@@ -120,11 +117,13 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
     }
   }, [open]);
 
+  // Update character and word counts
   useEffect(() => {
     setCharCount(message.length);
     setWordCount(message.trim() ? message.trim().split(/\s+/).length : 0);
   }, [message]);
 
+  // Close emoji picker when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -147,111 +146,11 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
     setShowEmojiPicker(false);
   };
 
-  const handleGenerateAiText = async () => {
-    if (!aiPrompt.trim()) {
-      toast({
-        title: "Prompt is required",
-        description: "Please enter a prompt to generate text",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    setIsGenerating(true);
-    setMessage('');
-    
-    try {
-      console.log("Calling Supabase function with prompt:", aiPrompt);
-      
-      // Use the standard invoke method without the responseType option
-      const { data, error } = await supabase.functions.invoke('generate-sms', {
-        body: { prompt: aiPrompt }
-      });
-      
-      if (error) {
-        console.error("Error calling function:", error);
-        throw new Error(`Failed to generate text: ${error.message}`);
-      }
-      
-      if (!data) {
-        console.error("Failed to generate text - no data in response");
-        throw new Error('Failed to generate text - no response data');
-      }
-      
-      // Check if data is a ReadableStream
-      if (data.constructor && data.constructor.name === 'ReadableStream') {
-        console.log("Received stream response");
-        const reader = data.getReader();
-        let generatedText = '';
-        const decoder = new TextDecoder();
-        
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          
-          try {
-            const chunk = decoder.decode(value, { stream: true });
-            console.log("Received chunk:", chunk);
-            
-            const lines = chunk.split('\n').filter(line => line.trim() !== '');
-            
-            for (const line of lines) {
-              if (line.startsWith('data:')) {
-                const data = line.substring(5).trim();
-                if (data === '[DONE]') continue;
-                
-                try {
-                  const parsed = JSON.parse(data);
-                  if (parsed.choices && parsed.choices[0]?.delta?.content) {
-                    generatedText += parsed.choices[0].delta.content;
-                    setMessage(generatedText);
-                  }
-                } catch (e) {
-                  console.error('Error parsing SSE data:', e, 'Raw data:', data);
-                }
-              }
-            }
-          } catch (decodeError) {
-            console.error('Error decoding chunk:', decodeError);
-          }
-        }
-      } else {
-        // Handle non-streaming response
-        console.log("Received non-stream response:", data);
-        if (typeof data === 'string') {
-          setMessage(data);
-        } else if (data.text || data.content || data.message) {
-          setMessage(data.text || data.content || data.message);
-        } else {
-          console.error("Unexpected data format:", data);
-          throw new Error('Unexpected response format from AI generation');
-        }
-      }
-      
-      setShowAiPrompt(false);
-      
-      toast({
-        title: "Text generated",
-        description: "AI has generated your text message"
-      });
-      
-    } catch (error) {
-      console.error('Error generating text:', error);
-      toast({
-        title: "Generation failed",
-        description: error instanceof Error ? error.message : "Couldn't process streaming response. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsGenerating(false);
-      setAiPrompt('');
-    }
-  };
-
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
       
+      // Basic validation - max size 5MB
       if (file.size > 5 * 1024 * 1024) {
         toast({
           title: "File too large",
@@ -261,8 +160,10 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
         return;
       }
       
+      // Add file to attachments array
       setAttachments(prev => [...prev, { file }]);
       
+      // Upload to Twilio Assets API
       uploadFile(file);
     }
   };
@@ -283,6 +184,7 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
       
       if (error) throw error;
       
+      // Update attachment with URL
       setAttachments(prev => 
         prev.map(att => 
           att.file === file 
@@ -302,6 +204,7 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
         description: "Failed to upload file. Please try again.",
         variant: "destructive"
       });
+      // Remove failed attachment
       setAttachments(prev => prev.filter(att => att.file !== file));
     } finally {
       setUploading(false);
@@ -349,9 +252,11 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
     setIsLoading(true);
 
     try {
+      // Track successful and failed sends
       let successCount = 0;
       let failedCount = 0;
       
+      // Store messages in the messages table and send SMS to each contact
       for (const contact of selectedContacts) {
         if (!contact.phone) {
           console.log(`Skipping contact ${contact.name} - no phone number`);
@@ -359,6 +264,7 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
           continue;
         }
 
+        // First, store the message in the database
         const { data: messageData, error: messageError } = await supabase
           .from('messages')
           .insert({
@@ -376,12 +282,14 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
           continue;
         }
 
+        // Prepare the message payload with attachments if any
         const messagePayload: any = {
           to: contact.phone,
           message: message,
           contactId: contact.id
         };
 
+        // Add media URLs if attachments exist
         if (attachments.length > 0) {
           const mediaUrls = attachments
             .filter(att => att.url)
@@ -392,6 +300,7 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
           }
         }
 
+        // Send the SMS via the Supabase Edge Function
         const { data, error } = await supabase.functions.invoke('send-sms', {
           body: messagePayload
         });
@@ -405,6 +314,7 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
         }
       }
 
+      // Show toast with results
       if (successCount > 0) {
         toast({
           title: "Messages sent",
@@ -419,6 +329,7 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
         });
       }
 
+      // Close the dialog
       onClose();
     } catch (error) {
       console.error("Error in send message flow:", error);
@@ -461,6 +372,7 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
         </DialogHeader>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
+          {/* Left column - Form */}
           <div className="space-y-4">
             <div className="space-y-2">
               <label htmlFor="name" className="text-sm font-medium flex items-center">
@@ -502,69 +414,11 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
                       accept="image/*,video/*,audio/*,.pdf,.doc,.docx"
                     />
                   </button>
+                  <button className="p-1 rounded hover:bg-gray-100">
+                    <ZapIcon size={18} className="text-gray-500" />
+                  </button>
                   
-                  <Sheet open={showAiPrompt} onOpenChange={setShowAiPrompt}>
-                    <SheetTrigger asChild>
-                      <button 
-                        className={`p-1 rounded hover:bg-gray-100 ${showAiPrompt ? 'bg-gray-100' : ''}`}
-                        aria-label="Generate text with AI"
-                      >
-                        <ZapIcon size={18} className={showAiPrompt ? "text-indigo-600" : "text-gray-500"} />
-                      </button>
-                    </SheetTrigger>
-                    <SheetContent side="right" className="w-full sm:w-[400px] p-6">
-                      <SheetHeader>
-                        <SheetTitle>Generate SMS with AI</SheetTitle>
-                        <SheetDescription>
-                          Describe what you want the AI to generate. The text will be optimized for SMS (140 characters).
-                        </SheetDescription>
-                      </SheetHeader>
-                      
-                      <div className="mt-6 space-y-6">
-                        <div className="space-y-2">
-                          <label htmlFor="aiPrompt" className="text-sm font-medium">
-                            Enter your prompt:
-                          </label>
-                          <Textarea
-                            id="aiPrompt"
-                            placeholder="E.g., 'Create a promotional SMS for a 20% off sale on summer clothing'"
-                            value={aiPrompt}
-                            onChange={(e) => setAiPrompt(e.target.value)}
-                            className="min-h-[120px]"
-                            disabled={isGenerating}
-                          />
-                        </div>
-                        
-                        <div className="text-sm text-gray-500">
-                          <p>Prompt examples:</p>
-                          <ul className="list-disc pl-5 space-y-1 mt-2">
-                            <li>"Write a welcome message for new customers"</li>
-                            <li>"Create an appointment reminder for tomorrow"</li>
-                            <li>"Draft a thank you message after a purchase"</li>
-                          </ul>
-                        </div>
-                        
-                        <Button 
-                          onClick={handleGenerateAiText}
-                          className="w-full bg-indigo-600 hover:bg-indigo-700"
-                          disabled={isGenerating || !aiPrompt.trim()}
-                        >
-                          {isGenerating ? (
-                            <>
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              Generating...
-                            </>
-                          ) : (
-                            <>
-                              <ZapIcon className="mr-2 h-4 w-4" />
-                              Generate SMS
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    </SheetContent>
-                  </Sheet>
-                  
+                  {/* Emoji Picker */}
                   {showEmojiPicker && (
                     <div 
                       ref={emojiPickerRef}
@@ -646,13 +500,6 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
               </div>
             </div>
             
-            {isGenerating && (
-              <div className="flex items-center justify-center space-x-2 text-sm text-indigo-600">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span>AI is generating your text...</span>
-              </div>
-            )}
-            
             {attachments.length > 0 && (
               <div className="space-y-2">
                 <p className="text-sm font-medium">Attachments</p>
@@ -692,6 +539,7 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
             </div>
           </div>
           
+          {/* Right column - Preview */}
           <div className="flex justify-center items-start">
             <div className="relative w-[280px] h-[540px] bg-black rounded-[36px] p-[12px] shadow-xl overflow-hidden">
               <div className="absolute inset-0 mx-auto w-[66%] h-[4%] top-0 bg-black rounded-b-2xl"></div>
