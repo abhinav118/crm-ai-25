@@ -111,9 +111,9 @@ const AIChat: React.FC = () => {
             >
               <ChatBubbleAvatar
                 className="h-8 w-8 shrink-0"
-                src={message.sender === "user" ? undefined : undefined}
-                fallback={message.sender === "user" ? "U" : "AI"}
-              />
+              >
+                {message.sender === "user" ? "U" : "AI"}
+              </ChatBubbleAvatar>
               <ChatBubbleMessage
                 variant={message.sender === "user" ? "sent" : "received"}
               >
@@ -126,8 +126,9 @@ const AIChat: React.FC = () => {
             <ChatBubble variant="received">
               <ChatBubbleAvatar
                 className="h-8 w-8 shrink-0"
-                fallback="AI"
-              />
+              >
+                AI
+              </ChatBubbleAvatar>
               <ChatBubbleMessage isLoading />
             </ChatBubble>
           )}

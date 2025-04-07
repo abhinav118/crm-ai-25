@@ -21,8 +21,9 @@ const ChatInput = React.forwardRef<HTMLTextAreaElement, ChatInputProps>(
     };
 
     React.useEffect(() => {
-      const textarea = ref?.current;
-      if (textarea) {
+      // Safe check if ref is an object with current property
+      if (ref && typeof ref === 'object' && ref.current) {
+        const textarea = ref.current;
         textarea.style.height = "inherit";
         textarea.style.height = `${textarea.scrollHeight}px`;
       }
