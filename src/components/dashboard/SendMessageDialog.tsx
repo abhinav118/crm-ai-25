@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -12,11 +11,14 @@ import {
   XIcon,
   ImageIcon,
   FileIcon,
-  Loader2
+  Loader2,
+  ArrowUpIcon
 } from "lucide-react";
 import { Contact } from './ContactsTable';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { PromptSuggestion } from '@/components/ui/prompt-suggestion';
+import { PromptInput, PromptInputActions, PromptInputTextarea } from '@/components/ui/prompt-input';
 
 interface SendMessageDialogProps {
   open: boolean;
@@ -89,6 +91,27 @@ const emojiCategories = {
   ],
 };
 
+// Message prompt suggestions
+const MESSAGE_SUGGESTIONS = [
+  "Thanks for reaching out! How can I help you today?",
+  "We received your inquiry and will get back to you shortly.",
+  "Your appointment is confirmed for tomorrow at 2 PM.",
+  "Just following up on our conversation. Any updates?",
+  "Happy birthday! 🎂 We've got a special offer just for you.",
+  "Your order has been shipped and will arrive in 2-3 business days.",
+  "Thank you for your purchase! Here's your receipt.",
+  "We miss you! Come back and enjoy 15% off your next purchase."
+];
+
+const AI_PROMPT_SUGGESTIONS = [
+  "Create a friendly welcome message",
+  "Write a professional follow-up",
+  "Generate a sales promotion announcement",
+  "Craft a birthday greeting with discount offer",
+  "Write a shipping confirmation message",
+  "Create a customer satisfaction survey request"
+];
+
 const SendMessageDialog: React.FC<SendMessageDialogProps> = ({ 
   open, 
   onClose,
@@ -103,6 +126,9 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
   const [searchEmoji, setSearchEmoji] = useState('');
   const [attachments, setAttachments] = useState<{ file: File; url?: string }[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  const [showPromptInput, setShowPromptInput] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
   
@@ -114,6 +140,8 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
       setName('');
       setMessage('');
       setAttachments([]);
+      setAiPrompt('');
+      setShowPromptInput(false);
     }
   }, [open]);
 
@@ -343,6 +371,106 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
     }
   };
 
+  const handleGenerateWithAI = async () => {
+    if (!aiPrompt.trim()) {
+      toast({
+        title: "Prompt required",
+        description: "Please enter what kind of message you'd like to generate",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsGeneratingAI(true);
+
+    try {
+      console.log("Calling Supabase function with prompt:", aiPrompt);
+      
+      // Use the standard invoke method without the responseType option
+      const { data, error } = await supabase.functions.invoke('generate-sms', {
+        body: { prompt: aiPrompt }
+      });
+      
+      if (error) {
+        console.error("Error calling function:", error);
+        throw new Error(`Failed to generate text: ${error.message}`);
+      }
+      
+      if (!data) {
+        console.error("Failed to generate text - no data in response");
+        throw new Error('Failed to generate text - no response data');
+      }
+      
+      // Check if data is a ReadableStream
+      if (data.constructor && data.constructor.name === 'ReadableStream') {
+        console.log("Received stream response");
+        const reader = data.getReader();
+        let generatedText = '';
+        const decoder = new TextDecoder();
+        
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          
+          try {
+            const chunk = decoder.decode(value, { stream: true });
+            console.log("Received chunk:", chunk);
+            
+            const lines = chunk.split('\n').filter(line => line.trim() !== '');
+            
+            for (const line of lines) {
+              if (line.startsWith('data:')) {
+                const data = line.substring(5).trim();
+                if (data === '[DONE]') continue;
+                
+                try {
+                  const parsed = JSON.parse(data);
+                  if (parsed.choices && parsed.choices[0]?.delta?.content) {
+                    generatedText += parsed.choices[0].delta.content;
+                    setMessage(generatedText);
+                  }
+                } catch (e) {
+                  console.error('Error parsing SSE data:', e, 'Raw data:', data);
+                }
+              }
+            }
+          } catch (decodeError) {
+            console.error('Error decoding chunk:', decodeError);
+          }
+        }
+      } else {
+        // Handle non-streaming response
+        console.log("Received non-stream response:", data);
+        if (typeof data === 'string') {
+          setMessage(data);
+        } else if (data.text || data.content || data.message) {
+          setMessage(data.text || data.content || data.message);
+        } else {
+          console.error("Unexpected data format:", data);
+          throw new Error('Unexpected response format from AI generation');
+        }
+      }
+      
+      // Hide the prompt input after successful generation
+      setShowPromptInput(false);
+      setAiPrompt('');
+      
+      toast({
+        title: "Message generated",
+        description: "AI-generated message has been created",
+      });
+    } catch (error) {
+      console.error("Error generating message:", error);
+      toast({
+        title: "Generation failed",
+        description: error instanceof Error ? error.message : "Failed to generate message",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGeneratingAI(false);
+    }
+  };
+
   const renderFilePreview = (file: File) => {
     const isImage = file.type.startsWith('image/');
     
@@ -390,6 +518,25 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
               <label htmlFor="message" className="text-sm font-medium flex items-center">
                 Snippets Body <span className="text-red-500 ml-1">*</span>
               </label>
+
+              {/* Message suggestions */}
+              <div className="mb-3">
+                <h4 className="text-sm text-muted-foreground mb-2">Quick templates:</h4>
+                <div className="flex flex-wrap gap-2">
+                  {MESSAGE_SUGGESTIONS.slice(0, 4).map((suggestion, index) => (
+                    <PromptSuggestion 
+                      key={index} 
+                      size="sm"
+                      variant="outline"
+                      className="text-xs py-1"
+                      onClick={() => setMessage(suggestion)}
+                    >
+                      {suggestion.length > 20 ? suggestion.substring(0, 20) + "..." : suggestion}
+                    </PromptSuggestion>
+                  ))}
+                </div>
+              </div>
+
               <div className="border rounded-md">
                 <div className="flex items-center p-2 border-b">
                   <button 
@@ -414,8 +561,11 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
                       accept="image/*,video/*,audio/*,.pdf,.doc,.docx"
                     />
                   </button>
-                  <button className="p-1 rounded hover:bg-gray-100">
-                    <ZapIcon size={18} className="text-gray-500" />
+                  <button 
+                    className="p-1 rounded hover:bg-gray-100"
+                    onClick={() => setShowPromptInput(!showPromptInput)}
+                  >
+                    <ZapIcon size={18} className={showPromptInput ? "text-indigo-500" : "text-gray-500"} />
                   </button>
                   
                   {/* Emoji Picker */}
@@ -487,6 +637,51 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
                     </div>
                   )}
                 </div>
+                
+                {showPromptInput ? (
+                  <div className="p-3 border-b bg-slate-50">
+                    <h4 className="text-sm font-medium mb-2">Generate with AI</h4>
+                    <div className="space-y-3">
+                      <div className="flex flex-wrap gap-2">
+                        {AI_PROMPT_SUGGESTIONS.slice(0, 4).map((suggestion, index) => (
+                          <PromptSuggestion 
+                            key={index}
+                            size="sm"
+                            variant="outline" 
+                            onClick={() => setAiPrompt(suggestion)}
+                            className="text-xs py-1"
+                          >
+                            {suggestion}
+                          </PromptSuggestion>
+                        ))}
+                      </div>
+                      <PromptInput
+                        className="border-input bg-white"
+                        value={aiPrompt}
+                        onValueChange={setAiPrompt}
+                        onSubmit={handleGenerateWithAI}
+                      >
+                        <PromptInputTextarea placeholder="Describe the message you want to generate..." />
+                        <PromptInputActions className="justify-end">
+                          <Button
+                            size="sm"
+                            className="size-8 cursor-pointer rounded-full"
+                            onClick={handleGenerateWithAI}
+                            disabled={!aiPrompt.trim() || isGeneratingAI}
+                            aria-label="Generate"
+                          >
+                            {isGeneratingAI ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <ZapIcon className="h-3 w-3" />
+                            )}
+                          </Button>
+                        </PromptInputActions>
+                      </PromptInput>
+                    </div>
+                  </div>
+                ) : null}
+                
                 <Textarea 
                   id="message"
                   placeholder="Type a message" 
