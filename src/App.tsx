@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Analytics from "./pages/Analytics";
+import AIChat from "./components/AIChat";
 
 // Configure QueryClient with better error handling
 const queryClient = new QueryClient({
@@ -59,6 +60,7 @@ const App = () => {
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
+          <AIChat />
         </TooltipProvider>
       </QueryClientProvider>
     </BrowserRouter>
