@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import Sidebar from '@/components/dashboard/Sidebar';
 import { LinksAnalytics } from '@/components/analytics/LinksAnalytics';
+import { SMSAnalytics } from '@/components/analytics/SMSAnalytics';
 
 const Analytics = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -24,12 +25,17 @@ const Analytics = () => {
           <Tabs defaultValue="links" className="w-full">
             <TabsList className="mb-6">
               <TabsTrigger value="links">Links</TabsTrigger>
+              <TabsTrigger value="sms">SMS</TabsTrigger>
               <TabsTrigger value="traffic">Traffic</TabsTrigger>
               <TabsTrigger value="conversions">Conversions</TabsTrigger>
             </TabsList>
             
             <TabsContent value="links">
               <LinksAnalytics />
+            </TabsContent>
+            
+            <TabsContent value="sms">
+              <SMSAnalytics />
             </TabsContent>
             
             <TabsContent value="traffic">

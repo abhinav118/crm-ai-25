@@ -110,6 +110,33 @@ export type Database = {
           },
         ]
       }
+      sms_analytics: {
+        Row: {
+          clicks: number | null
+          conversions: number | null
+          ctr: number | null
+          id: string
+          last_clicked: string | null
+          link: string | null
+        }
+        Insert: {
+          clicks?: number | null
+          conversions?: number | null
+          ctr?: number | null
+          id?: string
+          last_clicked?: string | null
+          link?: string | null
+        }
+        Update: {
+          clicks?: number | null
+          conversions?: number | null
+          ctr?: number | null
+          id?: string
+          last_clicked?: string | null
+          link?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
