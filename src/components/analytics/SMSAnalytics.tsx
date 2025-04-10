@@ -5,6 +5,7 @@ import { MetricsCard } from './MetricsCard';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { MessageSquare, Zap, TrendingUp } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { Database } from '@/integrations/supabase/types';
 
 type SMSLink = {
   id: string;
@@ -31,6 +32,7 @@ export const SMSAnalytics = () => {
     const fetchData = async () => {
       setIsLoading(true);
       try {
+        // Use the generic fetch approach since TypeScript doesn't recognize the sms_analytics table
         const { data, error } = await supabase
           .from('sms_analytics')
           .select('*');
@@ -39,7 +41,8 @@ export const SMSAnalytics = () => {
           throw error;
         }
         
-        setLinks(data || []);
+        // Cast the data to the correct type
+        setLinks(data as unknown as SMSLink[]);
       } catch (err) {
         console.error('Error fetching SMS analytics:', err);
         setError('Failed to load SMS analytics data');
@@ -129,7 +132,7 @@ export const SMSAnalytics = () => {
               <TableBody>
                 {links.map((link) => (
                   <TableRow key={link.id}>
-                    <TableCell className="font-medium">{getLinkName(link.link)}</TableCell>
+                    <TableCell className="font-medium">{getLinkName(link.link || '')}</TableCell>
                     <TableCell className="max-w-xs truncate">
                       <a 
                         href={link.link} 
