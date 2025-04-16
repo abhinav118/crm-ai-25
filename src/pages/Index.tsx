@@ -19,6 +19,7 @@ import { ContactData } from '@/components/dashboard/ContactForm/types';
 import { logContactAction } from '@/utils/contactLogger';
 import { startOfWeek, endOfWeek, subDays, subWeeks, subMonths, subYears } from 'date-fns';
 import { FilterState } from '@/components/dashboard/Filters/FilterDialog';
+import Conversations from '@/components/dashboard/Conversations';
 
 const Index = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -337,7 +338,7 @@ const Index = () => {
   
   useEffect(() => {
     const hash = location.hash.replace('#', '');
-    if (hash && ['all', 'recent', 'active', 'inactive', 'bulk-actions'].includes(hash)) {
+    if (hash && ['all', 'recent', 'active', 'inactive', 'bulk-actions', 'conversations'].includes(hash)) {
       setActiveTab(hash);
     }
   }, [location]);
@@ -607,6 +608,7 @@ const Index = () => {
               <TabsTrigger value="recent">Recent</TabsTrigger>
               <TabsTrigger value="active">Active</TabsTrigger>
               <TabsTrigger value="inactive">Inactive</TabsTrigger>
+              <TabsTrigger value="conversations">Conversations</TabsTrigger>
               <TabsTrigger value="bulk-actions">Bulk Actions</TabsTrigger>
             </TabsList>
             <TabsContent value="all" className="pt-4">
@@ -695,6 +697,9 @@ const Index = () => {
               <div className="flex items-center justify-center h-60 bg-white rounded-lg border border-gray-200">
                 <p className="text-gray-500">Inactive contacts view coming soon</p>
               </div>
+            </TabsContent>
+            <TabsContent value="conversations" className="pt-4">
+              <Conversations />
             </TabsContent>
             <TabsContent value="bulk-actions" className="pt-4">
               <BulkActionsTab 
