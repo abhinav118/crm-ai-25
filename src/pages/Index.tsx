@@ -21,8 +21,11 @@ import { startOfWeek, endOfWeek, subDays, subWeeks, subMonths, subYears } from '
 import { FilterState } from '@/components/dashboard/Filters/FilterDialog';
 import Conversations from '@/components/dashboard/Conversations';
 
+type TabValue = 'all' | 'recent' | 'active' | 'inactive' | 'conversations' | 'bulk-actions';
+const VALID_TABS: TabValue[] = ['all', 'recent', 'active', 'inactive', 'conversations', 'bulk-actions'];
+
 interface IndexProps {
-  initialTab?: 'all' | 'recent' | 'active' | 'inactive' | 'conversations' | 'bulk-actions';
+  initialTab?: TabValue;
 }
 
 const Index: React.FC<IndexProps> = ({ initialTab = 'all' }) => {
@@ -37,7 +40,7 @@ const Index: React.FC<IndexProps> = ({ initialTab = 'all' }) => {
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [selectedCount, setSelectedCount] = useState(0);
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
-  const [activeTab, setActiveTab] = useState(initialTab);
+  const [activeTab, setActiveTab] = useState<TabValue>(initialTab);
   const [totalCount, setTotalCount] = useState(0);
   const [isAddContactModalOpen, setIsAddContactModalOpen] = useState(false);
   const [isSearchActive, setIsSearchActive] = useState(false);
@@ -342,8 +345,8 @@ const Index: React.FC<IndexProps> = ({ initialTab = 'all' }) => {
   
   useEffect(() => {
     const hash = location.hash.replace('#', '');
-    if (hash && ['all', 'recent', 'active', 'inactive', 'bulk-actions', 'conversations'].includes(hash)) {
-      setActiveTab(hash);
+    if (hash && VALID_TABS.includes(hash as TabValue)) {
+      setActiveTab(hash as TabValue);
     }
   }, [location]);
   
@@ -412,8 +415,14 @@ const Index: React.FC<IndexProps> = ({ initialTab = 'all' }) => {
   };
   
   const handleTabChange = (value: string) => {
-    setActiveTab(value);
-    navigate(`/#${value}`);
+    if (VALID_TABS.includes(value as TabValue)) {
+      setActiveTab(value as TabValue);
+      navigate(`/#${value}`);
+    } else {
+      console.warn(`Invalid tab value: ${value}`);
+      setActiveTab('all');
+      navigate('/#all');
+    }
   };
   
   const handleTagsAdded = () => {
