@@ -21,7 +21,11 @@ import { startOfWeek, endOfWeek, subDays, subWeeks, subMonths, subYears } from '
 import { FilterState } from '@/components/dashboard/Filters/FilterDialog';
 import Conversations from '@/components/dashboard/Conversations';
 
-const Index = () => {
+interface IndexProps {
+  initialTab?: 'all' | 'recent' | 'active' | 'inactive' | 'conversations' | 'bulk-actions';
+}
+
+const Index: React.FC<IndexProps> = ({ initialTab = 'all' }) => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -33,7 +37,7 @@ const Index = () => {
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [selectedCount, setSelectedCount] = useState(0);
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
-  const [activeTab, setActiveTab] = useState('all');
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [totalCount, setTotalCount] = useState(0);
   const [isAddContactModalOpen, setIsAddContactModalOpen] = useState(false);
   const [isSearchActive, setIsSearchActive] = useState(false);

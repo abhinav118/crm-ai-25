@@ -75,8 +75,9 @@ const Conversations: React.FC = () => {
       console.log(`Found ${contacts.length} contacts`);
       
       // For each contact, get their latest message
-      const conversationsData = await Promise.all((contacts || []).map(async (contact) => {
+      const conversationsData = await Promise.all(contacts.map(async (contact) => {
         try {
+          // Get the latest message for this contact
           const { data: messages, error: messagesError } = await supabase
             .from('messages')
             .select('*')
@@ -86,6 +87,11 @@ const Conversations: React.FC = () => {
             
           if (messagesError) {
             console.error(`Error fetching messages for contact ${contact.id}:`, messagesError);
+            return null;
+          }
+          
+          // If no messages found for this contact, return null (we'll filter these out later)
+          if (!messages || messages.length === 0) {
             return null;
           }
           
@@ -100,25 +106,22 @@ const Conversations: React.FC = () => {
             return null;
           }
           
-          // If contact has messages, create a conversation object
-          if (messages && messages.length > 0) {
-            return {
-              contactId: contact.id,
-              contactName: contact.name,
-              lastMessage: messages[0].content,
-              lastMessageTime: messages[0].sent_at,
-              unreadCount: 0, // Mock unread count for now
-              messageCount: messageCount || 0
-            };
-          }
-          return null;
+          // Create a conversation object for this contact
+          return {
+            contactId: contact.id,
+            contactName: contact.name,
+            lastMessage: messages[0].content,
+            lastMessageTime: messages[0].sent_at,
+            unreadCount: 0, // Mock unread count for now
+            messageCount: messageCount || 0
+          };
         } catch (err) {
           console.error(`Error processing contact ${contact.id}:`, err);
           return null;
         }
       }));
       
-      // Filter out contacts with no messages and null results
+      // Filter out null results (contacts with no messages)
       const validConversations = conversationsData.filter(Boolean) as Conversation[];
       
       console.log(`Found ${validConversations.length} valid conversations`);
