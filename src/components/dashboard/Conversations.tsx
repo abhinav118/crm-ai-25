@@ -15,6 +15,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from '@/hooks/use-toast';
 
 type Conversation = {
   contactId: string;
@@ -30,6 +31,7 @@ const Conversations: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredConversations, setFilteredConversations] = useState<Conversation[]>([]);
+  const { toast } = useToast();
   
   useEffect(() => {
     fetchConversations();
@@ -50,48 +52,76 @@ const Conversations: React.FC = () => {
   const fetchConversations = async () => {
     setIsLoading(true);
     try {
+      console.log('Fetching conversations...');
+      
       // First get all contacts
       const { data: contacts, error: contactsError } = await supabase
         .from('contacts')
         .select('id, name');
         
-      if (contactsError) throw contactsError;
+      if (contactsError) {
+        console.error('Error fetching contacts:', contactsError);
+        throw contactsError;
+      }
+      
+      if (!contacts || contacts.length === 0) {
+        console.log('No contacts found');
+        setConversations([]);
+        setFilteredConversations([]);
+        setIsLoading(false);
+        return;
+      }
+      
+      console.log(`Found ${contacts.length} contacts`);
       
       // For each contact, get their latest message
       const conversationsData = await Promise.all((contacts || []).map(async (contact) => {
-        const { data: messages, error: messagesError } = await supabase
-          .from('messages')
-          .select('*')
-          .eq('contact_id', contact.id)
-          .order('sent_at', { ascending: false })
-          .limit(1);
+        try {
+          const { data: messages, error: messagesError } = await supabase
+            .from('messages')
+            .select('*')
+            .eq('contact_id', contact.id)
+            .order('sent_at', { ascending: false })
+            .limit(1);
+            
+          if (messagesError) {
+            console.error(`Error fetching messages for contact ${contact.id}:`, messagesError);
+            return null;
+          }
           
-        if (messagesError) throw messagesError;
-        
-        // Get message count for this contact
-        const { count: messageCount, error: countError } = await supabase
-          .from('messages')
-          .select('*', { count: 'exact', head: true })
-          .eq('contact_id', contact.id);
+          // Get message count for this contact
+          const { count: messageCount, error: countError } = await supabase
+            .from('messages')
+            .select('*', { count: 'exact', head: true })
+            .eq('contact_id', contact.id);
+            
+          if (countError) {
+            console.error(`Error counting messages for contact ${contact.id}:`, countError);
+            return null;
+          }
           
-        if (countError) throw countError;
-        
-        // If contact has messages, create a conversation object
-        if (messages && messages.length > 0) {
-          return {
-            contactId: contact.id,
-            contactName: contact.name,
-            lastMessage: messages[0].content,
-            lastMessageTime: messages[0].sent_at,
-            unreadCount: 0, // Mock unread count for now
-            messageCount: messageCount || 0
-          };
+          // If contact has messages, create a conversation object
+          if (messages && messages.length > 0) {
+            return {
+              contactId: contact.id,
+              contactName: contact.name,
+              lastMessage: messages[0].content,
+              lastMessageTime: messages[0].sent_at,
+              unreadCount: 0, // Mock unread count for now
+              messageCount: messageCount || 0
+            };
+          }
+          return null;
+        } catch (err) {
+          console.error(`Error processing contact ${contact.id}:`, err);
+          return null;
         }
-        return null;
       }));
       
-      // Filter out contacts with no messages
+      // Filter out contacts with no messages and null results
       const validConversations = conversationsData.filter(Boolean) as Conversation[];
+      
+      console.log(`Found ${validConversations.length} valid conversations`);
       
       // Sort by most recent message
       validConversations.sort((a, b) => 
@@ -102,6 +132,11 @@ const Conversations: React.FC = () => {
       setFilteredConversations(validConversations);
     } catch (err) {
       console.error('Error fetching conversations:', err);
+      toast({
+        title: 'Error loading conversations',
+        description: 'There was a problem loading your conversations. Please try again later.',
+        variant: 'destructive'
+      });
     } finally {
       setIsLoading(false);
     }
@@ -120,6 +155,7 @@ const Conversations: React.FC = () => {
         return format(date, 'MMM d');
       }
     } catch (e) {
+      console.error('Error formatting date:', e);
       return 'Invalid date';
     }
   };
