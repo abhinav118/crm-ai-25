@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { MetricsCard } from './MetricsCard';
@@ -42,13 +41,18 @@ export const ConversationsAnalytics = () => {
           
         if (messagesError) throw messagesError;
         
-        // Fetch unique contacts who have messages
+        // Fetch unique contacts who have messages - fix the distinct method error
+        // Instead of using distinct(), first get all contact_ids and then count unique ones
         const { data: contactsData, error: contactsError } = await supabase
           .from('messages')
-          .select('contact_id')
-          .distinct();
+          .select('contact_id');
           
         if (contactsError) throw contactsError;
+        
+        // Count unique contact_ids
+        const uniqueContactIds = new Set();
+        contactsData?.forEach(item => uniqueContactIds.add(item.contact_id));
+        const uniqueContactsCount = uniqueContactIds.size;
         
         // Fetch recent messages with contact info
         const { data: messagesData, error: recentMessagesError } = await supabase
@@ -84,7 +88,7 @@ export const ConversationsAnalytics = () => {
         
         setStats({
           total_messages: messageCount || 0,
-          total_contacts: (contactsData || []).length,
+          total_contacts: uniqueContactsCount,
           avg_response_time: avgResponseTime
         });
         
