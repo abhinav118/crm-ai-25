@@ -4,6 +4,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import Sidebar from '@/components/dashboard/Sidebar';
 import { LinksAnalytics } from '@/components/analytics/LinksAnalytics';
 import { SMSAnalytics } from '@/components/analytics/SMSAnalytics';
+import { ConversationsAnalytics } from '@/components/analytics/ConversationsAnalytics';
 
 const Analytics = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -26,6 +27,7 @@ const Analytics = () => {
             <TabsList className="mb-6">
               <TabsTrigger value="links">Links</TabsTrigger>
               <TabsTrigger value="sms">SMS</TabsTrigger>
+              <TabsTrigger value="conversations">Conversations</TabsTrigger>
               <TabsTrigger value="traffic">Traffic</TabsTrigger>
               <TabsTrigger value="conversions">Conversions</TabsTrigger>
             </TabsList>
@@ -36,6 +38,10 @@ const Analytics = () => {
             
             <TabsContent value="sms">
               <SMSAnalytics />
+            </TabsContent>
+            
+            <TabsContent value="conversations">
+              <ConversationsAnalytics />
             </TabsContent>
             
             <TabsContent value="traffic">
