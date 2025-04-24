@@ -24,41 +24,52 @@ serve(async (req) => {
     console.log("Received webhook payload:", JSON.stringify(body));
 
     // Initialize Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error('Required environment variables are not set');
+    }
+
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Set target link - in production, this might be configurable or fetched from database
-    const link = "https://shorturl.at/9jHwR";
+    // Validate required webhook data
+    if (!body.event_type || !body.link) {
+      console.log("Missing required webhook data");
+      return new Response(
+        JSON.stringify({ error: "Missing required webhook data" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+      );
+    }
 
     // Check if this is a click event for our link
-    if (body.event_type !== "clicked" || body.link !== link) {
-      console.log("Ignoring event: not a click or wrong link");
+    if (body.event_type !== "clicked") {
+      console.log("Ignoring non-click event");
       return new Response(
-        JSON.stringify({ message: "Ignored event" }),
+        JSON.stringify({ message: "Ignored non-click event" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
       );
     }
 
     const clickTime = body.click_time;
-    console.log(`Processing click at ${clickTime} for link ${link}`);
+    console.log(`Processing click at ${clickTime} for link ${body.link}`);
 
     // Check if the link exists in the database
-    const { data, error } = await supabase
+    const { data: existingLink, error: selectError } = await supabase
       .from("sms_analytics")
       .select("*")
-      .eq("link", link)
+      .eq("link", body.link)
       .maybeSingle();
 
-    if (error) {
-      console.error("Error querying sms_analytics:", error);
-      throw error;
+    if (selectError) {
+      console.error("Error querying sms_analytics:", selectError);
+      throw selectError;
     }
 
-    if (data) {
+    if (existingLink) {
       // Link exists, update the record
-      const updatedClicks = (data.clicks || 0) + 1;
-      const ctr = calculateCTR(updatedClicks, data.conversions || 0);
+      const updatedClicks = (existingLink.clicks || 0) + 1;
+      const ctr = calculateCTR(updatedClicks, existingLink.conversions || 0);
       
       console.log(`Updating existing link record. Clicks: ${updatedClicks}, CTR: ${ctr}`);
       
@@ -69,7 +80,7 @@ serve(async (req) => {
           last_clicked: clickTime,
           ctr: ctr
         })
-        .eq("link", link);
+        .eq("link", body.link);
 
       if (updateError) {
         console.error("Error updating sms_analytics:", updateError);
@@ -82,7 +93,7 @@ serve(async (req) => {
       const { error: insertError } = await supabase
         .from("sms_analytics")
         .insert({
-          link,
+          link: body.link,
           clicks: 1,
           last_clicked: clickTime,
           conversions: 0,

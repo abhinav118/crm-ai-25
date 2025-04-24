@@ -112,6 +112,7 @@ export type Database = {
       }
       sms_analytics: {
         Row: {
+          clicked_by: string[] | null
           clicks: number | null
           conversions: number | null
           ctr: number | null
@@ -120,6 +121,7 @@ export type Database = {
           link: string | null
         }
         Insert: {
+          clicked_by?: string[] | null
           clicks?: number | null
           conversions?: number | null
           ctr?: number | null
@@ -128,6 +130,7 @@ export type Database = {
           link?: string | null
         }
         Update: {
+          clicked_by?: string[] | null
           clicks?: number | null
           conversions?: number | null
           ctr?: number | null
