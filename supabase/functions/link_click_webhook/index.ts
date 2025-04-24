@@ -66,14 +66,6 @@ serve(async (req)=>{
         ctr: 0,
         clicked_by:[clicked_by]
       });
-      //update contact_logs 
-      const { error: updateError } = await supabase.from("contact_logs").update({
-        action: "link_clicked",
-        contact_info: contactInfo,
-        created_at: new Date().toISOString(),
-        batch_id: batchId,
-        batch_name: batchName
-      });
 
       if (insertError) {
         console.error("Error inserting into sms_analytics:", insertError);
