@@ -85,7 +85,8 @@ export const EmailPreview: React.FC<EmailPreviewProps> = ({
                 onClick={() => {
                   const contentElement = document.querySelector('.email-content .prose');
                   if (contentElement) {
-                    contentElement.focus();
+                    // Fix: Cast to HTMLElement to use the focus() method
+                    (contentElement as HTMLElement).focus();
                   }
                 }}
               >
