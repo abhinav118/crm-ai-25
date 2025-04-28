@@ -1,4 +1,3 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
@@ -48,7 +47,7 @@ serve(async (req) => {
             n: 1,
             size: "1024x1024",
             quality: "standard",
-            response_format: "url",
+            response_format: "b64_json",
           }),
         });
 
@@ -84,16 +83,18 @@ serve(async (req) => {
           const retryData = await retryResponse.json();
           console.log('DALL-E 3 generation successful, returning image URL');
           return new Response(JSON.stringify({ 
-            result: retryData.data[0].url
+            result: retryData.data[0].url,
+            format: 'url'
           }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
 
         const data = await response.json();
-        console.log('GPT Image generation successful, returning image URL');
+        console.log('GPT Image generation successful, returning base64 image');
         return new Response(JSON.stringify({ 
-          result: data.data[0].url
+          result: data.data[0].b64_json,
+          format: 'base64'
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
