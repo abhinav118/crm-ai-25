@@ -9,45 +9,22 @@ const corsHeaders = {
 // Cloudinary configuration
 const CLOUDINARY_CLOUD_NAME = Deno.env.get('CLOUDINARY_CLOUD_NAME') ?? '';
 const CLOUDINARY_API_KEY = Deno.env.get('CLOUDINARY_API_KEY') ?? '';
-const CLOUDINARY_API_SECRET = Deno.env.get('CLOUDINARY_API_SECRET') ?? '';
 const CLOUDINARY_UPLOAD_PRESET = Deno.env.get('CLOUDINARY_UPLOAD_PRESET') ?? '';
-async function uploadToCloudinary(base64Image: string, folder: string = 'ai-generated-images') {
+async function uploadToCloudinary(base64Image: string) {
   try {
-    // Create a timestamp for the signature
-    const timestamp = Math.floor(Date.now() / 1000).toString();
-    
-    // Create the signature string
-    const signatureString = `folder=${folder}&timestamp=${timestamp}${CLOUDINARY_API_SECRET}`;
-    
-    // Create signature using SHA-1
-    const signature = await crypto.subtle.digest(
-      'SHA-1',
-      new TextEncoder().encode(signatureString)
-    );
-    
-    // Convert signature to hex string
-    const signatureHex = Array.from(new Uint8Array(signature))
-      .map(b => b.toString(16).padStart(2, '0'))
-      .join('');
-
     // Create form data
     const formData = new FormData();
     formData.append('file', `data:image/png;base64,${base64Image}`);
     formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
-    formData.append('folder', folder);
     formData.append('api_key', CLOUDINARY_API_KEY);
-    formData.append('timestamp', timestamp);
-    formData.append('signature', signatureHex);
 
     console.log('Uploading to Cloudinary with params:', {
       cloudName: CLOUDINARY_CLOUD_NAME,
-      uploadPreset: CLOUDINARY_UPLOAD_PRESET,
-      folder: folder,
-      timestamp: timestamp
+      uploadPreset: CLOUDINARY_UPLOAD_PRESET
     });
 
     const response = await fetch(
-      `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+      `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/upload`,
       {
         method: 'POST',
         body: formData,
