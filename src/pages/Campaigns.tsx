@@ -1,13 +1,11 @@
-
 import React, { useState, useEffect } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { SMSCampaign } from '@/components/campaigns/SMSCampaign';
 import { EmailCampaign } from '@/components/campaigns/EmailCampaign';
-import { BlogCampaign } from '@/components/campaigns/BlogCampaign';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
-type TabValue = 'sms' | 'email' | 'blog';
+type TabValue = 'sms' | 'email';
 
 const Campaigns: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabValue>('sms');
@@ -48,10 +46,9 @@ const Campaigns: React.FC = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TabValue)} className="w-full">
-        <TabsList className="grid w-full grid-cols-3 mb-8">
+        <TabsList className="grid w-full grid-cols-2 mb-8">
           <TabsTrigger value="sms">SMS Marketing</TabsTrigger>
           <TabsTrigger value="email">Email Marketing</TabsTrigger>
-          <TabsTrigger value="blog">Blog Marketing</TabsTrigger>
         </TabsList>
         
         <TabsContent value="sms" className="mt-6">
@@ -60,10 +57,6 @@ const Campaigns: React.FC = () => {
         
         <TabsContent value="email" className="mt-6">
           <EmailCampaign />
-        </TabsContent>
-        
-        <TabsContent value="blog" className="mt-6">
-          <BlogCampaign />
         </TabsContent>
       </Tabs>
     </div>
