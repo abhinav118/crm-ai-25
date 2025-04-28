@@ -94,7 +94,7 @@ export const EmailCampaign: React.FC = () => {
   };
 
   return (
-    <div className="grid grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <div className="space-y-6">
         <AiGenerationSection
           title="AI EMAIL SUBJECT"
@@ -138,8 +138,8 @@ export const EmailCampaign: React.FC = () => {
       </div>
 
       <div className="sticky top-6">
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Email Preview</h3>
+        <Card className="p-4 shadow-lg">
+          <h3 className="text-xl font-semibold mb-4 text-center">Email Preview</h3>
           <div className="overflow-auto max-h-[800px]">
             <EmailPreview
               subject={previewContent.subject}
