@@ -5,6 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useAiGeneration } from '@/hooks/useAiGeneration';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 
 type AiGenerationType = 
   | 'sms' 
@@ -18,6 +19,7 @@ interface AiGenerationSectionProps {
   type: AiGenerationType;
   placeholder: string;
   suggestions?: string[];
+  onGenerated?: (content: string) => void;
 }
 
 export const AiGenerationSection: React.FC<AiGenerationSectionProps> = ({
@@ -26,9 +28,9 @@ export const AiGenerationSection: React.FC<AiGenerationSectionProps> = ({
   type,
   placeholder,
   suggestions = [],
+  onGenerated
 }) => {
   const [prompt, setPrompt] = useState('');
-  const [result, setResult] = useState<string | null>(null);
   const { generateContent, isLoading } = useAiGeneration();
 
   const handleGenerateContent = async () => {
@@ -36,17 +38,7 @@ export const AiGenerationSection: React.FC<AiGenerationSectionProps> = ({
     
     const generatedContent = await generateContent(prompt, type);
     if (generatedContent) {
-      setResult(generatedContent);
-      // Update the preview sections
-      const previewId = type.includes('email') ? 'email-preview' : 'sms-preview';
-      const previewElement = document.getElementById(previewId);
-      if (previewElement) {
-        if (type === 'image') {
-          previewElement.innerHTML = `<img src="${generatedContent}" alt="Generated content" class="w-full h-auto rounded-lg"/>`;
-        } else {
-          previewElement.innerHTML = `<p class="text-sm">${generatedContent}</p>`;
-        }
-      }
+      onGenerated?.(generatedContent);
     }
   };
 

@@ -1,7 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { SMSCampaign } from '@/components/campaigns/SMSCampaign';
 import { EmailCampaign } from '@/components/campaigns/EmailCampaign';
+import Sidebar from '@/components/dashboard/Sidebar';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -10,6 +12,7 @@ type TabValue = 'sms' | 'email';
 const Campaigns: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabValue>('sms');
   const [brandType, setBrandType] = useState<string>("Restaurant");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -37,28 +40,31 @@ const Campaigns: React.FC = () => {
   }, [toast]);
 
   return (
-    <div className="container mx-auto py-8">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold">Campaigns</h1>
-        <div className="mt-2 text-gray-600 bg-gray-50 p-3 border border-gray-200 rounded-md inline-block">
-          <span className="font-medium">Current Brand:</span> {brandType}
+    <div className="flex">
+      <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
+      <div className={`flex-1 p-8 transition-all duration-300 ${sidebarCollapsed ? 'ml-[70px]' : 'ml-[240px]'}`}>
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold">Campaigns</h1>
+          <div className="mt-2 text-gray-600 bg-gray-50 p-3 border border-gray-200 rounded-md inline-block">
+            <span className="font-medium">Current Brand:</span> {brandType}
+          </div>
         </div>
-      </div>
 
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TabValue)} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 mb-8">
-          <TabsTrigger value="sms">SMS Marketing</TabsTrigger>
-          <TabsTrigger value="email">Email Marketing</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="sms" className="mt-6">
-          <SMSCampaign />
-        </TabsContent>
-        
-        <TabsContent value="email" className="mt-6">
-          <EmailCampaign />
-        </TabsContent>
-      </Tabs>
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TabValue)} className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-8">
+            <TabsTrigger value="sms">SMS Marketing</TabsTrigger>
+            <TabsTrigger value="email">Email Marketing</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="sms" className="mt-6">
+            <SMSCampaign />
+          </TabsContent>
+          
+          <TabsContent value="email" className="mt-6">
+            <EmailCampaign />
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
   );
 };
