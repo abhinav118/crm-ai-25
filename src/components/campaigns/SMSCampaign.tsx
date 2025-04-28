@@ -4,15 +4,40 @@ import { AiGenerationSection } from './AiGenerationSection';
 import { Card } from '@/components/ui/card';
 import { Smartphone, Signal, Battery, Wifi } from 'lucide-react';
 import { ImagePreview } from './ImagePreview';
+import { useAiSuggestions, SuggestionType } from '@/hooks/useAiSuggestions';
 
 interface PreviewContent {
   text?: string;
   image?: string;
 }
 
+// Default suggestions as fallbacks
+const DEFAULT_SMS_TEXT_SUGGESTIONS = [
+  "20% off summer sale for our Mexican restaurant this weekend",
+  "Buy one get one free lunch special today",
+  "Join us for happy hour, 2-for-1 margaritas"
+];
+
+const DEFAULT_SMS_IMAGE_SUGGESTIONS = [
+  "A delicious taco platter with summer themed decorations",
+  "Colorful Mexican street food display",
+  "Fresh guacamole and chips presentation"
+];
+
 export const SMSCampaign: React.FC = () => {
   const [previewContent, setPreviewContent] = useState<PreviewContent>({});
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+
+  // Use custom hook for AI suggestions
+  const { 
+    suggestions: textSuggestions, 
+    isLoading: isLoadingTextSuggestions 
+  } = useAiSuggestions('sms_text', DEFAULT_SMS_TEXT_SUGGESTIONS);
+  
+  const { 
+    suggestions: imageSuggestions, 
+    isLoading: isLoadingImageSuggestions 
+  } = useAiSuggestions('sms_image', DEFAULT_SMS_IMAGE_SUGGESTIONS);
 
   const handleGenerated = (type: string, content: string) => {
     setPreviewContent(prev => ({ ...prev, [type === 'sms' ? 'text' : 'image']: content }));
@@ -37,11 +62,8 @@ export const SMSCampaign: React.FC = () => {
           placeholder="Enter your SMS marketing message prompt"
           onGenerated={(content) => handleGenerated('sms', content)}
           onGenerating={() => handleGenerating('sms')}
-          suggestions={[
-            "20% off summer sale for our Mexican restaurant this weekend",
-            "Buy one get one free lunch special today",
-            "Join us for happy hour, 2-for-1 margaritas"
-          ]}
+          suggestions={textSuggestions}
+          loadingSuggestions={isLoadingTextSuggestions}
         />
         
         <AiGenerationSection
@@ -51,11 +73,8 @@ export const SMSCampaign: React.FC = () => {
           placeholder="Enter your marketing image prompt"
           onGenerated={(content) => handleGenerated('image', content)}
           onGenerating={() => handleGenerating('image')}
-          suggestions={[
-            "A delicious taco platter with summer themed decorations",
-            "Colorful Mexican street food display",
-            "Fresh guacamole and chips presentation"
-          ]}
+          suggestions={imageSuggestions}
+          loadingSuggestions={isLoadingImageSuggestions}
         />
       </div>
 

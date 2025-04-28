@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { useAiGeneration } from '@/hooks/useAiGeneration';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PromptSuggestion } from '@/components/ui/prompt-suggestion';
 
 type AiGenerationType = 
   | 'sms' 
@@ -19,6 +20,7 @@ interface AiGenerationSectionProps {
   type: AiGenerationType;
   placeholder: string;
   suggestions?: string[];
+  loadingSuggestions?: boolean;
   onGenerated?: (content: string) => void;
   onGenerating?: () => void;
 }
@@ -29,6 +31,7 @@ export const AiGenerationSection: React.FC<AiGenerationSectionProps> = ({
   type,
   placeholder,
   suggestions = [],
+  loadingSuggestions = false,
   onGenerated,
   onGenerating
 }) => {
@@ -63,12 +66,18 @@ export const AiGenerationSection: React.FC<AiGenerationSectionProps> = ({
             className="resize-none"
           />
           
-          {suggestions.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-sm text-gray-500">Suggestions:</p>
+          <div className="space-y-2">
+            <p className="text-sm text-gray-500">Suggestions:</p>
+            {loadingSuggestions ? (
+              <div className="space-y-2">
+                {[1, 2, 3].map((i) => (
+                  <Skeleton key={i} className="h-8 w-full" />
+                ))}
+              </div>
+            ) : suggestions.length > 0 ? (
               <div className="flex flex-wrap gap-2">
                 {suggestions.map((suggestion, index) => (
-                  <Button
+                  <PromptSuggestion
                     key={index}
                     variant="outline"
                     size="sm"
@@ -76,11 +85,15 @@ export const AiGenerationSection: React.FC<AiGenerationSectionProps> = ({
                     className="text-xs"
                   >
                     {suggestion}
-                  </Button>
+                  </PromptSuggestion>
                 ))}
               </div>
-            </div>
-          )}
+            ) : (
+              <div className="text-sm text-gray-400 italic">
+                No suggestions available
+              </div>
+            )}
+          </div>
           
           <Button
             onClick={handleGenerateContent}

@@ -6,6 +6,26 @@ import { EmailPreview } from './EmailPreview';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useDebounce } from '@/hooks/use-debounce';
+import { useAiSuggestions, SuggestionType } from '@/hooks/useAiSuggestions';
+
+// Default suggestions as fallbacks
+const DEFAULT_EMAIL_SUBJECT_SUGGESTIONS = [
+  "Summer special menu launch at our Mexican restaurant",
+  "Exclusive weekend dining experience",
+  "New seasonal menu reveal"
+];
+
+const DEFAULT_EMAIL_CONTENT_SUGGESTIONS = [
+  "Promote our new summer menu with focus on fresh ingredients",
+  "Special weekend brunch announcement",
+  "Family dinner package promotion"
+];
+
+const DEFAULT_EMAIL_IMAGE_SUGGESTIONS = [
+  "A colorful spread of Mexican dishes with summer cocktails",
+  "Restaurant interior with happy diners",
+  "Chef preparing signature dishes"
+];
 
 export const EmailCampaign: React.FC = () => {
   const [previewContent, setPreviewContent] = useState({
@@ -17,6 +37,22 @@ export const EmailCampaign: React.FC = () => {
   const [campaignId, setCampaignId] = useState<string | null>(null);
   const { toast } = useToast();
   const debouncedContent = useDebounce(previewContent, 1000);
+  
+  // Use custom hook for AI suggestions
+  const { 
+    suggestions: subjectSuggestions, 
+    isLoading: isLoadingSubjectSuggestions 
+  } = useAiSuggestions('email_subject', DEFAULT_EMAIL_SUBJECT_SUGGESTIONS);
+  
+  const { 
+    suggestions: contentSuggestions, 
+    isLoading: isLoadingContentSuggestions 
+  } = useAiSuggestions('email_content', DEFAULT_EMAIL_CONTENT_SUGGESTIONS);
+  
+  const { 
+    suggestions: imageSuggestions, 
+    isLoading: isLoadingImageSuggestions 
+  } = useAiSuggestions('email_image', DEFAULT_EMAIL_IMAGE_SUGGESTIONS);
 
   // Save draft when content changes
   useEffect(() => {
@@ -102,11 +138,8 @@ export const EmailCampaign: React.FC = () => {
           type="email_subject"
           placeholder="Enter your email subject prompt"
           onGenerated={(content) => handleGenerated('email_subject', content)}
-          suggestions={[
-            "Summer special menu launch at our Mexican restaurant",
-            "Exclusive weekend dining experience",
-            "New seasonal menu reveal"
-          ]}
+          suggestions={subjectSuggestions}
+          loadingSuggestions={isLoadingSubjectSuggestions}
         />
         
         <AiGenerationSection
@@ -115,11 +148,8 @@ export const EmailCampaign: React.FC = () => {
           type="email"
           placeholder="Enter your email content prompt"
           onGenerated={(content) => handleGenerated('email', content)}
-          suggestions={[
-            "Promote our new summer menu with focus on fresh ingredients",
-            "Special weekend brunch announcement",
-            "Family dinner package promotion"
-          ]}
+          suggestions={contentSuggestions}
+          loadingSuggestions={isLoadingContentSuggestions}
         />
         
         <AiGenerationSection
@@ -129,11 +159,8 @@ export const EmailCampaign: React.FC = () => {
           placeholder="Enter your image prompt"
           onGenerated={(content) => handleGenerated('image', content)}
           onGenerating={() => handleGenerating('image')}
-          suggestions={[
-            "A colorful spread of Mexican dishes with summer cocktails",
-            "Restaurant interior with happy diners",
-            "Chef preparing signature dishes"
-          ]}
+          suggestions={imageSuggestions}
+          loadingSuggestions={isLoadingImageSuggestions}
         />
       </div>
 
