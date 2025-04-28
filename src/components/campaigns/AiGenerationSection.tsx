@@ -20,6 +20,7 @@ interface AiGenerationSectionProps {
   placeholder: string;
   suggestions?: string[];
   onGenerated?: (content: string) => void;
+  onGenerating?: () => void;
 }
 
 export const AiGenerationSection: React.FC<AiGenerationSectionProps> = ({
@@ -28,13 +29,17 @@ export const AiGenerationSection: React.FC<AiGenerationSectionProps> = ({
   type,
   placeholder,
   suggestions = [],
-  onGenerated
+  onGenerated,
+  onGenerating
 }) => {
   const [prompt, setPrompt] = useState('');
   const { generateContent, isLoading } = useAiGeneration();
 
   const handleGenerateContent = async () => {
     if (!prompt.trim()) return;
+    
+    // Notify that generation is starting
+    onGenerating?.();
     
     const generatedContent = await generateContent(prompt, type);
     if (generatedContent) {

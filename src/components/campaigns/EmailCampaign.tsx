@@ -2,8 +2,8 @@
 import React, { useState } from 'react';
 import { AiGenerationSection } from './AiGenerationSection';
 import { Card } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Mail, Image } from 'lucide-react';
+import { Mail } from 'lucide-react';
+import { ImagePreview } from './ImagePreview';
 
 interface PreviewContent {
   subject?: string;
@@ -13,9 +13,19 @@ interface PreviewContent {
 
 export const EmailCampaign: React.FC = () => {
   const [previewContent, setPreviewContent] = useState<PreviewContent>({});
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
 
   const handleGenerated = (type: string, content: string) => {
     setPreviewContent(prev => ({ ...prev, [type]: content }));
+    if (type === 'image') {
+      setIsGeneratingImage(false);
+    }
+  };
+
+  const handleGenerating = (type: string) => {
+    if (type === 'image') {
+      setIsGeneratingImage(true);
+    }
   };
 
   return (
@@ -53,6 +63,7 @@ export const EmailCampaign: React.FC = () => {
           type="image"
           placeholder="Enter your image prompt"
           onGenerated={(content) => handleGenerated('image', content)}
+          onGenerating={() => handleGenerating('image')}
           suggestions={[
             "A colorful spread of Mexican dishes with summer cocktails",
             "Restaurant interior with happy diners",
@@ -74,15 +85,13 @@ export const EmailCampaign: React.FC = () => {
                     {previewContent.subject || 'Your subject line will appear here'}
                   </p>
                 </div>
-                {previewContent.image && (
-                  <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-gray-100">
-                    <img 
-                      src={previewContent.image} 
-                      alt="Generated campaign image" 
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                )}
+                
+                <ImagePreview 
+                  src={previewContent.image}
+                  isLoading={isGeneratingImage}
+                  className="mb-4"
+                />
+                
                 <div className="prose prose-sm max-w-none">
                   {previewContent.email || 'Your email content will appear here'}
                 </div>
