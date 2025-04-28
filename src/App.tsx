@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Analytics from "./pages/Analytics";
+import Campaigns from "./pages/Campaigns";
 import AIChat from "./components/AIChat";
 
 // Configure QueryClient with better error handling
@@ -55,6 +56,7 @@ const App = () => {
             <Route path="/conversations" element={<Index initialTab="conversations" />} />
             <Route path="/calendar" element={<Index />} />
             <Route path="/analytics" element={<Analytics />} />
+            <Route path="/campaigns" element={<Campaigns />} />
             <Route path="/payments" element={<Index />} />
             <Route path="/settings" element={<Index />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

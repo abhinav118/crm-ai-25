@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
@@ -11,7 +10,8 @@ import {
   CreditCard, 
   Settings, 
   PanelLeft,
-  ChevronRight
+  ChevronRight,
+  Megaphone
 } from 'lucide-react';
 
 type SidebarProps = {
@@ -55,10 +55,11 @@ const Sidebar: React.FC<SidebarProps> = ({
       <div className="flex flex-col flex-1 py-4 overflow-y-auto">
         <nav className="px-2 space-y-1">
           <SidebarItem icon={<LayoutDashboard size={20} />} label="Dashboard" to="/" collapsed={collapsed} />
-          <SidebarItem icon={<Users size={20} />} label="Contacts" to="/contacts" active={true} collapsed={collapsed} />
+          <SidebarItem icon={<Users size={20} />} label="Contacts" to="/contacts" collapsed={collapsed} />
           <SidebarItem icon={<MessageSquare size={20} />} label="Conversations" to="/conversations" collapsed={collapsed} />
           <SidebarItem icon={<Calendar size={20} />} label="Calendar" to="/calendar" collapsed={collapsed} />
           <SidebarItem icon={<BarChart3 size={20} />} label="Analytics" to="/analytics" collapsed={collapsed} />
+          <SidebarItem icon={<Megaphone size={20} />} label="Campaigns" to="/campaigns" collapsed={collapsed} />
           <SidebarItem icon={<CreditCard size={20} />} label="Payments" to="/payments" collapsed={collapsed} />
         </nav>
         
