@@ -71,7 +71,10 @@ serve(async (req) => {
       throw new Error('Prompt is required');
     }
 
-    if (type === 'image') {
+    // Check if this is a suggestion request (prompts that start with "share")
+    const isSuggestionRequest = prompt.toLowerCase().startsWith('share');
+
+    if (type === 'image' && !isSuggestionRequest) {
       // Handle image generation with the latest GPT Image API
       const imagePrompt = `As a digital marketer generate an image for ${prompt}. Make it photorealistic`;
       
@@ -154,27 +157,22 @@ serve(async (req) => {
       // Handle text generation
       let systemPrompt = "You are an expert digital marketing assistant.";
       
-      switch (type) {
-        case 'sms':
-          systemPrompt += " Create a short, engaging SMS marketing message within 160 characters.";
-          break;
-        case 'email':
-          systemPrompt += " Create a complete marketing email with engaging content.";
-          break;
-        case 'email_subject':
-          systemPrompt += " Create a catchy email subject line that drives high open rates.";
-          break;
-        case 'blog':
-          systemPrompt += " Create detailed blog post content that is SEO-optimized and engaging.";
-          break;
-        case 'blog_header':
-          systemPrompt += " Create a catchy blog post headline that attracts readers.";
-          break;
-        case 'blog_layout':
-          systemPrompt += " Create a suggested structure for a blog post with sections and subsections.";
-          break;
-        default:
-          systemPrompt += " Create engaging marketing content based on the request.";
+      if (isSuggestionRequest) {
+        systemPrompt += " Provide suggestions in a clear, concise format. If asked to share multiple suggestions, provide them in a list format, one per line.";
+      } else {
+        switch (type) {
+          case 'sms':
+            systemPrompt += " Create a short, engaging SMS marketing message within 160 characters.";
+            break;
+          case 'email':
+            systemPrompt += " Create a complete marketing email with engaging content.";
+            break;
+          case 'email_subject':
+            systemPrompt += " Create a catchy email subject line that drives high open rates.";
+            break;
+          default:
+            systemPrompt += " Create engaging marketing content based on the request.";
+        }
       }
 
       try {
@@ -201,9 +199,11 @@ serve(async (req) => {
         }
 
         const data = await response.json();
+        const generatedContent = data.choices[0].message.content;
+        
         console.log('Text generation successful');
         return new Response(JSON.stringify({ 
-          result: data.choices[0].message.content 
+          result: generatedContent 
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });

@@ -28,7 +28,7 @@ export const SMSCampaign: React.FC = () => {
   };
 
   return (
-    <div className="grid grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <div className="space-y-6">
         <AiGenerationSection
           title="AI SMS"
@@ -37,6 +37,7 @@ export const SMSCampaign: React.FC = () => {
           placeholder="Enter your SMS marketing message prompt"
           onGenerated={(content) => handleGenerated('sms', content)}
           onGenerating={() => handleGenerating('sms')}
+          suggestionPrompt="share 3 ad sms text with a quick sentence and emojies as suggestions for Mexican Fast Casual restaurant"
           suggestions={[
             "20% off summer sale for our Mexican restaurant this weekend",
             "Buy one get one free lunch special today",
@@ -51,6 +52,7 @@ export const SMSCampaign: React.FC = () => {
           placeholder="Enter your marketing image prompt"
           onGenerated={(content) => handleGenerated('image', content)}
           onGenerating={() => handleGenerating('image')}
+          suggestionPrompt="share 3 ad sms image prompts with a quick sentence as suggestions for Mexican Fast Casual restaurant"
           suggestions={[
             "A delicious taco platter with summer themed decorations",
             "Colorful Mexican street food display",

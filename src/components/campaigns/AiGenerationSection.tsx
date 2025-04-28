@@ -1,11 +1,13 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Wand } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useAiGeneration } from '@/hooks/useAiGeneration';
+import { useAiSuggestions } from '@/hooks/useAiSuggestions';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PromptSuggestion } from '@/components/ui/prompt-suggestion';
 
 type AiGenerationType = 
   | 'sms' 
@@ -18,6 +20,7 @@ interface AiGenerationSectionProps {
   description: string;
   type: AiGenerationType;
   placeholder: string;
+  suggestionPrompt?: string;
   suggestions?: string[];
   onGenerated?: (content: string) => void;
   onGenerating?: () => void;
@@ -28,12 +31,20 @@ export const AiGenerationSection: React.FC<AiGenerationSectionProps> = ({
   description,
   type,
   placeholder,
-  suggestions = [],
+  suggestionPrompt,
+  suggestions: defaultSuggestions = [],
   onGenerated,
   onGenerating
 }) => {
   const [prompt, setPrompt] = useState('');
   const { generateContent, isLoading } = useAiGeneration();
+  
+  // Get dynamic suggestions if a suggestionPrompt is provided
+  const { suggestions: aiSuggestions, isLoading: isSuggestionsLoading } = 
+    suggestionPrompt ? useAiSuggestions(type, suggestionPrompt) : { suggestions: [], isLoading: false };
+  
+  // Use AI-generated suggestions if available, otherwise use default suggestions
+  const displayedSuggestions = aiSuggestions.length > 0 ? aiSuggestions : defaultSuggestions;
 
   const handleGenerateContent = async () => {
     if (!prompt.trim()) return;
@@ -63,21 +74,31 @@ export const AiGenerationSection: React.FC<AiGenerationSectionProps> = ({
             className="resize-none"
           />
           
-          {suggestions.length > 0 && (
+          {displayedSuggestions.length > 0 && (
             <div className="space-y-2">
               <p className="text-sm text-gray-500">Suggestions:</p>
               <div className="flex flex-wrap gap-2">
-                {suggestions.map((suggestion, index) => (
-                  <Button
-                    key={index}
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPrompt(suggestion)}
-                    className="text-xs"
-                  >
-                    {suggestion}
-                  </Button>
-                ))}
+                {isSuggestionsLoading ? (
+                  // Show skeleton UI while loading suggestions
+                  Array.from({ length: 3 }).map((_, index) => (
+                    <Skeleton 
+                      key={index}
+                      className="h-8 w-40 rounded-full"
+                    />
+                  ))
+                ) : (
+                  displayedSuggestions.slice(0, 3).map((suggestion, index) => (
+                    <PromptSuggestion
+                      key={index}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPrompt(suggestion)}
+                      className="text-xs px-3 py-2 rounded-full text-left hover:bg-gray-100"
+                    >
+                      {suggestion}
+                    </PromptSuggestion>
+                  ))
+                )}
               </div>
             </div>
           )}
