@@ -30,7 +30,7 @@ serve(async (req) => {
 
     if (type === 'image') {
       // Handle image generation
-      const imagePrompt = `As a digital marketer generate an image for ${prompt}`;
+      const imagePrompt = `As a digital marketer generate an image for ${prompt}. Make it photorealistic`;
       
       const response = await fetch('https://api.openai.com/v1/images/generations', {
         method: 'POST',
@@ -39,7 +39,7 @@ serve(async (req) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: "dall-e-3",
+          model: "gpt-image-1",
           prompt: imagePrompt,
           n: 1,
           size: "1024x1024"
