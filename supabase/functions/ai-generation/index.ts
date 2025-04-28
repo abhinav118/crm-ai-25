@@ -14,10 +14,12 @@ serve(async (req) => {
   }
 
   try {
-    const openAIApiKey = Deno.env.get('OPENAI_KEY');
+    // Check for both OPENAI_KEY and OPEN_AI_KEY environment variables
+    const openAIApiKey = Deno.env.get('OPENAI_KEY') || Deno.env.get('OPEN_AI_KEY');
     
     if (!openAIApiKey) {
-      throw new Error('OPENAI_KEY environment variable not set');
+      console.error('OpenAI API key not found in environment variables. Checked OPENAI_KEY and OPEN_AI_KEY');
+      throw new Error('OpenAI API key environment variable not set. Please set either OPENAI_KEY or OPEN_AI_KEY');
     }
 
     const { prompt, type } = await req.json();
