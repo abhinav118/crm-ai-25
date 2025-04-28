@@ -1,22 +1,72 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AiGenerationSection } from './AiGenerationSection';
 import { Card } from '@/components/ui/card';
-import { Mail } from 'lucide-react';
-import { ImagePreview } from './ImagePreview';
-
-interface PreviewContent {
-  subject?: string;
-  email?: string;
-  image?: string;
-}
+import { EmailPreview } from './EmailPreview';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { useDebounce } from '@/hooks/use-debounce';
 
 export const EmailCampaign: React.FC = () => {
-  const [previewContent, setPreviewContent] = useState<PreviewContent>({});
+  const [previewContent, setPreviewContent] = useState({
+    subject: '',
+    email: '',
+    image: ''
+  });
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [campaignId, setCampaignId] = useState<string | null>(null);
+  const { toast } = useToast();
+  const debouncedContent = useDebounce(previewContent, 1000);
+
+  // Save draft when content changes
+  useEffect(() => {
+    const saveDraft = async () => {
+      try {
+        const data = {
+          campaign_name: 'Email Draft',
+          email_subject: debouncedContent.subject,
+          email_content: debouncedContent.email,
+          image_url: debouncedContent.image,
+          status: 'draft'
+        };
+
+        if (campaignId) {
+          const { error } = await supabase
+            .from('campaigns')
+            .update(data)
+            .eq('id', campaignId);
+          
+          if (error) throw error;
+        } else {
+          const { data: newCampaign, error } = await supabase
+            .from('campaigns')
+            .insert([data])
+            .select()
+            .single();
+          
+          if (error) throw error;
+          if (newCampaign) setCampaignId(newCampaign.id);
+        }
+      } catch (error: any) {
+        console.error('Error saving draft:', error);
+        toast({
+          title: 'Error saving draft',
+          description: error.message,
+          variant: 'destructive'
+        });
+      }
+    };
+
+    if (Object.values(debouncedContent).some(value => value)) {
+      saveDraft();
+    }
+  }, [debouncedContent, campaignId, toast]);
 
   const handleGenerated = (type: string, content: string) => {
-    setPreviewContent(prev => ({ ...prev, [type]: content }));
+    setPreviewContent(prev => ({
+      ...prev,
+      [type === 'email_subject' ? 'subject' : type === 'image' ? 'image' : 'email']: content
+    }));
     if (type === 'image') {
       setIsGeneratingImage(false);
     }
@@ -36,7 +86,7 @@ export const EmailCampaign: React.FC = () => {
           description="Generate catchy email subject lines"
           type="email_subject"
           placeholder="Enter your email subject prompt"
-          onGenerated={(content) => handleGenerated('subject', content)}
+          onGenerated={(content) => handleGenerated('email_subject', content)}
           suggestions={[
             "Summer special menu launch at our Mexican restaurant",
             "Exclusive weekend dining experience",
@@ -75,28 +125,15 @@ export const EmailCampaign: React.FC = () => {
       <div className="sticky top-6">
         <Card className="p-6">
           <h3 className="text-lg font-semibold mb-4">Email Preview</h3>
-          <div className="mx-auto w-[320px] border-8 border-gray-800 rounded-3xl p-4 bg-white shadow-xl">
-            <div className="w-16 h-1 bg-gray-800 rounded-full mx-auto mb-4"></div>
-            <div className="min-h-[600px] bg-gray-50 rounded-xl p-4">
-              <div className="space-y-4">
-                <div className="border-b pb-2">
-                  <p className="text-sm font-medium">Subject:</p>
-                  <p className="text-sm">
-                    {previewContent.subject || 'Your subject line will appear here'}
-                  </p>
-                </div>
-                
-                <ImagePreview 
-                  src={previewContent.image}
-                  isLoading={isGeneratingImage}
-                  className="mb-4"
-                />
-                
-                <div className="prose prose-sm max-w-none">
-                  {previewContent.email || 'Your email content will appear here'}
-                </div>
-              </div>
-            </div>
+          <div className="overflow-auto max-h-[800px]">
+            <EmailPreview
+              subject={previewContent.subject}
+              content={previewContent.email}
+              image={previewContent.image}
+              isGeneratingImage={isGeneratingImage}
+              onSubjectChange={(value) => handleGenerated('email_subject', value)}
+              onContentChange={(value) => handleGenerated('email', value)}
+            />
           </div>
         </Card>
       </div>

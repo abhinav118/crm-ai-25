@@ -9,6 +9,72 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      campaigns: {
+        Row: {
+          campaign_name: string
+          category: string | null
+          created_at: string | null
+          discount_price: number | null
+          discount_type: string | null
+          email_content: string | null
+          email_subject: string | null
+          id: string
+          image_url: string | null
+          location_id: string | null
+          merchant_id: string | null
+          min_item_count: number | null
+          number_of_days: number | null
+          sms_content: string | null
+          status: string | null
+          total_redemptions: number | null
+          updated_at: string | null
+          user_id: string
+          valid_till: string | null
+        }
+        Insert: {
+          campaign_name: string
+          category?: string | null
+          created_at?: string | null
+          discount_price?: number | null
+          discount_type?: string | null
+          email_content?: string | null
+          email_subject?: string | null
+          id?: string
+          image_url?: string | null
+          location_id?: string | null
+          merchant_id?: string | null
+          min_item_count?: number | null
+          number_of_days?: number | null
+          sms_content?: string | null
+          status?: string | null
+          total_redemptions?: number | null
+          updated_at?: string | null
+          user_id: string
+          valid_till?: string | null
+        }
+        Update: {
+          campaign_name?: string
+          category?: string | null
+          created_at?: string | null
+          discount_price?: number | null
+          discount_type?: string | null
+          email_content?: string | null
+          email_subject?: string | null
+          id?: string
+          image_url?: string | null
+          location_id?: string | null
+          merchant_id?: string | null
+          min_item_count?: number | null
+          number_of_days?: number | null
+          sms_content?: string | null
+          status?: string | null
+          total_redemptions?: number | null
+          updated_at?: string | null
+          user_id?: string
+          valid_till?: string | null
+        }
+        Relationships: []
+      }
       contact_logs: {
         Row: {
           action: string
