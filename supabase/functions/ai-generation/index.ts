@@ -44,7 +44,7 @@ async function uploadToCloudinary(base64Image: string, folder: string = 'ai-gene
     }
 
     const result = await response.json();
-    console.log('Image uploaded to Cloudinary:', result.secure_url);
+    console.log('Done Image uploaded to Cloudinary:', result.secure_url);
     return result;
   } catch (error) {
     console.error('Error uploading to Cloudinary:', error);
