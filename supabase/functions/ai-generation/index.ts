@@ -41,11 +41,11 @@ serve(async (req) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: "dall-e-3", // Using DALL-E 3 as fallback if gpt-image-1 fails
+          model: "gpt-image-1", // Using DALL-E 3 as fallback if gpt-image-1 fails
           prompt: imagePrompt,
           n: 1,
           size: "1024x1024",
-          quality: "standard"
+          quality: "high"
         }),
       });
 
