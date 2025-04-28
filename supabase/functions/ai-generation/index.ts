@@ -34,27 +34,29 @@ serve(async (req) => {
       
       console.log('Sending image generation request to OpenAI with prompt:', imagePrompt);
       
-      const response = await fetch('https://api.openai.com/v1/images/generations', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${openAIApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: "gpt-image-1", // Using DALL-E 3 as fallback if gpt-image-1 fails
-          prompt: imagePrompt,
-          n: 1,
-          size: "1024x1024",
-          quality: "high"
-        }),
-      });
+      try {
+        // First attempt with gpt-image-1 model
+        const response = await fetch('https://api.openai.com/v1/images/generations', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${openAIApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: "gpt-image-1",
+            prompt: imagePrompt,
+            n: 1,
+            size: "1024x1024",
+            quality: "standard",
+            response_format: "url",
+          }),
+        });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('OpenAI Image API error details:', JSON.stringify(errorData));
-        
-        // Try with DALL-E 3 if gpt-image-1 fails
-        if (errorData.error?.message?.includes("gpt-image-1")) {
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error('OpenAI Image API error details:', JSON.stringify(errorData));
+          
+          // If gpt-image-1 fails, try with DALL-E 3
           console.log('Retrying with DALL-E 3 model instead');
           
           const retryResponse = await fetch('https://api.openai.com/v1/images/generations', {
@@ -67,7 +69,9 @@ serve(async (req) => {
               model: "dall-e-3",
               prompt: imagePrompt,
               n: 1,
-              size: "1024x1024"
+              size: "1024x1024",
+              quality: "standard",
+              response_format: "url",
             }),
           });
           
@@ -78,22 +82,25 @@ serve(async (req) => {
           }
           
           const retryData = await retryResponse.json();
+          console.log('DALL-E 3 generation successful, returning image URL');
           return new Response(JSON.stringify({ 
             result: retryData.data[0].url
           }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
-        
-        throw new Error(`OpenAI API error: ${errorData.error?.message || 'Unknown error'}`);
-      }
 
-      const data = await response.json();
-      return new Response(JSON.stringify({ 
-        result: data.data[0].url
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+        const data = await response.json();
+        console.log('GPT Image generation successful, returning image URL');
+        return new Response(JSON.stringify({ 
+          result: data.data[0].url
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      } catch (imageError) {
+        console.error('Error during image generation:', imageError);
+        throw new Error(`Image generation failed: ${imageError.message}`);
+      }
     } else {
       // Handle text generation
       let systemPrompt = "You are an expert digital marketing assistant.";
@@ -121,34 +128,40 @@ serve(async (req) => {
           systemPrompt += " Create engaging marketing content based on the request.";
       }
 
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${openAIApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: prompt }
-          ],
-          max_tokens: type === 'sms' ? 160 : 1000,
-        }),
-      });
+      try {
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${openAIApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o',
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: prompt }
+            ],
+            max_tokens: type === 'sms' ? 160 : 1000,
+          }),
+        });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('OpenAI API error:', errorData);
-        throw new Error(`OpenAI API error: ${errorData.error?.message || 'Unknown error'}`);
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error('OpenAI API error:', errorData);
+          throw new Error(`OpenAI API error: ${errorData.error?.message || 'Unknown error'}`);
+        }
+
+        const data = await response.json();
+        console.log('Text generation successful');
+        return new Response(JSON.stringify({ 
+          result: data.choices[0].message.content 
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      } catch (textError) {
+        console.error('Error during text generation:', textError);
+        throw new Error(`Text generation failed: ${textError.message}`);
       }
-
-      const data = await response.json();
-      return new Response(JSON.stringify({ 
-        result: data.choices[0].message.content 
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
     }
   } catch (error) {
     console.error('Error in ai-generation function:', error);
