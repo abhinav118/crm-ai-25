@@ -29,8 +29,10 @@ serve(async (req) => {
     }
 
     if (type === 'image') {
-      // Handle image generation
+      // Handle image generation with the latest GPT Image API
       const imagePrompt = `As a digital marketer generate an image for ${prompt}. Make it photorealistic`;
+      
+      console.log('Sending image generation request to OpenAI with prompt:', imagePrompt);
       
       const response = await fetch('https://api.openai.com/v1/images/generations', {
         method: 'POST',
@@ -39,16 +41,50 @@ serve(async (req) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: "gpt-image-1",
+          model: "dall-e-3", // Using DALL-E 3 as fallback if gpt-image-1 fails
           prompt: imagePrompt,
           n: 1,
-          size: "1024x1024"
+          size: "1024x1024",
+          quality: "standard"
         }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('OpenAI Image API error:', errorData);
+        console.error('OpenAI Image API error details:', JSON.stringify(errorData));
+        
+        // Try with DALL-E 3 if gpt-image-1 fails
+        if (errorData.error?.message?.includes("gpt-image-1")) {
+          console.log('Retrying with DALL-E 3 model instead');
+          
+          const retryResponse = await fetch('https://api.openai.com/v1/images/generations', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${openAIApiKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: "dall-e-3",
+              prompt: imagePrompt,
+              n: 1,
+              size: "1024x1024"
+            }),
+          });
+          
+          if (!retryResponse.ok) {
+            const retryErrorData = await retryResponse.json();
+            console.error('DALL-E 3 fallback error:', JSON.stringify(retryErrorData));
+            throw new Error(`OpenAI API error: ${retryErrorData.error?.message || 'Unknown error'}`);
+          }
+          
+          const retryData = await retryResponse.json();
+          return new Response(JSON.stringify({ 
+            result: retryData.data[0].url
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        
         throw new Error(`OpenAI API error: ${errorData.error?.message || 'Unknown error'}`);
       }
 
