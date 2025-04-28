@@ -6,6 +6,52 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Cloudinary configuration
+const CLOUDINARY_CLOUD_NAME = Deno.env.get('CLOUDINARY_CLOUD_NAME') ?? '';
+const CLOUDINARY_API_KEY = Deno.env.get('CLOUDINARY_API_KEY') ?? '';
+const CLOUDINARY_API_SECRET = Deno.env.get('CLOUDINARY_API_SECRET') ?? '';
+const CLOUDINARY_UPLOAD_PRESET = Deno.env.get('CLOUDINARY_UPLOAD_PRESET') ?? '';
+async function uploadToCloudinary(base64Image: string, folder: string = 'ai-generated-images') {
+  try {
+    const formData = new FormData();
+    formData.append('file', `data:image/png;base64,${base64Image}`);
+    formData.append('upload_preset',  `${CLOUDINARY_UPLOAD_PRESET}`);
+    formData.append('folder', folder);
+    formData.append('api_key', CLOUDINARY_API_KEY);
+    formData.append('timestamp', Math.floor(Date.now() / 1000).toString());
+    
+    // Create signature
+    const signature = await crypto.subtle.digest(
+      'SHA-1',
+      new TextEncoder().encode(
+        `folder=${folder}&timestamp=${formData.get('timestamp')}${CLOUDINARY_API_SECRET}`
+      )
+    );
+    formData.append('signature', Array.from(new Uint8Array(signature))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join(''));
+
+    const response = await fetch(
+      `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/upload`,
+      {
+        method: 'POST',
+        body: formData,
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Cloudinary upload failed: ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    console.log('Image uploaded to Cloudinary:', result.secure_url);
+    return result;
+  } catch (error) {
+    console.error('Error uploading to Cloudinary:', error);
+    throw error;
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -90,10 +136,15 @@ serve(async (req) => {
         }
 
         const data = await response.json();
-        console.log('GPT Image generation successful, returning base64 image');
+        console.log('GPT Image generation successful, uploading to Cloudinary');
+        
+        // Upload the base64 image to Cloudinary
+        const cloudinaryResult = await uploadToCloudinary(data.data[0].b64_json);
+        
         return new Response(JSON.stringify({ 
-          result: data.data[0].b64_json,
-          format: 'base64'
+          result: cloudinaryResult.secure_url,
+          format: 'url',
+          cloudinaryData: cloudinaryResult
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
