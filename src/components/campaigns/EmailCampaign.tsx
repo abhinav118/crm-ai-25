@@ -102,7 +102,6 @@ export const EmailCampaign: React.FC = () => {
           type="email_subject"
           placeholder="Enter your email subject prompt"
           onGenerated={(content) => handleGenerated('email_subject', content)}
-          suggestionPrompt="share 3 catchy email subject lines for a Mexican Fast Casual restaurant"
           suggestions={[
             "Summer special menu launch at our Mexican restaurant",
             "Exclusive weekend dining experience",
@@ -116,7 +115,6 @@ export const EmailCampaign: React.FC = () => {
           type="email"
           placeholder="Enter your email content prompt"
           onGenerated={(content) => handleGenerated('email', content)}
-          suggestionPrompt="share 3 promotional email content ideas for a Mexican Fast Casual restaurant"
           suggestions={[
             "Promote our new summer menu with focus on fresh ingredients",
             "Special weekend brunch announcement",
@@ -131,7 +129,6 @@ export const EmailCampaign: React.FC = () => {
           placeholder="Enter your image prompt"
           onGenerated={(content) => handleGenerated('image', content)}
           onGenerating={() => handleGenerating('image')}
-          suggestionPrompt="share 3 image prompts for marketing visuals for a Mexican Fast Casual restaurant"
           suggestions={[
             "A colorful spread of Mexican dishes with summer cocktails",
             "Restaurant interior with happy diners",
