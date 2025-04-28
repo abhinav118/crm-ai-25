@@ -41,7 +41,7 @@ export const AiGenerationSection: React.FC<AiGenerationSectionProps> = ({
   
   // Get dynamic suggestions if a suggestionPrompt is provided
   const { suggestions: aiSuggestions, isLoading: isSuggestionsLoading } = 
-    suggestionPrompt ? useAiSuggestions(type, suggestionPrompt) : { suggestions: [], isLoading: false };
+    suggestionPrompt ? useAiSuggestions(type, suggestionPrompt, defaultSuggestions) : { suggestions: defaultSuggestions, isLoading: false };
   
   // Use AI-generated suggestions if available, otherwise use default suggestions
   const displayedSuggestions = aiSuggestions.length > 0 ? aiSuggestions : defaultSuggestions;
