@@ -46,8 +46,7 @@ serve(async (req) => {
             prompt: imagePrompt,
             n: 1,
             size: "1024x1024",
-            quality: "standard",
-            response_format: "b64_json",
+            quality: "high"
           }),
         });
 
