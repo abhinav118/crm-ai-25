@@ -13,26 +13,41 @@ const CLOUDINARY_API_SECRET = Deno.env.get('CLOUDINARY_API_SECRET') ?? '';
 const CLOUDINARY_UPLOAD_PRESET = Deno.env.get('CLOUDINARY_UPLOAD_PRESET') ?? '';
 async function uploadToCloudinary(base64Image: string, folder: string = 'ai-generated-images') {
   try {
-    const formData = new FormData();
-    formData.append('file', `data:image/png;base64,${base64Image}`);
-    formData.append('upload_preset',  `${CLOUDINARY_UPLOAD_PRESET}`);
-    formData.append('folder', folder);
-    formData.append('api_key', CLOUDINARY_API_KEY);
-    formData.append('timestamp', Math.floor(Date.now() / 1000).toString());
+    // Create a timestamp for the signature
+    const timestamp = Math.floor(Date.now() / 1000).toString();
     
-    // Create signature
+    // Create the signature string
+    const signatureString = `folder=${folder}&timestamp=${timestamp}${CLOUDINARY_API_SECRET}`;
+    
+    // Create signature using SHA-1
     const signature = await crypto.subtle.digest(
       'SHA-1',
-      new TextEncoder().encode(
-        `folder=${folder}&timestamp=${formData.get('timestamp')}${CLOUDINARY_API_SECRET}`
-      )
+      new TextEncoder().encode(signatureString)
     );
-    formData.append('signature', Array.from(new Uint8Array(signature))
+    
+    // Convert signature to hex string
+    const signatureHex = Array.from(new Uint8Array(signature))
       .map(b => b.toString(16).padStart(2, '0'))
-      .join(''));
+      .join('');
+
+    // Create form data
+    const formData = new FormData();
+    formData.append('file', `data:image/png;base64,${base64Image}`);
+    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+    formData.append('folder', folder);
+    formData.append('api_key', CLOUDINARY_API_KEY);
+    formData.append('timestamp', timestamp);
+    formData.append('signature', signatureHex);
+
+    console.log('Uploading to Cloudinary with params:', {
+      cloudName: CLOUDINARY_CLOUD_NAME,
+      uploadPreset: CLOUDINARY_UPLOAD_PRESET,
+      folder: folder,
+      timestamp: timestamp
+    });
 
     const response = await fetch(
-      `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/upload`,
+      `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
       {
         method: 'POST',
         body: formData,
@@ -40,11 +55,17 @@ async function uploadToCloudinary(base64Image: string, folder: string = 'ai-gene
     );
 
     if (!response.ok) {
-      throw new Error(`Cloudinary upload failed: ${response.statusText}`);
+      const errorText = await response.text();
+      console.error('Cloudinary upload failed:', {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorText
+      });
+      throw new Error(`Cloudinary upload failed: ${response.statusText} - ${errorText}`);
     }
 
     const result = await response.json();
-    console.log('Done Image uploaded to Cloudinary:', result.secure_url);
+    console.log('Image uploaded to Cloudinary:', result.secure_url);
     return result;
   } catch (error) {
     console.error('Error uploading to Cloudinary:', error);
