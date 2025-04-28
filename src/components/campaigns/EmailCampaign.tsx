@@ -22,6 +22,7 @@ export const EmailCampaign: React.FC = () => {
   useEffect(() => {
     const saveDraft = async () => {
       try {
+        // Create the data object for database operations
         const data = {
           campaign_name: 'Email Draft',
           email_subject: debouncedContent.subject,
@@ -30,17 +31,31 @@ export const EmailCampaign: React.FC = () => {
           status: 'draft'
         };
 
+        // Get current user
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (!user) {
+          console.log("No authenticated user found, skipping draft save");
+          return;
+        }
+        
+        // Add user_id to data
+        const dataWithUserId = {
+          ...data,
+          user_id: user.id
+        };
+
         if (campaignId) {
           const { error } = await supabase
             .from('campaigns')
-            .update(data)
+            .update(dataWithUserId)
             .eq('id', campaignId);
           
           if (error) throw error;
         } else {
           const { data: newCampaign, error } = await supabase
             .from('campaigns')
-            .insert([data])
+            .insert([dataWithUserId])
             .select()
             .single();
           
