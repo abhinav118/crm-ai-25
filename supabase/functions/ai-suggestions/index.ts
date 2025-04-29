@@ -80,6 +80,7 @@ async function generateSuggestions(type: string, brand: string): Promise<string[
   }
 
   try {
+    console.log(`Generating suggestions for ${type} with brand ${brand}`);
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -111,6 +112,7 @@ async function generateSuggestions(type: string, brand: string): Promise<string[
 
     const data = await response.json();
     const content = data.choices[0].message.content;
+    console.log("Generated content:", content);
     
     // Extract suggestions - handle both numbered lists and bullet points
     let suggestions = content
@@ -126,8 +128,11 @@ async function generateSuggestions(type: string, brand: string): Promise<string[
     // Limit to requested number
     suggestions = suggestions.slice(0, numSuggestions);
     
+    console.log(`Extracted ${suggestions.length} suggestions:`, suggestions);
+    
     // Fall back to defaults if we couldn't parse any suggestions
     if (suggestions.length === 0) {
+      console.log("Couldn't parse suggestions, using defaults");
       return DEFAULT_SUGGESTIONS[type] || [];
     }
     
@@ -153,6 +158,8 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    console.log(`Received request for ${type} suggestions with brand ${brand}`);
 
     // Check if we have cached suggestions
     const cacheKey = `${type}-${brand}`;

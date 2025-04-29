@@ -33,18 +33,23 @@ export const useAiSuggestions = (
     setError(null);
     
     try {
+      console.log(`Fetching ${type} suggestions for ${brandType}...`);
       const { data, error: apiError } = await supabase.functions.invoke('ai-suggestions', {
         body: { type, brand: brandType }
       });
       
       if (apiError) {
+        console.error(`API Error:`, apiError);
         throw new Error(apiError.message || 'Failed to load suggestions');
       }
+      
+      console.log(`Received suggestions for ${type}:`, data);
       
       if (data?.suggestions?.length > 0) {
         setSuggestions(data.suggestions);
       } else {
         // Fall back to default suggestions if API returns empty array
+        console.log(`Empty suggestions received, using defaults for ${type}`);
         setSuggestions(defaultSuggestions);
       }
       

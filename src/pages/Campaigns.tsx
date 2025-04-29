@@ -11,7 +11,7 @@ type TabValue = 'sms' | 'email';
 
 const Campaigns: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabValue>('sms');
-  const [brandType, setBrandType] = useState<string>("Restaurant");
+  const [brandType, setBrandType] = useState<string>("Mexican Fast Casual");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const { toast } = useToast();
 
@@ -24,7 +24,7 @@ const Campaigns: React.FC = () => {
         // if (error) throw error;
         // setBrandType(data.brand_type);
         
-        // Placeholder
+        console.log("Setting brand type to Mexican Fast Casual");
         setBrandType("Mexican Fast Casual");
       } catch (error: any) {
         console.error('Error fetching settings:', error);
