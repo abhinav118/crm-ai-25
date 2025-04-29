@@ -15,6 +15,12 @@ interface EmailPreviewProps {
   onSubjectChange?: (value: string) => void;
   onContentChange?: (value: string) => void;
   onRegenerate?: (section: 'subject' | 'body', prompt: string) => Promise<void>;
+  ctaButtons?: {
+    primary: { text: string; url: string };
+    secondary: { text: string; url: string };
+  };
+  footerAddress?: string;
+  footerAdditionalText?: string;
 }
 
 export const EmailPreview: React.FC<EmailPreviewProps> = ({
@@ -24,7 +30,13 @@ export const EmailPreview: React.FC<EmailPreviewProps> = ({
   isGeneratingImage,
   onSubjectChange,
   onContentChange,
-  onRegenerate
+  onRegenerate,
+  ctaButtons = {
+    primary: { text: 'Order Now', url: '#' },
+    secondary: { text: 'View Menu', url: '#' }
+  },
+  footerAddress = '123 Flavor Street, Tastyville',
+  footerAdditionalText = ''
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editPrompt, setEditPrompt] = useState('');
@@ -255,11 +267,11 @@ export const EmailPreview: React.FC<EmailPreviewProps> = ({
             
             {/* Call To Action Buttons */}
             <div className="flex flex-wrap gap-4 mt-6 justify-center">
-              <a href="#" className="bg-green-600 text-white px-6 py-3 rounded-md font-medium hover:bg-green-700 transition-colors">
-                Order Now
+              <a href={ctaButtons.primary.url} className="bg-green-600 text-white px-6 py-3 rounded-md font-medium hover:bg-green-700 transition-colors">
+                {ctaButtons.primary.text}
               </a>
-              <a href="#" className="border border-gray-400 px-6 py-3 rounded-md text-gray-800 hover:bg-gray-50 transition-colors">
-                View Menu
+              <a href={ctaButtons.secondary.url} className="border border-gray-400 px-6 py-3 rounded-md text-gray-800 hover:bg-gray-50 transition-colors">
+                {ctaButtons.secondary.text}
               </a>
             </div>
             
@@ -267,7 +279,8 @@ export const EmailPreview: React.FC<EmailPreviewProps> = ({
             <div className="mt-8 text-xs text-gray-500 border-t pt-4">
               <div className="flex justify-between items-center">
                 <div>
-                  🌮 Taco Fiesta | 123 Flavor Street, Tastyville<br />
+                  🌮 Taco Fiesta | {footerAddress}<br />
+                  {footerAdditionalText && <div className="mb-1">{footerAdditionalText}</div>}
                   <a href="#" className="underline text-blue-500">Unsubscribe</a> | 
                   <a href="#" className="underline text-blue-500 ml-1">Privacy Policy</a>
                 </div>

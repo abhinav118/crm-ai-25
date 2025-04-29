@@ -362,6 +362,10 @@ export const GeneratedPreview: React.FC<GeneratedPreviewProps> = ({
         onSubjectChange={(value) => onUpdate?.('emailSubject', value)}
         onContentChange={(value) => onUpdate?.('emailBody', value)}
         onRegenerate={handleEmailSectionRegenerate}
+        ctaButtons={{
+          primary: { text: 'Order Now', url: '#order' },
+          secondary: { text: 'View Menu', url: '#menu' }
+        }}
       />
     );
   };

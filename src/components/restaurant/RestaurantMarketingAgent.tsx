@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Paperclip, ArrowUp, MessageSquare, Mail, Image } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -16,6 +15,8 @@ import { useAiGeneration } from '@/hooks/useAiGeneration';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAiSuggestions } from '@/hooks/useAiSuggestions';
+import { EmailCampaignEditor } from './EmailCampaignEditor';
+import { Pencil } from 'lucide-react';
 
 type MarketingChannel = 'SMS Marketing' | 'Email Marketing';
 
@@ -34,6 +35,7 @@ export const RestaurantMarketingAgent = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { generateContent } = useAiGeneration();
   const { toast } = useToast();
+  const [showEmailEditor, setShowEmailEditor] = useState(false);
 
   // Use AI suggestions hook for prompt inspiration
   const { 
@@ -188,9 +190,28 @@ export const RestaurantMarketingAgent = () => {
     }
   };
 
+  // If showing the email editor, render that instead
+  if (showEmailEditor) {
+    return <EmailCampaignEditor onBack={() => setShowEmailEditor(false)} />;
+  }
+
   return (
     <div className="max-w-5xl mx-auto px-4">
       <h1 className="text-4xl font-bold mb-8">Your Restaurant Marketing Agent:</h1>
+      
+      {/* Advanced Editor Option */}
+      {channel === 'Email Marketing' && (
+        <div className="mb-4 flex justify-end">
+          <Button 
+            variant="outline" 
+            onClick={() => setShowEmailEditor(true)}
+            className="flex items-center gap-2"
+          >
+            <Pencil size={16} />
+            Advanced Email Editor
+          </Button>
+        </div>
+      )}
       
       <div className="mb-6">
         {isLoadingSuggestions ? (
