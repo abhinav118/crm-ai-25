@@ -72,7 +72,7 @@ export const RestaurantMarketingAgent = () => {
       }
       
       // Generate image based on the prompt
-      const imagePrompt = `Generate a marketing image for ${enhancedPrompt} for a restaurant`;
+      const imagePrompt = `Generate a restaurant marketing image for ${enhancedPrompt} with a 1080x1080 aspect ratio`;
       
       // Generate main content
       const content = await generateContent(enhancedPrompt, type);

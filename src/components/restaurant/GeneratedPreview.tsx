@@ -2,6 +2,7 @@
 import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Battery, Signal, Wifi, Smartphone, Tablet } from 'lucide-react';
+import { ImageGenerationProgress } from '@/components/ui/image-generation-progress';
 
 interface GeneratedPreviewProps {
   channel: 'SMS' | 'Email';
@@ -39,19 +40,25 @@ export const GeneratedPreview: React.FC<GeneratedPreviewProps> = ({
         <div className="space-y-4 min-h-[400px] bg-gray-50 rounded-xl p-4">
           {isLoading ? (
             <>
-              <div className="animate-pulse bg-gray-200 w-full h-40 rounded-lg"></div>
+              <div className="relative">
+                <div className="aspect-square w-full bg-gray-200 rounded-lg"></div>
+                <ImageGenerationProgress isGenerating={true} className="absolute bottom-2 left-2 right-2" />
+              </div>
               <div className="animate-pulse bg-gray-200 w-full h-20 rounded-lg"></div>
             </>
           ) : (
             <>
               {imageUrl ? (
-                <img 
-                  src={imageUrl} 
-                  alt="Generated marketing image" 
-                  className="w-full h-48 object-cover rounded-lg mb-4"
-                />
+                <div className="relative mb-4">
+                  <img 
+                    src={imageUrl} 
+                    alt="Generated marketing image" 
+                    className="w-full aspect-square object-cover rounded-lg"
+                  />
+                  <ImageGenerationProgress isGenerating={false} className="absolute bottom-2 left-2 right-2" />
+                </div>
               ) : (
-                <div className="flex items-center justify-center w-full h-48 bg-gray-100 text-gray-400 rounded-lg mb-4">
+                <div className="flex items-center justify-center w-full aspect-square bg-gray-100 text-gray-400 rounded-lg mb-4">
                   <Smartphone className="mr-2" size={24} />
                   <span>Image Placeholder</span>
                 </div>
@@ -87,7 +94,10 @@ export const GeneratedPreview: React.FC<GeneratedPreviewProps> = ({
           {isLoading ? (
             <>
               <div className="animate-pulse bg-gray-200 w-full h-8 rounded-lg mb-4"></div>
-              <div className="animate-pulse bg-gray-200 w-full h-40 rounded-lg mb-4"></div>
+              <div className="relative">
+                <div className="aspect-square w-full bg-gray-200 rounded-lg mb-4"></div>
+                <ImageGenerationProgress isGenerating={true} className="absolute bottom-2 left-2 right-2" />
+              </div>
               <div className="animate-pulse bg-gray-200 w-full h-60 rounded-lg"></div>
             </>
           ) : (
@@ -97,13 +107,16 @@ export const GeneratedPreview: React.FC<GeneratedPreviewProps> = ({
               </h2>
               
               {imageUrl ? (
-                <img 
-                  src={imageUrl} 
-                  alt="Generated marketing image" 
-                  className="w-full h-48 object-cover rounded-lg mb-4"
-                />
+                <div className="relative mb-4">
+                  <img 
+                    src={imageUrl} 
+                    alt="Generated marketing image" 
+                    className="w-full aspect-square object-cover rounded-lg"
+                  />
+                  <ImageGenerationProgress isGenerating={false} className="absolute bottom-2 left-2 right-2" />
+                </div>
               ) : (
-                <div className="flex items-center justify-center w-full h-48 bg-gray-100 text-gray-400 rounded-lg mb-4">
+                <div className="flex items-center justify-center w-full aspect-square bg-gray-100 text-gray-400 rounded-lg mb-4">
                   <Tablet className="mr-2" size={24} />
                   <span>Image Placeholder</span>
                 </div>
