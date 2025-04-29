@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { ImagePreview } from './ImagePreview';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Edit, TextCursor, Instagram, Facebook } from 'lucide-react';
+import { Edit, TextCursor, Instagram, Facebook, Mail, Share } from 'lucide-react';
 import { ImageGenerationProgress } from '@/components/ui/image-generation-progress';
 
 interface EmailPreviewProps {
@@ -115,8 +115,11 @@ export const EmailPreview: React.FC<EmailPreviewProps> = ({
             )}
             
             {/* Email Header Branding */}
-            <div className="text-center mb-4">
-              <h1 className="text-2xl font-bold text-gray-800">🌮 Taco Fiesta</h1>
+            <div className="text-center mb-6 py-3 border-b border-gray-200">
+              <div className="w-20 h-20 bg-gradient-to-br from-orange-400 to-red-500 rounded-full mx-auto flex items-center justify-center mb-3">
+                <span className="text-3xl">🌮</span>
+              </div>
+              <h1 className="text-2xl font-bold text-gray-800">Taco Fiesta</h1>
               <p className="text-sm text-gray-500">Authentic Mexican Flavors</p>
             </div>
             
