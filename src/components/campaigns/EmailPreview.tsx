@@ -32,16 +32,36 @@ export const EmailPreview: React.FC<EmailPreviewProps> = ({
   const [isRegenerating, setIsRegenerating] = useState(false);
   const { toast } = useToast();
 
-  // Process the content to add proper styling if it exists
-  const formattedContent = content ? content : 'Your email content will appear here';
+  // Format the email content to ensure proper rendering
+  const formatEmailContent = (content: string | undefined): string => {
+    if (!content) return 'Your email content will appear here';
+    
+    // Ensure proper paragraph formatting
+    let formatted = content
+      .replace(/\n\n/g, '</p><p>')
+      .replace(/\n/g, '<br />');
+    
+    // Wrap in paragraph tags if not already
+    if (!formatted.startsWith('<p>')) {
+      formatted = `<p>${formatted}</p>`;
+    }
+    
+    // Style headings and important text
+    formatted = formatted
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/#{2}\s(.*?)(?:\n|$)/g, '<h2 class="text-xl font-bold my-3">$1</h2>')
+      .replace(/#{1}\s(.*?)(?:\n|$)/g, '<h1 class="text-2xl font-bold my-4">$1</h1>');
+      
+    return formatted;
+  };
 
   const handleRegenerateClick = async (section: 'subject' | 'body') => {
-    if (!editPrompt) return;
+    if (!editPrompt || !onRegenerate) return;
     
     setIsRegenerating(true);
     
     try {
-      await onRegenerate?.(section, editPrompt);
+      await onRegenerate(section, editPrompt);
       toast({
         title: 'Content updated',
         description: `Successfully regenerated the ${section === 'subject' ? 'subject line' : 'email content'}.`,
@@ -171,7 +191,7 @@ export const EmailPreview: React.FC<EmailPreviewProps> = ({
                   setIsEditing(false);
                   onContentChange?.(e.currentTarget.innerHTML);
                 }}
-                dangerouslySetInnerHTML={{ __html: formattedContent }}
+                dangerouslySetInnerHTML={{ __html: formatEmailContent(content) }}
               />
               
               {/* Edit indicator */}
