@@ -14,7 +14,7 @@ interface EmailPreviewProps {
   isGeneratingImage?: boolean;
   onSubjectChange?: (value: string) => void;
   onContentChange?: (value: string) => void;
-  onRegenerate?: (section: 'subject' | 'body', prompt: string) => Promise<void>;
+  onRegenerate?: (section: 'subject' | 'content', prompt: string) => Promise<void>;
   ctaButtons?: {
     primary: { text: string; url: string };
     secondary: { text: string; url: string };
@@ -40,7 +40,7 @@ export const EmailPreview: React.FC<EmailPreviewProps> = ({
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editPrompt, setEditPrompt] = useState('');
-  const [editingSection, setEditingSection] = useState<'subject' | 'body' | null>(null);
+  const [editingSection, setEditingSection] = useState<'subject' | 'content' | null>(null);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const { toast } = useToast();
 
@@ -67,7 +67,7 @@ export const EmailPreview: React.FC<EmailPreviewProps> = ({
     return formatted;
   };
 
-  const handleRegenerateClick = async (section: 'subject' | 'body') => {
+  const handleRegenerateClick = async (section: 'subject' | 'content') => {
     if (!editPrompt || !onRegenerate) return;
     
     setIsRegenerating(true);
@@ -217,7 +217,7 @@ export const EmailPreview: React.FC<EmailPreviewProps> = ({
                       (contentElement as HTMLElement).focus();
                     }
                   } else {
-                    setEditingSection('body');
+                    setEditingSection('content');
                     setEditPrompt('');
                   }
                 }}
@@ -227,7 +227,7 @@ export const EmailPreview: React.FC<EmailPreviewProps> = ({
             </div>
             
             {/* Edit Body Prompt Section */}
-            {editingSection === 'body' && (
+            {editingSection === 'content' && (
               <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
                 <h4 className="text-sm font-medium mb-2">Regenerate Email Content</h4>
                 <div className="space-y-3">
@@ -247,7 +247,7 @@ export const EmailPreview: React.FC<EmailPreviewProps> = ({
                     </Button>
                     <Button 
                       size="sm"
-                      onClick={() => handleRegenerateClick('body')}
+                      onClick={() => handleRegenerateClick('content')}
                       disabled={!editPrompt || isRegenerating}
                       className="relative"
                     >
@@ -305,3 +305,4 @@ export const EmailPreview: React.FC<EmailPreviewProps> = ({
     </div>
   );
 };
+

@@ -494,7 +494,9 @@ export const EmailPreviewEditor: React.FC<EmailPreviewEditorProps> = ({
             onSubjectChange={setSubject}
             onContentChange={setContent}
             onRegenerate={async (section, prompt) => {
-              handleEditClick(section);
+              // Fix the type mismatch by mapping 'body' to 'content'
+              const mappedSection = section === 'body' ? 'content' : section;
+              handleEditClick(mappedSection as 'subject' | 'content' | 'image' | 'footer' | 'cta');
               setEditPrompt(prompt);
               await handleRegenerateSection();
             }}
@@ -567,3 +569,4 @@ export const EmailPreviewEditor: React.FC<EmailPreviewEditorProps> = ({
     </div>
   );
 };
+

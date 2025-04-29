@@ -162,7 +162,7 @@ export const GeneratedPreview: React.FC<GeneratedPreviewProps> = ({
   };
 
   // Handle regeneration from EmailPreview component
-  const handleEmailSectionRegenerate = async (section: 'subject' | 'body', prompt: string) => {
+  const handleEmailSectionRegenerate = async (section: 'subject' | 'content', prompt: string) => {
     if (!prompt) return;
 
     const sectionKey = section === 'subject' ? 'emailSubject' : 'emailBody';
