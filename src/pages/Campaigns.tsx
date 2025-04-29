@@ -6,11 +6,12 @@ import { EmailCampaign } from '@/components/campaigns/EmailCampaign';
 import Sidebar from '@/components/dashboard/Sidebar';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { RestaurantMarketingAgent } from '@/components/restaurant/RestaurantMarketingAgent';
 
-type TabValue = 'sms' | 'email';
+type TabValue = 'restaurant' | 'sms' | 'email';
 
 const Campaigns: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<TabValue>('sms');
+  const [activeTab, setActiveTab] = useState<TabValue>('restaurant');
   const [brandType, setBrandType] = useState<string>("Mexican Fast Casual");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const { toast } = useToast();
@@ -51,10 +52,15 @@ const Campaigns: React.FC = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TabValue)} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-8">
+          <TabsList className="grid w-full grid-cols-3 mb-8">
+            <TabsTrigger value="restaurant">Restaurant Agent</TabsTrigger>
             <TabsTrigger value="sms">SMS Marketing</TabsTrigger>
             <TabsTrigger value="email">Email Marketing</TabsTrigger>
           </TabsList>
+          
+          <TabsContent value="restaurant" className="mt-6">
+            <RestaurantMarketingAgent />
+          </TabsContent>
           
           <TabsContent value="sms" className="mt-6">
             <SMSCampaign />
