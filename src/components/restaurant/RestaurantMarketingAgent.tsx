@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { Paperclip, ArrowUp, MessageSquare, Mail, FileText, Globe, Megaphone } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Paperclip, ArrowUp, MessageSquare, Mail, Image } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { GeneratedPreview } from './GeneratedPreview';
@@ -15,6 +15,7 @@ import { Card } from '@/components/ui/card';
 import { useAiGeneration } from '@/hooks/useAiGeneration';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useAiSuggestions } from '@/hooks/useAiSuggestions';
 
 type MarketingChannel = 'SMS Marketing' | 'Email Marketing';
 
@@ -29,8 +30,19 @@ export const RestaurantMarketingAgent = () => {
     imageUrl: ''
   });
   const [isGenerating, setIsGenerating] = useState(false);
+  const [attachment, setAttachment] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { generateContent } = useAiGeneration();
   const { toast } = useToast();
+
+  // Use AI suggestions hook for prompt inspiration
+  const { 
+    suggestions: promptSuggestions, 
+    isLoading: isLoadingSuggestions 
+  } = useAiSuggestions(
+    channel === 'SMS Marketing' ? 'sms_text' : 'email_content', 
+    []
+  );
 
   const handleChannelChange = (value: MarketingChannel) => {
     setChannel(value);
@@ -52,10 +64,18 @@ export const RestaurantMarketingAgent = () => {
     
     try {
       const type = channel === 'SMS Marketing' ? 'sms' : 'email';
-      const imagePrompt = `Generate a marketing image for ${prompt} for a restaurant`;
+      
+      // Build a more detailed prompt that incorporates the attachment if it exists
+      let enhancedPrompt = prompt;
+      if (attachment) {
+        enhancedPrompt = `Using the attached reference image as inspiration, ${prompt}`;
+      }
+      
+      // Generate image based on the prompt
+      const imagePrompt = `Generate a marketing image for ${enhancedPrompt} for a restaurant`;
       
       // Generate main content
-      const content = await generateContent(prompt, type);
+      const content = await generateContent(enhancedPrompt, type);
       
       // Generate image separately
       const image = await generateContent(imagePrompt, 'image');
@@ -69,9 +89,8 @@ export const RestaurantMarketingAgent = () => {
         });
       } else {
         // For email, we assume the content has subject and body
-        // In a real implementation, you might want to generate these separately
-        const subject = await generateContent(prompt, 'email_subject');
-        const body = await generateContent(prompt, 'email');
+        const subject = await generateContent(enhancedPrompt, 'email_subject');
+        const body = await generateContent(enhancedPrompt, 'email');
         
         setGeneratedContent({
           smsText: '',
@@ -95,30 +114,19 @@ export const RestaurantMarketingAgent = () => {
     }
   };
 
-  const handleTemplateClick = (template: string) => {
-    let newPrompt = '';
-    
-    switch (template) {
-      case 'sms':
-        setChannel('SMS Marketing');
-        newPrompt = 'Create a promotional SMS for a special discount offer';
-        break;
-      case 'email':
-        setChannel('Email Marketing');
-        newPrompt = 'Create a weekly newsletter email with our latest menu items';
-        break;
-      case 'blog':
-        newPrompt = 'Write a blog post about our latest seasonal ingredients';
-        break;
-      case 'landing':
-        newPrompt = 'Create content for a landing page promoting our catering services';
-        break;
-      case 'ad':
-        newPrompt = 'Create an ad campaign for our new happy hour specials';
-        break;
+  const handleAttachmentClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setAttachment(file);
+      toast({
+        title: 'File attached',
+        description: `${file.name} will be used as a reference for your generation.`
+      });
     }
-    
-    setPrompt(newPrompt);
   };
 
   const saveCampaign = async () => {
@@ -177,12 +185,32 @@ export const RestaurantMarketingAgent = () => {
       <h1 className="text-4xl font-bold mb-8">Your Restaurant Marketing Agent:</h1>
       
       <div className="mb-6">
-        <p className="text-gray-600 mb-2">
-          You have {remainingGenerations} free generations remaining today.
-          <Button variant="outline" size="sm" className="ml-2">
-            Upgrade Plan
-          </Button>
-        </p>
+        {isLoadingSuggestions ? (
+          <div className="animate-pulse flex space-x-4">
+            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+          </div>
+        ) : promptSuggestions.length > 0 ? (
+          <div className="text-gray-600 mb-2 flex flex-wrap gap-2">
+            {promptSuggestions.map((suggestion, index) => (
+              <Button 
+                key={index} 
+                variant="outline" 
+                size="sm" 
+                className="text-xs"
+                onClick={() => setPrompt(suggestion)}
+              >
+                {suggestion.length > 30 ? `${suggestion.substring(0, 30)}...` : suggestion}
+              </Button>
+            ))}
+          </div>
+        ) : (
+          <p className="text-gray-600 mb-2">
+            You have {remainingGenerations} free generations remaining today.
+            <Button variant="outline" size="sm" className="ml-2">
+              Upgrade Plan
+            </Button>
+          </p>
+        )}
       </div>
       
       <Card className="p-2 mb-6">
@@ -214,8 +242,25 @@ export const RestaurantMarketingAgent = () => {
             </SelectContent>
           </Select>
           
-          <Button variant="ghost" size="icon" title="Attach file">
-            <Paperclip className="h-5 w-5" />
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            title={attachment ? "Attachment added" : "Attach file"}
+            onClick={handleAttachmentClick}
+            className={attachment ? "bg-gray-100" : ""}
+          >
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              className="hidden" 
+              accept="image/*" 
+              onChange={handleFileChange}
+            />
+            {attachment ? (
+              <Image className="h-5 w-5 text-green-500" />
+            ) : (
+              <Paperclip className="h-5 w-5" />
+            )}
           </Button>
           
           <Button 
@@ -232,53 +277,6 @@ export const RestaurantMarketingAgent = () => {
           </Button>
         </div>
       </Card>
-      
-      <div className="flex flex-wrap gap-3 mb-8">
-        <Button 
-          variant="outline" 
-          onClick={() => handleTemplateClick('sms')}
-          className="flex items-center gap-2"
-        >
-          <MessageSquare size={16} />
-          SMS Template
-        </Button>
-        
-        <Button 
-          variant="outline" 
-          onClick={() => handleTemplateClick('email')}
-          className="flex items-center gap-2"
-        >
-          <Mail size={16} />
-          Email Template
-        </Button>
-        
-        <Button 
-          variant="outline" 
-          onClick={() => handleTemplateClick('blog')}
-          className="flex items-center gap-2"
-        >
-          <FileText size={16} />
-          Blog Post
-        </Button>
-        
-        <Button 
-          variant="outline" 
-          onClick={() => handleTemplateClick('landing')}
-          className="flex items-center gap-2"
-        >
-          <Globe size={16} />
-          Landing Page
-        </Button>
-        
-        <Button 
-          variant="outline" 
-          onClick={() => handleTemplateClick('ad')}
-          className="flex items-center gap-2"
-        >
-          <Megaphone size={16} />
-          Ad Campaign
-        </Button>
-      </div>
       
       <GeneratedPreview
         channel={channel === 'SMS Marketing' ? 'SMS' : 'Email'}
