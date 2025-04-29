@@ -2,7 +2,9 @@
 import React, { useState } from 'react';
 import { ImagePreview } from './ImagePreview';
 import { Input } from '@/components/ui/input';
-import { Edit, TextCursor } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Edit, TextCursor, Instagram, Facebook } from 'lucide-react';
+import { ImageGenerationProgress } from '@/components/ui/image-generation-progress';
 
 interface EmailPreviewProps {
   subject?: string;
@@ -11,6 +13,7 @@ interface EmailPreviewProps {
   isGeneratingImage?: boolean;
   onSubjectChange?: (value: string) => void;
   onContentChange?: (value: string) => void;
+  onRegenerate?: (section: 'subject' | 'body', prompt: string) => Promise<void>;
 }
 
 export const EmailPreview: React.FC<EmailPreviewProps> = ({
@@ -19,12 +22,31 @@ export const EmailPreview: React.FC<EmailPreviewProps> = ({
   image,
   isGeneratingImage,
   onSubjectChange,
-  onContentChange
+  onContentChange,
+  onRegenerate
 }) => {
   const [isEditing, setIsEditing] = useState(false);
+  const [editPrompt, setEditPrompt] = useState('');
+  const [editingSection, setEditingSection] = useState<'subject' | 'body' | null>(null);
+  const [isRegenerating, setIsRegenerating] = useState(false);
 
   // Process the content to add proper styling if it exists
   const formattedContent = content ? content : 'Your email content will appear here';
+
+  const handleRegenerateClick = async (section: 'subject' | 'body') => {
+    if (!editPrompt) return;
+    
+    setIsRegenerating(true);
+    
+    try {
+      await onRegenerate?.(section, editPrompt);
+    } catch (error) {
+      console.error('Error regenerating content:', error);
+    } finally {
+      setIsRegenerating(false);
+      setEditingSection(null);
+    }
+  };
 
   return (
     <div className="relative w-full max-w-[768px] mx-auto">
@@ -44,24 +66,76 @@ export const EmailPreview: React.FC<EmailPreviewProps> = ({
               <Input
                 value={subject || ''}
                 onChange={(e) => onSubjectChange?.(e.target.value)}
-                placeholder="Subject"
+                placeholder="Subject Line"
                 className="font-medium pr-12"
               />
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">
+              <div 
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 cursor-pointer hover:text-gray-700"
+                onClick={() => {
+                  setEditingSection('subject');
+                  setEditPrompt('');
+                }}
+              >
                 <TextCursor size={16} />
               </div>
             </div>
           </div>
           
-          <div className="p-6 space-y-6">
+          <div className="p-6 space-y-6 overflow-y-auto" style={{maxHeight: 'calc(100% - 56px)'}}>
+            {/* Edit Subject Prompt Section */}
+            {editingSection === 'subject' && (
+              <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
+                <h4 className="text-sm font-medium mb-2">Regenerate Subject Line</h4>
+                <div className="space-y-3">
+                  <Input
+                    value={editPrompt}
+                    onChange={(e) => setEditPrompt(e.target.value)}
+                    placeholder="Describe the subject line you want (e.g., 'Make it more exciting')"
+                    className="w-full"
+                  />
+                  <div className="flex justify-end gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setEditingSection(null)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      size="sm"
+                      onClick={() => handleRegenerateClick('subject')}
+                      disabled={!editPrompt || isRegenerating}
+                      isLoading={isRegenerating}
+                    >
+                      Regenerate
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {/* Email Header Branding */}
+            <div className="text-center mb-4">
+              <h1 className="text-2xl font-bold text-gray-800">🌮 Taco Fiesta</h1>
+              <p className="text-sm text-gray-500">Authentic Mexican Flavors</p>
+            </div>
+            
             {/* Image Display */}
             {(image || isGeneratingImage) && (
               <div className="flex justify-center">
-                <ImagePreview 
-                  src={image}
-                  isLoading={isGeneratingImage}
-                  className="max-h-[300px] w-auto max-w-full rounded-lg shadow-md"
-                />
+                <div className="relative w-full">
+                  <ImagePreview 
+                    src={image}
+                    isLoading={isGeneratingImage}
+                    className="w-full aspect-square object-cover max-h-[400px] rounded-lg shadow-md"
+                  />
+                  {isGeneratingImage && (
+                    <ImageGenerationProgress 
+                      isGenerating={true} 
+                      className="absolute bottom-2 left-2 right-2" 
+                    />
+                  )}
+                </div>
               </div>
             )}
             
@@ -83,15 +157,81 @@ export const EmailPreview: React.FC<EmailPreviewProps> = ({
               <button 
                 className={`absolute right-2 top-2 p-1 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors ${isEditing ? 'text-blue-500' : 'text-gray-500'}`}
                 onClick={() => {
-                  const contentElement = document.querySelector('.email-content .prose');
-                  if (contentElement) {
-                    // Fix: Cast to HTMLElement to use the focus() method
-                    (contentElement as HTMLElement).focus();
+                  if (!isEditing) {
+                    const contentElement = document.querySelector('.email-content .prose');
+                    if (contentElement) {
+                      // Cast to HTMLElement to use the focus() method
+                      (contentElement as HTMLElement).focus();
+                    }
+                  } else {
+                    setEditingSection('body');
+                    setEditPrompt('');
                   }
                 }}
               >
                 <Edit size={16} />
               </button>
+            </div>
+            
+            {/* Edit Body Prompt Section */}
+            {editingSection === 'body' && (
+              <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
+                <h4 className="text-sm font-medium mb-2">Regenerate Email Content</h4>
+                <div className="space-y-3">
+                  <Input
+                    value={editPrompt}
+                    onChange={(e) => setEditPrompt(e.target.value)}
+                    placeholder="Describe what you want (e.g., 'Focus on weekend specials')"
+                    className="w-full"
+                  />
+                  <div className="flex justify-end gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setEditingSection(null)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      size="sm"
+                      onClick={() => handleRegenerateClick('body')}
+                      disabled={!editPrompt || isRegenerating}
+                      isLoading={isRegenerating}
+                    >
+                      Regenerate
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {/* Call To Action Buttons */}
+            <div className="flex flex-wrap gap-4 mt-6 justify-center">
+              <a href="#" className="bg-green-600 text-white px-6 py-3 rounded-md font-medium hover:bg-green-700 transition-colors">
+                Order Now
+              </a>
+              <a href="#" className="border border-gray-400 px-6 py-3 rounded-md text-gray-800 hover:bg-gray-50 transition-colors">
+                View Menu
+              </a>
+            </div>
+            
+            {/* Email Footer */}
+            <div className="mt-8 text-xs text-gray-500 border-t pt-4">
+              <div className="flex justify-between items-center">
+                <div>
+                  🌮 Taco Fiesta | 123 Flavor Street, Tastyville<br />
+                  <a href="#" className="underline text-blue-500">Unsubscribe</a> | 
+                  <a href="#" className="underline text-blue-500 ml-1">Privacy Policy</a>
+                </div>
+                <div className="flex space-x-2">
+                  <a href="#" className="p-1 rounded-full hover:bg-gray-100">
+                    <Instagram size={16} />
+                  </a>
+                  <a href="#" className="p-1 rounded-full hover:bg-gray-100">
+                    <Facebook size={16} />
+                  </a>
+                </div>
+              </div>
             </div>
             
             {/* Email styling note */}
