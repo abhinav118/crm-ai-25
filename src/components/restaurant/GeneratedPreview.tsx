@@ -1,6 +1,7 @@
+
 import React, { useState } from 'react';
 import { Card } from '@/components/ui/card';
-import { Battery, Signal, Wifi, Smartphone, Tablet, Pencil, X, ArrowUp, Image as ImageIcon } from 'lucide-react';
+import { Battery, Signal, Wifi, Smartphone, Pencil, X, ArrowUp, Image as ImageIcon } from 'lucide-react';
 import { ImageGenerationProgress } from '@/components/ui/image-generation-progress';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
