@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { EmailPreview } from './EmailPreview';
 import { useAiGeneration } from '@/hooks/useAiGeneration';
@@ -67,6 +68,7 @@ export const EmailPreviewEditor: React.FC<EmailPreviewEditorProps> = ({
   const [activeEditSection, setActiveEditSection] = useState<null | 'subject' | 'image' | 'content' | 'cta' | 'footer'>(null);
   const [editPrompt, setEditPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   
   // Save campaign state
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
@@ -87,10 +89,13 @@ export const EmailPreviewEditor: React.FC<EmailPreviewEditorProps> = ({
     setEditPrompt('');
   };
 
-  const handleRegenerateSection = async () => {
-    if (!editPrompt || !activeEditSection) return;
+  const handleRegenerateSection = async (section: 'subject' | 'content' | 'image' | 'cta' | 'footer', prompt: string) => {
+    if (!prompt) return;
     
     setIsGenerating(true);
+    if (section === 'image') {
+      setIsGeneratingImage(true);
+    }
     
     try {
       let result: string | null = null;
@@ -99,25 +104,25 @@ export const EmailPreviewEditor: React.FC<EmailPreviewEditorProps> = ({
       // Construct the prompt based on the section
       let enhancedPrompt = '';
       
-      switch(activeEditSection) {
+      switch(section) {
         case 'subject':
-          enhancedPrompt = `Generate an email subject line based on this guidance: ${editPrompt}. The subject should be catchy and under 70 characters.`;
+          enhancedPrompt = `Generate an email subject line based on this guidance: ${prompt}. The subject should be catchy and under 70 characters.`;
           aiType = 'email_subject';
           break;
         case 'image':
-          enhancedPrompt = `Generate a restaurant marketing image for ${editPrompt} with a 1080x1080 aspect ratio`;
+          enhancedPrompt = `Generate a restaurant marketing image for ${prompt} with a 1080x1080 aspect ratio`;
           aiType = 'image';
           break;
         case 'content':
-          enhancedPrompt = `Generate an email body for a restaurant marketing email with these requirements: ${editPrompt}. Use HTML formatting with paragraphs (<p>), headings (<h2>), and bold text for emphasis.`;
+          enhancedPrompt = `Generate an email body for a restaurant marketing email with these requirements: ${prompt}. Use HTML formatting with paragraphs (<p>), headings (<h2>), and bold text for emphasis.`;
           aiType = 'email';
           break;
         case 'cta':
-          enhancedPrompt = `Generate two call-to-action button labels for a restaurant email with this context: ${editPrompt}. Format as JSON with "primary" and "secondary" properties, each with "text" and "url" fields.`;
+          enhancedPrompt = `Generate two call-to-action button labels for a restaurant email with this context: ${prompt}. Format as JSON with "primary" and "secondary" properties, each with "text" and "url" fields.`;
           aiType = 'email';
           break;
         case 'footer':
-          enhancedPrompt = `Generate a short restaurant email footer text based on this guidance: ${editPrompt}. Keep it professional and include any required legal text.`;
+          enhancedPrompt = `Generate a short restaurant email footer text based on this guidance: ${prompt}. Keep it professional and include any required legal text.`;
           aiType = 'email';
           break;
       }
@@ -126,7 +131,7 @@ export const EmailPreviewEditor: React.FC<EmailPreviewEditorProps> = ({
       
       if (result) {
         // Update the appropriate section
-        switch(activeEditSection) {
+        switch(section) {
           case 'subject':
             setSubject(result);
             break;
@@ -178,12 +183,10 @@ export const EmailPreviewEditor: React.FC<EmailPreviewEditorProps> = ({
             break;
         }
         
-        // Close the edit section and show success toast
-        setActiveEditSection(null);
-        
+        // Show success toast
         toast({
           title: 'Content updated',
-          description: `Successfully regenerated the ${activeEditSection} content.`,
+          description: `Successfully regenerated the ${section} content.`,
         });
       }
     } catch (error: any) {
@@ -194,6 +197,9 @@ export const EmailPreviewEditor: React.FC<EmailPreviewEditorProps> = ({
       });
     } finally {
       setIsGenerating(false);
+      if (section === 'image') {
+        setIsGeneratingImage(false);
+      }
     }
   };
 
@@ -282,7 +288,10 @@ export const EmailPreviewEditor: React.FC<EmailPreviewEditorProps> = ({
             </Button>
             <Button
               size="sm"
-              onClick={handleRegenerateSection}
+              onClick={() => {
+                handleRegenerateSection(activeEditSection, editPrompt);
+                setActiveEditSection(null);
+              }}
               disabled={!editPrompt || isGenerating}
               className="flex items-center gap-1"
             >
@@ -489,14 +498,13 @@ export const EmailPreviewEditor: React.FC<EmailPreviewEditorProps> = ({
             subject={subject}
             content={content}
             image={image}
-            isGeneratingImage={false}
+            isGeneratingImage={isGeneratingImage}
             onSubjectChange={setSubject}
             onContentChange={setContent}
-            onRegenerate={async (section, prompt) => {
-              handleEditClick(section as 'subject' | 'content' | 'image' | 'footer' | 'cta');
-              setEditPrompt(prompt);
-              await handleRegenerateSection();
-            }}
+            onRegenerate={handleRegenerateSection}
+            ctaButtons={ctaButtons}
+            footerAdditionalText={footer.additionalText}
+            footerAddress={footer.address}
           />
         </div>
       </div>

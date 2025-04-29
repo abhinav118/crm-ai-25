@@ -14,7 +14,7 @@ interface EmailPreviewProps {
   isGeneratingImage?: boolean;
   onSubjectChange?: (value: string) => void;
   onContentChange?: (value: string) => void;
-  onRegenerate?: (section: 'subject' | 'content', prompt: string) => Promise<void>;
+  onRegenerate?: (section: 'subject' | 'content' | 'image' | 'cta' | 'footer', prompt: string) => Promise<void>;
   ctaButtons?: {
     primary: { text: string; url: string };
     secondary: { text: string; url: string };
@@ -40,7 +40,7 @@ export const EmailPreview: React.FC<EmailPreviewProps> = ({
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editPrompt, setEditPrompt] = useState('');
-  const [editingSection, setEditingSection] = useState<'subject' | 'content' | null>(null);
+  const [editingSection, setEditingSection] = useState<'subject' | 'content' | 'image' | 'cta' | 'footer' | null>(null);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const { toast } = useToast();
 
@@ -67,7 +67,7 @@ export const EmailPreview: React.FC<EmailPreviewProps> = ({
     return formatted;
   };
 
-  const handleRegenerateClick = async (section: 'subject' | 'content') => {
+  const handleRegenerateClick = async (section: 'subject' | 'content' | 'image' | 'cta' | 'footer') => {
     if (!editPrompt || !onRegenerate) return;
     
     setIsRegenerating(true);
@@ -76,7 +76,7 @@ export const EmailPreview: React.FC<EmailPreviewProps> = ({
       await onRegenerate(section, editPrompt);
       toast({
         title: 'Content updated',
-        description: `Successfully regenerated the ${section === 'subject' ? 'subject line' : 'email content'}.`,
+        description: `Successfully regenerated the ${section === 'subject' ? 'subject line' : section === 'content' ? 'email content' : section === 'image' ? 'image' : section === 'cta' ? 'call-to-action buttons' : 'footer'}.`,
       });
     } catch (error: any) {
       console.error('Error regenerating content:', error);
@@ -174,20 +174,68 @@ export const EmailPreview: React.FC<EmailPreviewProps> = ({
             </div>
             
             {/* Image Display */}
-            {(image || isGeneratingImage) && (
-              <div className="flex justify-center">
-                <div className="relative w-full">
-                  <ImagePreview 
-                    src={image}
-                    isLoading={isGeneratingImage}
-                    className="w-full aspect-square object-cover max-h-[400px] rounded-lg shadow-md"
+            <div className="flex justify-center relative">
+              <div className="relative w-full">
+                <ImagePreview 
+                  src={image}
+                  isLoading={isGeneratingImage}
+                  className="w-full aspect-square object-cover max-h-[400px] rounded-lg shadow-md"
+                />
+                {isGeneratingImage && (
+                  <ImageGenerationProgress 
+                    isGenerating={true} 
+                    className="absolute bottom-2 left-2 right-2" 
                   />
-                  {isGeneratingImage && (
-                    <ImageGenerationProgress 
-                      isGenerating={true} 
-                      className="absolute bottom-2 left-2 right-2" 
-                    />
-                  )}
+                )}
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="absolute top-2 right-2 bg-white opacity-80 hover:opacity-100"
+                  onClick={() => {
+                    setEditingSection('image');
+                    setEditPrompt('');
+                  }}
+                >
+                  <Edit size={14} />
+                </Button>
+              </div>
+            </div>
+            
+            {/* Image Edit Section */}
+            {editingSection === 'image' && (
+              <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
+                <h4 className="text-sm font-medium mb-2">Regenerate Email Image</h4>
+                <div className="space-y-3">
+                  <Input
+                    value={editPrompt}
+                    onChange={(e) => setEditPrompt(e.target.value)}
+                    placeholder="Describe what the image should look like (e.g., 'tacos on a table with decorations')"
+                    className="w-full"
+                  />
+                  <div className="flex justify-end gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setEditingSection(null)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      size="sm"
+                      onClick={() => handleRegenerateClick('image')}
+                      disabled={!editPrompt || isRegenerating}
+                      className="relative"
+                    >
+                      {isRegenerating ? (
+                        <>
+                          <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent mr-2" />
+                          Regenerating...
+                        </>
+                      ) : (
+                        'Regenerate'
+                      )}
+                    </Button>
+                  </div>
                 </div>
               </div>
             )}
@@ -266,17 +314,69 @@ export const EmailPreview: React.FC<EmailPreviewProps> = ({
             )}
             
             {/* Call To Action Buttons */}
-            <div className="flex flex-wrap gap-4 mt-6 justify-center">
-              <a href={ctaButtons.primary.url} className="bg-green-600 text-white px-6 py-3 rounded-md font-medium hover:bg-green-700 transition-colors">
-                {ctaButtons.primary.text}
-              </a>
-              <a href={ctaButtons.secondary.url} className="border border-gray-400 px-6 py-3 rounded-md text-gray-800 hover:bg-gray-50 transition-colors">
-                {ctaButtons.secondary.text}
-              </a>
+            <div className="relative">
+              <div className="flex flex-wrap gap-4 mt-6 justify-center">
+                <a href={ctaButtons.primary.url} className="bg-green-600 text-white px-6 py-3 rounded-md font-medium hover:bg-green-700 transition-colors">
+                  {ctaButtons.primary.text}
+                </a>
+                <a href={ctaButtons.secondary.url} className="border border-gray-400 px-6 py-3 rounded-md text-gray-800 hover:bg-gray-50 transition-colors">
+                  {ctaButtons.secondary.text}
+                </a>
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="absolute top-0 right-0 bg-white opacity-80 hover:opacity-100"
+                onClick={() => {
+                  setEditingSection('cta');
+                  setEditPrompt('');
+                }}
+              >
+                <Edit size={14} />
+              </Button>
             </div>
             
+            {/* CTA Edit Section */}
+            {editingSection === 'cta' && (
+              <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4 mt-4">
+                <h4 className="text-sm font-medium mb-2">Regenerate Call-to-Action Buttons</h4>
+                <div className="space-y-3">
+                  <Input
+                    value={editPrompt}
+                    onChange={(e) => setEditPrompt(e.target.value)}
+                    placeholder="Describe the call to action (e.g., 'Invite to RSVP' or 'Make it playful')"
+                    className="w-full"
+                  />
+                  <div className="flex justify-end gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setEditingSection(null)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      size="sm"
+                      onClick={() => handleRegenerateClick('cta')}
+                      disabled={!editPrompt || isRegenerating}
+                      className="relative"
+                    >
+                      {isRegenerating ? (
+                        <>
+                          <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent mr-2" />
+                          Regenerating...
+                        </>
+                      ) : (
+                        'Regenerate'
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+            
             {/* Email Footer */}
-            <div className="mt-8 text-xs text-gray-500 border-t pt-4">
+            <div className="relative mt-8 text-xs text-gray-500 border-t pt-4">
               <div className="flex justify-between items-center">
                 <div>
                   🌮 Taco Fiesta | {footerAddress}<br />
@@ -293,7 +393,57 @@ export const EmailPreview: React.FC<EmailPreviewProps> = ({
                   </a>
                 </div>
               </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="absolute top-2 right-2 bg-white opacity-80 hover:opacity-100"
+                onClick={() => {
+                  setEditingSection('footer');
+                  setEditPrompt('');
+                }}
+              >
+                <Edit size={14} />
+              </Button>
             </div>
+            
+            {/* Footer Edit Section */}
+            {editingSection === 'footer' && (
+              <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
+                <h4 className="text-sm font-medium mb-2">Regenerate Footer</h4>
+                <div className="space-y-3">
+                  <Input
+                    value={editPrompt}
+                    onChange={(e) => setEditPrompt(e.target.value)}
+                    placeholder="How should the footer be styled or phrased? (e.g., 'Make it shorter and friendly')"
+                    className="w-full"
+                  />
+                  <div className="flex justify-end gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setEditingSection(null)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      size="sm"
+                      onClick={() => handleRegenerateClick('footer')}
+                      disabled={!editPrompt || isRegenerating}
+                      className="relative"
+                    >
+                      {isRegenerating ? (
+                        <>
+                          <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent mr-2" />
+                          Regenerating...
+                        </>
+                      ) : (
+                        'Regenerate'
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
             
             {/* Email styling note */}
             <div className="text-xs text-gray-500 text-center mt-4">
