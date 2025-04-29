@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { ImagePreview } from './ImagePreview';
 import { Input } from '@/components/ui/input';
@@ -305,4 +304,3 @@ export const EmailPreview: React.FC<EmailPreviewProps> = ({
     </div>
   );
 };
-

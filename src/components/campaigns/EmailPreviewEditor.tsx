@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { EmailPreview } from './EmailPreview';
 import { useAiGeneration } from '@/hooks/useAiGeneration';
@@ -494,9 +493,7 @@ export const EmailPreviewEditor: React.FC<EmailPreviewEditorProps> = ({
             onSubjectChange={setSubject}
             onContentChange={setContent}
             onRegenerate={async (section, prompt) => {
-              // Fix the type mismatch by mapping 'body' to 'content'
-              const mappedSection = section === 'body' ? 'content' : section;
-              handleEditClick(mappedSection as 'subject' | 'content' | 'image' | 'footer' | 'cta');
+              handleEditClick(section as 'subject' | 'content' | 'image' | 'footer' | 'cta');
               setEditPrompt(prompt);
               await handleRegenerateSection();
             }}
@@ -569,4 +566,3 @@ export const EmailPreviewEditor: React.FC<EmailPreviewEditorProps> = ({
     </div>
   );
 };
-
