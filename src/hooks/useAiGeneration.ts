@@ -31,6 +31,10 @@ export const useAiGeneration = () => {
       }
 
       if (data.error) {
+        // Check if it's an OpenAI quota error
+        if (data.error.includes("quota") || data.error.includes("exceeded")) {
+          throw new Error("OpenAI API quota exceeded. Please try again later or check your API key limits.");
+        }
         throw new Error(data.error);
       }
 
@@ -38,10 +42,19 @@ export const useAiGeneration = () => {
       return data.result;
     } catch (err: any) {
       console.error('AI Generation error:', err);
-      setError(err.message || 'An unexpected error occurred');
+      
+      // Format the error message to be more user-friendly
+      let errorMessage = err.message || 'An unexpected error occurred';
+      
+      // Special handling for quota errors
+      if (errorMessage.includes("quota") || errorMessage.includes("exceeded")) {
+        errorMessage = "AI Generation quota exceeded. Please try again later.";
+      }
+      
+      setError(errorMessage);
       toast({
         title: 'Error',
-        description: err.message || 'Failed to generate content',
+        description: errorMessage,
         variant: 'destructive',
       });
       setIsLoading(false);

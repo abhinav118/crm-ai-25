@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Edit, TextCursor, Instagram, Facebook, Mail, Share } from 'lucide-react';
 import { ImageGenerationProgress } from '@/components/ui/image-generation-progress';
+import { useToast } from '@/hooks/use-toast';
 
 interface EmailPreviewProps {
   subject?: string;
@@ -29,6 +30,7 @@ export const EmailPreview: React.FC<EmailPreviewProps> = ({
   const [editPrompt, setEditPrompt] = useState('');
   const [editingSection, setEditingSection] = useState<'subject' | 'body' | null>(null);
   const [isRegenerating, setIsRegenerating] = useState(false);
+  const { toast } = useToast();
 
   // Process the content to add proper styling if it exists
   const formattedContent = content ? content : 'Your email content will appear here';
@@ -40,8 +42,17 @@ export const EmailPreview: React.FC<EmailPreviewProps> = ({
     
     try {
       await onRegenerate?.(section, editPrompt);
-    } catch (error) {
+      toast({
+        title: 'Content updated',
+        description: `Successfully regenerated the ${section === 'subject' ? 'subject line' : 'email content'}.`,
+      });
+    } catch (error: any) {
       console.error('Error regenerating content:', error);
+      toast({
+        title: 'Generation failed',
+        description: error.message || 'There was a problem generating the content. Please try again later.',
+        variant: 'destructive'
+      });
     } finally {
       setIsRegenerating(false);
       setEditingSection(null);
@@ -105,9 +116,16 @@ export const EmailPreview: React.FC<EmailPreviewProps> = ({
                       size="sm"
                       onClick={() => handleRegenerateClick('subject')}
                       disabled={!editPrompt || isRegenerating}
-                      isLoading={isRegenerating}
+                      className="relative"
                     >
-                      Regenerate
+                      {isRegenerating ? (
+                        <>
+                          <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent mr-2" />
+                          Regenerating...
+                        </>
+                      ) : (
+                        'Regenerate'
+                      )}
                     </Button>
                   </div>
                 </div>
@@ -199,9 +217,16 @@ export const EmailPreview: React.FC<EmailPreviewProps> = ({
                       size="sm"
                       onClick={() => handleRegenerateClick('body')}
                       disabled={!editPrompt || isRegenerating}
-                      isLoading={isRegenerating}
+                      className="relative"
                     >
-                      Regenerate
+                      {isRegenerating ? (
+                        <>
+                          <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent mr-2" />
+                          Regenerating...
+                        </>
+                      ) : (
+                        'Regenerate'
+                      )}
                     </Button>
                   </div>
                 </div>

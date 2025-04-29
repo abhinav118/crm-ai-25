@@ -146,11 +146,11 @@ export const GeneratedPreview: React.FC<GeneratedPreviewProps> = ({
           description: `Your ${section} has been updated.`,
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error regenerating content:', error);
       toast({
         title: 'Generation failed',
-        description: 'Failed to generate content. Please try again.',
+        description: error.message || 'Failed to generate content. API quota may be exceeded.',
         variant: 'destructive'
       });
     } finally {
@@ -184,11 +184,11 @@ export const GeneratedPreview: React.FC<GeneratedPreviewProps> = ({
           description: `Your email ${section} has been updated.`,
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Error regenerating email ${section}:`, error);
       toast({
         title: 'Generation failed',
-        description: `Failed to regenerate email ${section}.`,
+        description: error.message || `Failed to regenerate email ${section}. API quota may be exceeded.`,
         variant: 'destructive'
       });
     } finally {
