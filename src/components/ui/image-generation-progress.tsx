@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 
@@ -12,9 +12,9 @@ export const ImageGenerationProgress: React.FC<ImageGenerationProgressProps> = (
   isGenerating,
   className
 }) => {
-  const [progress, setProgress] = React.useState(0);
+  const [progress, setProgress] = useState(0);
   
-  React.useEffect(() => {
+  useEffect(() => {
     if (isGenerating) {
       // Reset progress when generation starts
       setProgress(0);

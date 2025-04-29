@@ -129,6 +129,14 @@ export const RestaurantMarketingAgent = () => {
     }
   };
 
+  // Handle individual section updates from GeneratedPreview
+  const handleSectionUpdate = (field: 'smsText' | 'emailSubject' | 'emailBody' | 'imageUrl', value: string) => {
+    setGeneratedContent(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
   const saveCampaign = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -285,6 +293,7 @@ export const RestaurantMarketingAgent = () => {
         emailBody={generatedContent.emailBody}
         imageUrl={generatedContent.imageUrl}
         isLoading={isGenerating}
+        onUpdate={handleSectionUpdate}
       />
       
       <Button 
