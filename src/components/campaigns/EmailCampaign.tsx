@@ -7,6 +7,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useAiSuggestions, SuggestionType } from '@/hooks/useAiSuggestions';
+import { EmailBuilderCanvas } from './EmailBuilderCanvas';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Edit, Palette } from 'lucide-react';
 
 // Default suggestions as fallbacks
 const DEFAULT_EMAIL_SUBJECT_SUGGESTIONS = [
@@ -35,6 +39,7 @@ export const EmailCampaign: React.FC = () => {
   });
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [campaignId, setCampaignId] = useState<string | null>(null);
+  const [activeView, setActiveView] = useState<'classic' | 'builder'>('classic');
   const { toast } = useToast();
   const debouncedContent = useDebounce(previewContent, 1000);
   
@@ -108,10 +113,10 @@ export const EmailCampaign: React.FC = () => {
       }
     };
 
-    if (Object.values(debouncedContent).some(value => value)) {
+    if (Object.values(debouncedContent).some(value => value) && activeView === 'classic') {
       saveDraft();
     }
-  }, [debouncedContent, campaignId, toast]);
+  }, [debouncedContent, campaignId, toast, activeView]);
 
   const handleGenerated = (type: string, content: string) => {
     setPreviewContent(prev => ({
@@ -129,56 +134,121 @@ export const EmailCampaign: React.FC = () => {
     }
   };
 
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <div className="space-y-6">
-        <AiGenerationSection
-          title="AI EMAIL SUBJECT"
-          description="Generate catchy email subject lines"
-          type="email_subject"
-          placeholder="Enter your email subject prompt"
-          onGenerated={(content) => handleGenerated('email_subject', content)}
-          suggestions={subjectSuggestions}
-          loadingSuggestions={isLoadingSubjectSuggestions}
-        />
-        
-        <AiGenerationSection
-          title="AI EMAIL"
-          description="Generate complete marketing email content"
-          type="email"
-          placeholder="Enter your email content prompt"
-          onGenerated={(content) => handleGenerated('email', content)}
-          suggestions={contentSuggestions}
-          loadingSuggestions={isLoadingContentSuggestions}
-        />
-        
-        <AiGenerationSection
-          title="AI IMAGE"
-          description="Generate marketing images for your email campaigns"
-          type="image"
-          placeholder="Enter your image prompt"
-          onGenerated={(content) => handleGenerated('image', content)}
-          onGenerating={() => handleGenerating('image')}
-          suggestions={imageSuggestions}
-          loadingSuggestions={isLoadingImageSuggestions}
-        />
-      </div>
+  const handleRegenerate = async (section: 'subject' | 'content' | 'image' | 'cta' | 'footer', prompt: string) => {
+    // Just pass through to the existing handlers based on section type
+    if (section === 'subject') {
+      const content = await generateContent('email_subject', prompt);
+      if (content) handleGenerated('email_subject', content);
+    } else if (section === 'content') {
+      const content = await generateContent('email', prompt);
+      if (content) handleGenerated('email', content);
+    } else if (section === 'image') {
+      handleGenerating('image');
+      const content = await generateContent('image', prompt);
+      if (content) handleGenerated('image', content);
+    }
+  };
 
-      <div className="sticky top-6">
-        <Card className="p-4 shadow-lg">
-          <h3 className="text-xl font-semibold mb-4 text-center">Email Preview</h3>
-          <div className="overflow-auto max-h-[800px]">
-            <EmailPreview
-              subject={previewContent.subject}
-              content={previewContent.email}
-              image={previewContent.image}
-              isGeneratingImage={isGeneratingImage}
-              onSubjectChange={(value) => handleGenerated('email_subject', value)}
-              onContentChange={(value) => handleGenerated('email', value)}
-            />
+  // Helper function to generate content using the existing hooks
+  const generateContent = async (type: string, prompt: string): Promise<string | null> => {
+    try {
+      // This would normally use your AI generation hook
+      // For now, we're just returning placeholder content based on the type
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API delay
+      
+      if (type === 'email_subject') {
+        return 'AI Generated Subject Line: ' + prompt;
+      } else if (type === 'email') {
+        return '<p>AI Generated Content based on: ' + prompt + '</p>';
+      } else if (type === 'image') {
+        // Return a placeholder image URL - in a real app this would be an AI-generated image
+        return 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?q=80&w=1000';
+      }
+      return null;
+    } catch (error) {
+      console.error('Error generating content:', error);
+      return null;
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <Tabs value={activeView} onValueChange={(value) => setActiveView(value as 'classic' | 'builder')}>
+        <TabsList className="mb-4">
+          <TabsTrigger value="classic" className="flex items-center gap-2">
+            <Edit size={16} />
+            Classic Editor
+          </TabsTrigger>
+          <TabsTrigger value="builder" className="flex items-center gap-2">
+            <Palette size={16} />
+            Modular Builder
+          </TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="classic">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="space-y-6">
+              <AiGenerationSection
+                title="AI EMAIL SUBJECT"
+                description="Generate catchy email subject lines"
+                type="email_subject"
+                placeholder="Enter your email subject prompt"
+                onGenerated={(content) => handleGenerated('email_subject', content)}
+                suggestions={subjectSuggestions}
+                loadingSuggestions={isLoadingSubjectSuggestions}
+              />
+              
+              <AiGenerationSection
+                title="AI EMAIL"
+                description="Generate complete marketing email content"
+                type="email"
+                placeholder="Enter your email content prompt"
+                onGenerated={(content) => handleGenerated('email', content)}
+                suggestions={contentSuggestions}
+                loadingSuggestions={isLoadingContentSuggestions}
+              />
+              
+              <AiGenerationSection
+                title="AI IMAGE"
+                description="Generate marketing images for your email campaigns"
+                type="image"
+                placeholder="Enter your image prompt"
+                onGenerated={(content) => handleGenerated('image', content)}
+                onGenerating={() => handleGenerating('image')}
+                suggestions={imageSuggestions}
+                loadingSuggestions={isLoadingImageSuggestions}
+              />
+            </div>
+
+            <div className="sticky top-6">
+              <Card className="p-4 shadow-lg">
+                <h3 className="text-xl font-semibold mb-4 text-center">Email Preview</h3>
+                <div className="overflow-auto max-h-[800px]">
+                  <EmailPreview
+                    subject={previewContent.subject}
+                    content={previewContent.email}
+                    image={previewContent.image}
+                    isGeneratingImage={isGeneratingImage}
+                    onSubjectChange={(value) => handleGenerated('email_subject', value)}
+                    onContentChange={(value) => handleGenerated('email', value)}
+                    onRegenerate={handleRegenerate}
+                  />
+                </div>
+              </Card>
+            </div>
           </div>
-        </Card>
-      </div>
+        </TabsContent>
+        
+        <TabsContent value="builder">
+          <Card className="p-4 shadow-lg">
+            <h3 className="text-xl font-semibold mb-4 text-center">Modular Email Builder</h3>
+            <p className="text-center text-gray-500 mb-6">
+              Drag and drop sections to reorder. Click the edit icon to customize each section with AI.
+            </p>
+            <EmailBuilderCanvas />
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

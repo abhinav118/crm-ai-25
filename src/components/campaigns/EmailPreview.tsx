@@ -1,9 +1,8 @@
-
 import React, { useState } from 'react';
 import { ImagePreview } from './ImagePreview';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Edit, TextCursor, Instagram, Facebook, Mail, Share } from 'lucide-react';
+import { Edit, TextCursor, Instagram, Facebook, Mail, Share, ArrowDown } from 'lucide-react';
 import { ImageGenerationProgress } from '@/components/ui/image-generation-progress';
 import { useToast } from '@/hooks/use-toast';
 
