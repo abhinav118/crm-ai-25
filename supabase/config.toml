@@ -115,6 +115,10 @@ sender_email = ""
 [functions]
 enabled = true
 
+# Configure a function to be invokable without JWT verification
+[functions.link_click_webhook]
+verify_jwt = false
+
 # Configure a custom vector store.
 [vector_store]
 enabled = false

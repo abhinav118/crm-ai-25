@@ -206,6 +206,60 @@ export type Database = {
         }
         Relationships: []
       }
+      user_chat_history: {
+        Row: {
+          created_at: string
+          id: string
+          messages: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          messages?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          messages?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_generated_images: {
+        Row: {
+          created_at: string
+          id: string
+          image_url: string
+          prompt: string | null
+          size: string | null
+          style: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          image_url: string
+          prompt?: string | null
+          size?: string | null
+          style?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          image_url?: string
+          prompt?: string | null
+          size?: string | null
+          style?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
