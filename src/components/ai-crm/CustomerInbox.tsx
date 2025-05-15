@@ -47,7 +47,7 @@ const CustomerInbox = ({ onSelectCustomer }: CustomerInboxProps) => {
           {
             id: '1',
             sender: 'customer',
-            content: 'Hi, I'd like to know if the summer sale is still going on?',
+            content: "Hi, I'd like to know if the summer sale is still going on?",
             timestamp: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
             channel: 'sms',
             read: false,
@@ -87,7 +87,7 @@ const CustomerInbox = ({ onSelectCustomer }: CustomerInboxProps) => {
           {
             id: '5',
             sender: 'customer',
-            content: 'I'd like to update my subscription to the premium tier.',
+            content: "I'd like to update my subscription to the premium tier.",
             timestamp: new Date(Date.now() - 1000 * 60 * 60 * 36).toISOString(),
             channel: 'sms',
             read: true,
@@ -142,7 +142,7 @@ const CustomerInbox = ({ onSelectCustomer }: CustomerInboxProps) => {
       if (message.content.includes('sale')) {
         suggestedResponse = 'Yes, our summer sale is active until the end of the month! You can get 20% off on all summer items using code SUMMER20.';
       } else if (message.content.includes('order')) {
-        suggestedResponse = 'I'm very sorry about the mix-up with your order. I'd be happy to arrange for a return and send you the correct color right away.';
+        suggestedResponse = "I'm very sorry about the mix-up with your order. I'd be happy to arrange for a return and send you the correct color right away.";
       } else if (message.content.includes('Instagram')) {
         suggestedResponse = 'Yes, all the items from our recent Instagram post are now in stock! Would you like me to share a link to purchase them?';
       } else if (message.content.includes('discount')) {

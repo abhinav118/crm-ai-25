@@ -414,26 +414,26 @@ const CustomerProfilePanel = ({ customerId, onClose }: CustomerProfilePanelProps
                 </div>
               </TabsContent>
             </ScrollArea>
-          </>
-        )
+          </Tabs>
+          
+          <div className="p-4 border-t">
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1 gap-1">
+                <MessageSquare className="h-4 w-4" />
+                Send Message
+              </Button>
+              <Button className="flex-1 gap-1">
+                <Sparkles className="h-4 w-4" />
+                AI Recommendation
+              </Button>
+            </div>
+          </div>
+        </>
       ) : (
         <div className="h-full flex items-center justify-center">
           <p className="text-gray-500">Customer not found</p>
         </div>
       )}
-      
-      <div className="p-4 border-t">
-        <div className="flex gap-2">
-          <Button variant="outline" className="flex-1 gap-1">
-            <MessageSquare className="h-4 w-4" />
-            Send Message
-          </Button>
-          <Button className="flex-1 gap-1">
-            <Sparkles className="h-4 w-4" />
-            AI Recommendation
-          </Button>
-        </div>
-      </div>
     </div>
   );
 };
