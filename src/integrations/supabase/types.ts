@@ -9,6 +9,30 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      ai_image_chat_users: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          email: string
+          id: string
+          user_type: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          email: string
+          id: string
+          user_type?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          user_type?: string
+        }
+        Relationships: []
+      }
       campaigns: {
         Row: {
           campaign_name: string
@@ -138,6 +162,36 @@ export type Database = {
           status?: string | null
           tags?: string[] | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      favorites: {
+        Row: {
+          created_at: string | null
+          id: string
+          image_id: string | null
+          image_url: string
+          prompt: string | null
+          title: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          image_id?: string | null
+          image_url: string
+          prompt?: string | null
+          title?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          image_id?: string | null
+          image_url?: string
+          prompt?: string | null
+          title?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
