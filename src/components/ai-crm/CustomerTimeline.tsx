@@ -172,7 +172,7 @@ const CustomerTimeline = ({ customerId }: CustomerTimelineProps) => {
           isLoading ? (
             <div className="space-y-4">
               <Skeleton className="h-6 w-40" />
-              <ScrollArea orientation="horizontal" className="w-full h-[100px]">
+              <ScrollArea className="w-full h-[100px]">
                 <div className="flex gap-4 min-w-max py-4">
                   {[1, 2, 3, 4, 5].map((i) => (
                     <div key={i} className="flex flex-col items-center gap-2 w-[120px]">
@@ -186,7 +186,7 @@ const CustomerTimeline = ({ customerId }: CustomerTimelineProps) => {
           ) : events.length > 0 ? (
             <div className="space-y-4">
               <p className="text-gray-500 text-sm">Customer journey highlights</p>
-              <ScrollArea orientation="horizontal" className="w-full">
+              <ScrollArea className="w-full">
                 <div className="flex min-w-max py-2">
                   {events.map((event, index) => (
                     <div key={event.id} className="flex flex-col items-center relative px-4">
