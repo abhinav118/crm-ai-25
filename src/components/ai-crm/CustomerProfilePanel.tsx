@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { X, User, ShoppingBag, MessageSquare, Calendar, BarChart, Clock, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -36,7 +35,7 @@ interface CustomerType {
     type: 'email_open' | 'email_click' | 'sms_view' | 'website_visit' | 'order_placed';
     description: string;
   }[];
-  notes: string;
+  notes?: string; // Making notes optional with the ? operator
 }
 
 interface CustomerProfilePanelProps {
@@ -83,11 +82,13 @@ const CustomerProfilePanel = ({ customerId, onClose }: CustomerProfilePanelProps
             customerType: getCustomerType(contactData),
             purchaseHistory: generateMockPurchaseHistory(),
             engagementHistory: generateMockEngagementHistory(),
+            // Handle the case where notes might be missing from the contact data
             notes: contactData.notes || `Notes about ${contactData.name}'s preferences and history.`
           };
           
           setCustomer(customerDetails);
-          generateNoteSummary(customerDetails.notes);
+          // We need to pass a string to generateNoteSummary, not undefined
+          generateNoteSummary(customerDetails.notes || '');
         } else {
           fallbackToMockData();
         }
