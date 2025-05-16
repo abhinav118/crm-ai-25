@@ -12,8 +12,8 @@ import { supabase } from '@/integrations/supabase/client';
 interface CustomerType {
   id: string;
   name: string;
-  email: string;
-  phone: string;
+  email: string | null;
+  phone: string | null;
   joinedDate: string;
   lastOrder: string;
   lifetimeValue: number;
