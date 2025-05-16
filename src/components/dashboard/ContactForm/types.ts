@@ -22,4 +22,5 @@ export interface ContactData {
   last_activity?: string | null;
   updated_at: string; // Required field
   id?: string; // Optional for updating existing contacts
+  notes?: string | null; // Added notes field
 }

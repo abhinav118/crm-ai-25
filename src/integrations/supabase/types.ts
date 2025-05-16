@@ -134,6 +134,7 @@ export type Database = {
           id: string
           last_activity: string | null
           name: string
+          notes: string | null
           phone: string | null
           status: string | null
           tags: string[] | null
@@ -146,6 +147,7 @@ export type Database = {
           id?: string
           last_activity?: string | null
           name: string
+          notes?: string | null
           phone?: string | null
           status?: string | null
           tags?: string[] | null
@@ -158,6 +160,7 @@ export type Database = {
           id?: string
           last_activity?: string | null
           name?: string
+          notes?: string | null
           phone?: string | null
           status?: string | null
           tags?: string[] | null
