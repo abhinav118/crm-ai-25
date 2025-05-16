@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { supabase } from '@/integrations/supabase/client';
 
 interface CustomerType {
   id: string;
@@ -53,125 +54,156 @@ const CustomerProfilePanel = ({ customerId, onClose }: CustomerProfilePanelProps
     const fetchCustomerDetails = async () => {
       setIsLoading(true);
       try {
-        // In a real app, this would be a Supabase or API call
-        setTimeout(() => {
-          // Mock data based on customerId
+        // Try to fetch the real customer from Supabase first
+        const { data: contactData, error: contactError } = await supabase
+          .from('contacts')
+          .select('*')
+          .eq('id', customerId)
+          .single();
+
+        if (contactError) {
+          console.error('Error fetching contact:', contactError);
+          // Fall back to mock data if we can't fetch the real contact
+          fallbackToMockData();
+          return;
+        }
+
+        // Create a customer profile from the contact data
+        if (contactData) {
           const customerDetails: CustomerType = {
-            id: customerId,
-            name: customerId === 'cust_123' ? 'Emma Johnson' : 
-                  customerId === 'cust_124' ? 'Michael Williams' :
-                  customerId === 'cust_125' ? 'Sophia Miller' :
-                  customerId === 'cust_126' ? 'William Jones' : 'Charlotte Wilson',
-            email: customerId === 'cust_123' ? 'emma@example.com' :
-                   customerId === 'cust_124' ? 'michael@example.com' :
-                   customerId === 'cust_125' ? 'sophia@example.com' :
-                   customerId === 'cust_126' ? 'william@example.com' : 'charlotte@example.com',
-            phone: customerId === 'cust_123' ? '(555) 123-4567' :
-                   customerId === 'cust_124' ? '(555) 234-5678' :
-                   customerId === 'cust_125' ? '(555) 345-6789' :
-                   customerId === 'cust_126' ? '(555) 456-7890' : '(555) 567-8901',
-            joinedDate: '2023-02-15',
-            lastOrder: customerId === 'cust_123' ? '2023-05-01' : 
-                       customerId === 'cust_124' ? '2023-04-10' :
-                       customerId === 'cust_125' ? '2023-05-12' :
-                       customerId === 'cust_126' ? '2023-03-22' : '2023-04-05',
-            lifetimeValue: customerId === 'cust_123' ? 735.42 :
-                           customerId === 'cust_124' ? 348.95 :
-                           customerId === 'cust_125' ? 1244.80 :
-                           customerId === 'cust_126' ? 87.50 : 562.25,
-            orderCount: customerId === 'cust_123' ? 8 :
-                        customerId === 'cust_124' ? 3 :
-                        customerId === 'cust_125' ? 12 :
-                        customerId === 'cust_126' ? 1 : 5,
-            tags: customerId === 'cust_123' ? ['loyal', 'promotion-responsive', 'weekday-shopper'] :
-                  customerId === 'cust_124' ? ['new-customer', 'mobile-user'] :
-                  customerId === 'cust_125' ? ['vip', 'high-value', 'organic'] :
-                  customerId === 'cust_126' ? ['one-time', 'discount-user'] : ['returning', 'referred'],
-            customerType: customerId === 'cust_123' ? 'High Value Regular' :
-                          customerId === 'cust_124' ? 'New Explorer' :
-                          customerId === 'cust_125' ? 'VIP Advocate' :
-                          customerId === 'cust_126' ? 'First-Timer' : 'Steady Returner',
-            purchaseHistory: [
-              {
-                id: 'ord_1',
-                date: '2023-05-01',
-                items: [
-                  { name: 'Premium T-shirt', price: 29.99, quantity: 2 },
-                  { name: 'Denim Jeans', price: 49.99, quantity: 1 }
-                ],
-                total: 109.97
-              },
-              {
-                id: 'ord_2',
-                date: '2023-04-15',
-                items: [
-                  { name: 'Running Shoes', price: 79.99, quantity: 1 },
-                  { name: 'Athletic Socks', price: 12.99, quantity: 3 }
-                ],
-                total: 118.96
-              },
-              {
-                id: 'ord_3',
-                date: '2023-03-28',
-                items: [
-                  { name: 'Winter Jacket', price: 159.99, quantity: 1 }
-                ],
-                total: 159.99
-              }
-            ],
-            engagementHistory: [
-              {
-                id: 'eng_1',
-                date: '2023-05-12',
-                type: 'email_open',
-                description: 'Opened "Summer Collection Launch" email'
-              },
-              {
-                id: 'eng_2',
-                date: '2023-05-10',
-                type: 'website_visit',
-                description: 'Viewed "New Arrivals" page'
-              },
-              {
-                id: 'eng_3',
-                date: '2023-05-05',
-                type: 'sms_view',
-                description: 'Viewed SMS about "Weekend Flash Sale"'
-              },
-              {
-                id: 'eng_4',
-                date: '2023-05-01',
-                type: 'order_placed',
-                description: 'Placed order #12345'
-              },
-              {
-                id: 'eng_5',
-                date: '2023-04-28',
-                type: 'email_click',
-                description: 'Clicked "Shop Now" in newsletter'
-              }
-            ],
-            notes: customerId === 'cust_123' ? 'Emma prefers email communication. She shops mostly during work hours and responds well to percentage-based discounts.' :
-                   customerId === 'cust_124' ? 'Michael reported an issue with his first order. We replaced the item and he was satisfied with the resolution.' :
-                   customerId === 'cust_125' ? 'Sophia is an influencer who shared our products on Instagram. She has brought in several referrals. Consider for early access to new products.' :
-                   customerId === 'cust_126' ? 'William only purchased once during a major sale event. Might be price-sensitive and waiting for promotions.' : 'Charlotte regularly shops from our sustainable collection. She values eco-friendly packaging and ethical sourcing.'
+            id: contactData.id,
+            name: contactData.name,
+            email: contactData.email || 'No email available',
+            phone: contactData.phone || 'No phone available',
+            joinedDate: contactData.created_at,
+            lastOrder: contactData.last_activity || new Date().toISOString(),
+            lifetimeValue: Math.floor(Math.random() * 1000) + 100, // Mock data
+            orderCount: Math.floor(Math.random() * 20) + 1, // Mock data
+            tags: contactData.tags || [],
+            customerType: getCustomerType(contactData),
+            purchaseHistory: generateMockPurchaseHistory(),
+            engagementHistory: generateMockEngagementHistory(),
+            notes: contactData.notes || `Notes about ${contactData.name}'s preferences and history.`
           };
           
           setCustomer(customerDetails);
           generateNoteSummary(customerDetails.notes);
-          setIsLoading(false);
-        }, 1200);
-        
+        } else {
+          fallbackToMockData();
+        }
       } catch (error) {
         console.error('Error fetching customer details:', error);
+        fallbackToMockData();
+      } finally {
         setIsLoading(false);
       }
+    };
+
+    const fallbackToMockData = () => {
+      // Mock data based on customerId
+      setTimeout(() => {
+        const customerDetails: CustomerType = {
+          id: customerId,
+          name: customerId === 'cust_123' ? 'Emma Johnson' : 
+                customerId === 'cust_124' ? 'Michael Williams' :
+                customerId === 'cust_125' ? 'Sophia Miller' :
+                customerId === 'cust_126' ? 'William Jones' : 'Charlotte Wilson',
+          email: customerId === 'cust_123' ? 'emma@example.com' :
+                 customerId === 'cust_124' ? 'michael@example.com' :
+                 customerId === 'cust_125' ? 'sophia@example.com' :
+                 customerId === 'cust_126' ? 'william@example.com' : 'charlotte@example.com',
+          phone: customerId === 'cust_123' ? '(555) 123-4567' :
+                 customerId === 'cust_124' ? '(555) 234-5678' :
+                 customerId === 'cust_125' ? '(555) 345-6789' :
+                 customerId === 'cust_126' ? '(555) 456-7890' : '(555) 567-8901',
+          joinedDate: '2023-02-15',
+          lastOrder: customerId === 'cust_123' ? '2023-05-01' : 
+                     customerId === 'cust_124' ? '2023-04-10' :
+                     customerId === 'cust_125' ? '2023-05-12' :
+                     customerId === 'cust_126' ? '2023-03-22' : '2023-04-05',
+          lifetimeValue: customerId === 'cust_123' ? 735.42 :
+                         customerId === 'cust_124' ? 348.95 :
+                         customerId === 'cust_125' ? 1244.80 :
+                         customerId === 'cust_126' ? 87.50 : 562.25,
+          orderCount: customerId === 'cust_123' ? 8 :
+                      customerId === 'cust_124' ? 3 :
+                      customerId === 'cust_125' ? 12 :
+                      customerId === 'cust_126' ? 1 : 5,
+          tags: customerId === 'cust_123' ? ['loyal', 'promotion-responsive', 'weekday-shopper'] :
+                customerId === 'cust_124' ? ['new-customer', 'mobile-user'] :
+                customerId === 'cust_125' ? ['vip', 'high-value', 'organic'] :
+                customerId === 'cust_126' ? ['one-time', 'discount-user'] : ['returning', 'referred'],
+          customerType: customerId === 'cust_123' ? 'High Value Regular' :
+                        customerId === 'cust_124' ? 'New Explorer' :
+                        customerId === 'cust_125' ? 'VIP Advocate' :
+                        customerId === 'cust_126' ? 'First-Timer' : 'Steady Returner',
+          purchaseHistory: generateMockPurchaseHistory(),
+          engagementHistory: generateMockEngagementHistory(),
+          notes: customerId === 'cust_123' ? 'Emma prefers email communication. She shops mostly during work hours and responds well to percentage-based discounts.' :
+                 customerId === 'cust_124' ? 'Michael reported an issue with his first order. We replaced the item and he was satisfied with the resolution.' :
+                 customerId === 'cust_125' ? 'Sophia is an influencer who shared our products on Instagram. She has brought in several referrals. Consider for early access to new products.' :
+                 customerId === 'cust_126' ? 'William only purchased once during a major sale event. Might be price-sensitive and waiting for promotions.' : 'Charlotte regularly shops from our sustainable collection. She values eco-friendly packaging and ethical sourcing.'
+        };
+        
+        setCustomer(customerDetails);
+        generateNoteSummary(customerDetails.notes);
+        setIsLoading(false);
+      }, 800);
     };
 
     if (customerId) {
       fetchCustomerDetails();
     }
   }, [customerId]);
+
+  const getCustomerType = (contact: any) => {
+    if (contact.tags?.includes('vip')) return 'VIP Advocate';
+    if (contact.tags?.includes('loyal')) return 'High Value Regular';
+    if (contact.tags?.includes('new-customer')) return 'New Explorer';
+    return 'Regular Customer';
+  };
+
+  const generateMockPurchaseHistory = () => {
+    // Generate 1-3 random purchase records
+    const numPurchases = Math.floor(Math.random() * 3) + 1;
+    return Array.from({ length: numPurchases }, (_, i) => ({
+      id: `ord_${i + 1}`,
+      date: new Date(Date.now() - (i * 1000 * 60 * 60 * 24 * 15)).toISOString(),
+      items: [
+        { 
+          name: ['Premium T-shirt', 'Running Shoes', 'Denim Jeans', 'Winter Jacket'][Math.floor(Math.random() * 4)], 
+          price: Number((Math.random() * 100 + 20).toFixed(2)), 
+          quantity: Math.floor(Math.random() * 2) + 1 
+        },
+        { 
+          name: ['Athletic Socks', 'Baseball Cap', 'Sunglasses', 'Phone Case'][Math.floor(Math.random() * 4)], 
+          price: Number((Math.random() * 30 + 10).toFixed(2)), 
+          quantity: Math.floor(Math.random() * 3) + 1 
+        }
+      ],
+      total: Number((Math.random() * 150 + 50).toFixed(2))
+    }));
+  };
+
+  const generateMockEngagementHistory = () => {
+    // Generate 3-5 random engagement events
+    const numEvents = Math.floor(Math.random() * 3) + 3;
+    const types = ['email_open', 'email_click', 'sms_view', 'website_visit', 'order_placed'] as const;
+    const descriptions = [
+      'Opened "Summer Collection Launch" email',
+      'Clicked "Shop Now" in newsletter',
+      'Viewed SMS about "Weekend Flash Sale"',
+      'Viewed "New Arrivals" page',
+      'Placed order #12345'
+    ];
+    
+    return Array.from({ length: numEvents }, (_, i) => ({
+      id: `eng_${i + 1}`,
+      date: new Date(Date.now() - (i * 1000 * 60 * 60 * 24 * 5)).toISOString(),
+      type: types[i % types.length],
+      description: descriptions[i % descriptions.length]
+    }));
+  };
 
   const generateNoteSummary = (notes: string) => {
     // Simulate AI-generated summary of notes
@@ -279,7 +311,7 @@ const CustomerProfilePanel = ({ customerId, onClose }: CustomerProfilePanelProps
               </TabsList>
             </div>
             
-            <ScrollArea className="flex-1 p-4">
+            <ScrollArea className="flex-1 p-4 overflow-y-auto">
               <TabsContent value="overview" className="space-y-6 mt-0">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="border rounded-lg p-3 flex flex-col">
@@ -326,9 +358,9 @@ const CustomerProfilePanel = ({ customerId, onClose }: CustomerProfilePanelProps
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <h4 className="text-sm font-medium">Notes & Summary</h4>
-                    <Button variant="outline" size="sm" className="h-7 gap-1">
+                    <Button variant="outline" size="sm" className="h-7 gap-1" onClick={() => generateNoteSummary(customer.notes)}>
                       <Sparkles className="h-3.5 w-3.5" />
-                      AI Insight
+                      Regenerate Insights
                     </Button>
                   </div>
                   <div className="border rounded-lg p-3">
