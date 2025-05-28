@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, MessageCircle, Send, Users } from "lucide-react";
+import { Loader2, MessageCircle, Send, Users, AlertTriangle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import TagSelectorDropdown from './components/TagSelectorDropdown';
@@ -28,6 +27,12 @@ interface ContactInfo {
   company?: string;
 }
 
+interface SMSResult {
+  contactId: string;
+  success: boolean;
+  error?: string;
+}
+
 const BulkActions: React.FC<BulkActionsProps> = ({ 
   selectedContacts,
   onContactsUpdated
@@ -38,6 +43,7 @@ const BulkActions: React.FC<BulkActionsProps> = ({
   const [filteredContacts, setFilteredContacts] = useState<ContactInfo[]>([]);
   const [isLoadingContacts, setIsLoadingContacts] = useState(false);
   const [selectedTagsFilter, setSelectedTagsFilter] = useState<string[]>([]);
+  const [smsResults, setSmsResults] = useState<SMSResult[]>([]);
 
   // Fetch contact details for selected contacts
   const fetchSelectedContacts = async () => {
@@ -127,44 +133,114 @@ const BulkActions: React.FC<BulkActionsProps> = ({
     }
     
     setIsSending(true);
+    setSmsResults([]);
+    
     try {
-      // Log SMS sending action for each filtered contact
+      const results: SMSResult[] = [];
+      let successCount = 0;
+      let errorCount = 0;
+
+      // Send SMS to each filtered contact
       for (const contact of filteredContacts) {
-        await supabase.from('contact_logs').insert({
-          action: 'sms_sent',
-          contact_info: {
-            id: contact.id,
-            name: contact.name,
-            email: contact.email,
-            phone: contact.phone,
-            status: contact.status,
-            company: contact.company || null,
-            tags: contact.tags || [],
-            createdAt: contact.created_at,
-            lastActivity: contact.updated_at || contact.created_at,
-            timestamp: new Date().toISOString(),
-            message: message
-          },
-          created_at: new Date().toISOString(),
-          batch_id: null,
-          batch_name: null
+        if (!contact.phone) {
+          results.push({
+            contactId: contact.id,
+            success: false,
+            error: 'No phone number'
+          });
+          errorCount++;
+          continue;
+        }
+
+        try {
+          // Call the Twilio edge function
+          const { data, error } = await supabase.functions.invoke('send-sms', {
+            body: {
+              to: contact.phone,
+              message: message,
+              contactId: contact.id
+            }
+          });
+
+          if (error || !data?.success) {
+            results.push({
+              contactId: contact.id,
+              success: false,
+              error: error?.message || data?.error || 'Failed to send SMS'
+            });
+            errorCount++;
+          } else {
+            results.push({
+              contactId: contact.id,
+              success: true
+            });
+            successCount++;
+
+            // Log successful SMS in contact_logs
+            await supabase.from('contact_logs').insert({
+              action: 'sms_sent',
+              contact_info: {
+                id: contact.id,
+                name: contact.name,
+                email: contact.email,
+                phone: contact.phone,
+                status: contact.status,
+                company: contact.company || null,
+                tags: contact.tags || [],
+                createdAt: contact.created_at,
+                lastActivity: contact.updated_at || contact.created_at,
+                timestamp: new Date().toISOString(),
+                message: message
+              },
+              created_at: new Date().toISOString(),
+              batch_id: null,
+              batch_name: null
+            });
+          }
+        } catch (error) {
+          console.error(`Error sending SMS to ${contact.name}:`, error);
+          results.push({
+            contactId: contact.id,
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error'
+          });
+          errorCount++;
+        }
+      }
+
+      setSmsResults(results);
+
+      // Show results toast
+      if (successCount > 0 && errorCount === 0) {
+        toast({
+          title: "SMS Sent Successfully",
+          description: `Message sent to ${successCount} contact${successCount > 1 ? 's' : ''}.`,
+        });
+      } else if (successCount > 0 && errorCount > 0) {
+        toast({
+          title: "Partial Success",
+          description: `Message sent to ${successCount} contacts. ${errorCount} failed.`,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Failed to Send SMS",
+          description: `Failed to send message to all ${errorCount} contacts.`,
+          variant: "destructive",
         });
       }
       
-      toast({
-        title: "SMS Sent",
-        description: `Message sent to ${filteredContacts.length} contact${filteredContacts.length > 1 ? 's' : ''}.`,
-      });
-      
-      // Reset form
-      setMessage("");
-      setSelectedTagsFilter([]);
+      // Reset form on success
+      if (successCount > 0) {
+        setMessage("");
+        setSelectedTagsFilter([]);
+      }
       
       if (onContactsUpdated) {
         onContactsUpdated();
       }
     } catch (error) {
-      console.error("Error sending SMS:", error);
+      console.error("Error in bulk SMS sending:", error);
       toast({
         title: "Error",
         description: "Failed to send SMS. Please try again.",
@@ -188,6 +264,10 @@ const BulkActions: React.FC<BulkActionsProps> = ({
       default:
         return <Badge>{status}</Badge>;
     }
+  };
+
+  const getValidContactsCount = () => {
+    return filteredContacts.filter(contact => contact.phone && contact.phone.trim()).length;
   };
 
   return (
@@ -236,7 +316,7 @@ const BulkActions: React.FC<BulkActionsProps> = ({
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-medium flex items-center gap-2">
                 <Users className="h-4 w-4" />
-                Recipients ({filteredContacts.length})
+                Recipients ({getValidContactsCount()} with valid phone numbers)
               </h3>
               {selectedTagsFilter.length > 0 && (
                 <div className="text-xs text-muted-foreground">
@@ -272,36 +352,58 @@ const BulkActions: React.FC<BulkActionsProps> = ({
                         <TableHead>Phone</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Tags</TableHead>
+                        {smsResults.length > 0 && <TableHead>SMS Status</TableHead>}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredContacts.map((contact) => (
-                        <TableRow key={contact.id}>
-                          <TableCell className="font-medium">
-                            {contact.name}
-                            {contact.email && (
-                              <div className="text-xs text-muted-foreground">
-                                {contact.email}
-                              </div>
-                            )}
-                          </TableCell>
-                          <TableCell>{contact.phone || 'N/A'}</TableCell>
-                          <TableCell>{getStatusBadge(contact.status)}</TableCell>
-                          <TableCell>
-                            <div className="flex flex-wrap gap-1">
-                              {contact.tags && contact.tags.length > 0 ? (
-                                contact.tags.map((tag, index) => (
-                                  <Badge key={index} variant="outline" className="text-xs">
-                                    {tag}
-                                  </Badge>
-                                ))
-                              ) : (
-                                <span className="text-xs text-muted-foreground">No tags</span>
+                      {filteredContacts.map((contact) => {
+                        const smsResult = smsResults.find(r => r.contactId === contact.id);
+                        return (
+                          <TableRow key={contact.id}>
+                            <TableCell className="font-medium">
+                              {contact.name}
+                              {contact.email && (
+                                <div className="text-xs text-muted-foreground">
+                                  {contact.email}
+                                </div>
                               )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                            </TableCell>
+                            <TableCell>
+                              {contact.phone || (
+                                <span className="text-red-500 text-xs">No phone number</span>
+                              )}
+                            </TableCell>
+                            <TableCell>{getStatusBadge(contact.status)}</TableCell>
+                            <TableCell>
+                              <div className="flex flex-wrap gap-1">
+                                {contact.tags && contact.tags.length > 0 ? (
+                                  contact.tags.map((tag, index) => (
+                                    <Badge key={index} variant="outline" className="text-xs">
+                                      {tag}
+                                    </Badge>
+                                  ))
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">No tags</span>
+                                )}
+                              </div>
+                            </TableCell>
+                            {smsResults.length > 0 && (
+                              <TableCell>
+                                {smsResult ? (
+                                  smsResult.success ? (
+                                    <Badge className="bg-green-100 text-green-800">Sent</Badge>
+                                  ) : (
+                                    <Badge variant="destructive" className="flex items-center gap-1">
+                                      <AlertTriangle className="h-3 w-3" />
+                                      Failed
+                                    </Badge>
+                                  )
+                                ) : null}
+                              </TableCell>
+                            )}
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 </ScrollArea>
@@ -312,7 +414,7 @@ const BulkActions: React.FC<BulkActionsProps> = ({
           {/* Send Button */}
           <Button 
             onClick={handleSendSMS}
-            disabled={isSending || !message.trim() || filteredContacts.length === 0}
+            disabled={isSending || !message.trim() || getValidContactsCount() === 0}
             className="w-full"
             size="lg"
           >
@@ -324,10 +426,27 @@ const BulkActions: React.FC<BulkActionsProps> = ({
             ) : (
               <>
                 <Send className="mr-2 h-4 w-4" />
-                Send SMS to {filteredContacts.length} Contact{filteredContacts.length !== 1 ? 's' : ''}
+                Send SMS to {getValidContactsCount()} Contact{getValidContactsCount() !== 1 ? 's' : ''}
               </>
             )}
           </Button>
+
+          {/* SMS Results Summary */}
+          {smsResults.length > 0 && (
+            <div className="mt-4 p-4 bg-muted rounded-lg">
+              <h4 className="font-medium mb-2">SMS Sending Results</h4>
+              <div className="text-sm space-y-1">
+                <div className="text-green-600">
+                  ✓ {smsResults.filter(r => r.success).length} messages sent successfully
+                </div>
+                {smsResults.filter(r => !r.success).length > 0 && (
+                  <div className="text-red-600">
+                    ✗ {smsResults.filter(r => !r.success).length} messages failed
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
