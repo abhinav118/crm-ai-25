@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -45,6 +46,14 @@ const BulkActions: React.FC<BulkActionsProps> = ({
   const [selectedTagsFilter, setSelectedTagsFilter] = useState<string[]>([]);
   const [smsResults, setSmsResults] = useState<SMSResult[]>([]);
 
+  // Phone validation helper
+  const isValidPhone = (phone: string): boolean => {
+    if (!phone || !phone.trim()) return false;
+    // Remove all non-numeric characters and check if we have a valid phone number
+    const cleaned = phone.replace(/\D/g, '');
+    return cleaned.length >= 10;
+  };
+
   // Fetch contact details for selected contacts
   const fetchSelectedContacts = async () => {
     if (selectedContacts.length === 0) {
@@ -72,6 +81,7 @@ const BulkActions: React.FC<BulkActionsProps> = ({
       
       if (data) {
         const contactsData = data as ContactInfo[];
+        console.log("Fetched contacts:", contactsData);
         setContacts(contactsData);
         applyTagFilter(contactsData, selectedTagsFilter);
       }
@@ -84,22 +94,38 @@ const BulkActions: React.FC<BulkActionsProps> = ({
 
   // Apply tag filter to contacts
   const applyTagFilter = (contactsToFilter: ContactInfo[], tagFilter: string[]) => {
+    console.log("Applying tag filter:", { contactsToFilter: contactsToFilter.length, tagFilter });
+    
     if (tagFilter.length === 0) {
+      console.log("No tag filter applied, showing all contacts");
       setFilteredContacts(contactsToFilter);
     } else {
-      const filtered = contactsToFilter.filter(contact => 
-        contact.tags && contact.tags.some(tag => tagFilter.includes(tag))
-      );
+      const filtered = contactsToFilter.filter(contact => {
+        // Ensure tags is an array and has values
+        if (!contact.tags || !Array.isArray(contact.tags)) {
+          console.log(`Contact ${contact.name} has no tags or tags is not an array:`, contact.tags);
+          return false;
+        }
+        
+        // Check if any of the contact's tags match any of the selected filter tags
+        const hasMatchingTag = contact.tags.some(tag => tagFilter.includes(tag));
+        console.log(`Contact ${contact.name} tags:`, contact.tags, "matches filter:", hasMatchingTag);
+        return hasMatchingTag;
+      });
+      
+      console.log("Filtered contacts:", filtered.length);
       setFilteredContacts(filtered);
     }
   };
 
   // Handle tag filter changes
   const handleTagsChange = (tags: string[]) => {
+    console.log("Tag selection changed:", tags);
     setSelectedTagsFilter(tags);
   };
 
   const handleApplyTagFilter = () => {
+    console.log("Applying tag filter manually");
     applyTagFilter(contacts, selectedTagsFilter);
   };
 
@@ -142,11 +168,11 @@ const BulkActions: React.FC<BulkActionsProps> = ({
 
       // Send SMS to each filtered contact
       for (const contact of filteredContacts) {
-        if (!contact.phone) {
+        if (!contact.phone || !isValidPhone(contact.phone)) {
           results.push({
             contactId: contact.id,
             success: false,
-            error: 'No phone number'
+            error: 'Invalid or missing phone number'
           });
           errorCount++;
           continue;
@@ -267,7 +293,7 @@ const BulkActions: React.FC<BulkActionsProps> = ({
   };
 
   const getValidContactsCount = () => {
-    return filteredContacts.filter(contact => contact.phone && contact.phone.trim()).length;
+    return filteredContacts.filter(contact => contact.phone && isValidPhone(contact.phone)).length;
   };
 
   // Check if the send button should be enabled
@@ -282,7 +308,7 @@ const BulkActions: React.FC<BulkActionsProps> = ({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Send className="h-5 w-5" />
-            Send SMS to Selected Contacts
+            Send SMS to Tagged Contacts
           </CardTitle>
           <CardDescription>
             Compose and send SMS messages to your selected contacts. Use tag filters to refine your audience.
@@ -375,7 +401,11 @@ const BulkActions: React.FC<BulkActionsProps> = ({
                               )}
                             </TableCell>
                             <TableCell>
-                              {contact.phone || (
+                              {contact.phone ? (
+                                <span className={isValidPhone(contact.phone) ? "" : "text-red-500"}>
+                                  {contact.phone}
+                                </span>
+                              ) : (
                                 <span className="text-red-500 text-xs">No phone number</span>
                               )}
                             </TableCell>
