@@ -45,6 +45,7 @@ const BulkActions: React.FC<BulkActionsProps> = ({
   const [isLoadingContacts, setIsLoadingContacts] = useState(false);
   const [selectedTagsFilter, setSelectedTagsFilter] = useState<string[]>([]);
   const [smsResults, setSmsResults] = useState<SMSResult[]>([]);
+  const [isTagFilterMode, setIsTagFilterMode] = useState(false);
 
   // Phone validation helper
   const isValidPhone = (phone: string): boolean => {
@@ -54,20 +55,55 @@ const BulkActions: React.FC<BulkActionsProps> = ({
     return cleaned.length >= 10;
   };
 
-  // Fetch contact details for selected contacts
-  const fetchSelectedContacts = async () => {
-    if (selectedContacts.length === 0) {
-      setContacts([]);
-      setFilteredContacts([]);
-      return;
-    }
-    
+  // Fetch contacts based on current mode (tag filter vs selected contacts)
+  const fetchContacts = async () => {
     setIsLoadingContacts(true);
     try {
-      const { data, error } = await supabase
-        .from('contacts')
-        .select('*')
-        .in('id', selectedContacts);
+      let data;
+      let error;
+
+      if (isTagFilterMode && selectedTagsFilter.length > 0) {
+        // Tag filter mode: fetch ALL contacts that have any of the selected tags
+        console.log("Fetching all contacts with tags:", selectedTagsFilter);
+        
+        const queries = selectedTagsFilter.map(tag => 
+          supabase
+            .from('contacts')
+            .select('*')
+            .contains('tags', [tag])
+        );
+
+        // Execute all queries and combine results
+        const results = await Promise.all(queries);
+        const allContacts = new Map<string, ContactInfo>();
+        
+        results.forEach(result => {
+          if (result.data && !result.error) {
+            result.data.forEach((contact: ContactInfo) => {
+              allContacts.set(contact.id, contact);
+            });
+          }
+        });
+
+        data = Array.from(allContacts.values());
+        error = results.find(r => r.error)?.error;
+      } else {
+        // Selected contacts mode: fetch only pre-selected contacts
+        if (selectedContacts.length === 0) {
+          setContacts([]);
+          setFilteredContacts([]);
+          return;
+        }
+
+        console.log("Fetching selected contacts:", selectedContacts);
+        const result = await supabase
+          .from('contacts')
+          .select('*')
+          .in('id', selectedContacts);
+        
+        data = result.data;
+        error = result.error;
+      }
       
       if (error) {
         console.error("Error fetching contacts:", error);
@@ -81,9 +117,9 @@ const BulkActions: React.FC<BulkActionsProps> = ({
       
       if (data) {
         const contactsData = data as ContactInfo[];
-        console.log("Fetched contacts:", contactsData);
+        console.log("Fetched contacts:", contactsData.length, "contacts");
         setContacts(contactsData);
-        applyTagFilter(contactsData, selectedTagsFilter);
+        setFilteredContacts(contactsData);
       }
     } catch (error) {
       console.error("Exception loading contacts:", error);
@@ -92,52 +128,27 @@ const BulkActions: React.FC<BulkActionsProps> = ({
     }
   };
 
-  // Apply tag filter to contacts
-  const applyTagFilter = (contactsToFilter: ContactInfo[], tagFilter: string[]) => {
-    console.log("Applying tag filter:", { contactsToFilter: contactsToFilter.length, tagFilter });
-    
-    if (tagFilter.length === 0) {
-      console.log("No tag filter applied, showing all contacts");
-      setFilteredContacts(contactsToFilter);
-    } else {
-      const filtered = contactsToFilter.filter(contact => {
-        // Ensure tags is an array and has values
-        if (!contact.tags || !Array.isArray(contact.tags)) {
-          console.log(`Contact ${contact.name} has no tags or tags is not an array:`, contact.tags);
-          return false;
-        }
-        
-        // Check if any of the contact's tags match any of the selected filter tags
-        const hasMatchingTag = contact.tags.some(tag => tagFilter.includes(tag));
-        console.log(`Contact ${contact.name} tags:`, contact.tags, "matches filter:", hasMatchingTag);
-        return hasMatchingTag;
-      });
-      
-      console.log("Filtered contacts:", filtered.length);
-      setFilteredContacts(filtered);
-    }
-  };
-
   // Handle tag filter changes
   const handleTagsChange = (tags: string[]) => {
     console.log("Tag selection changed:", tags);
     setSelectedTagsFilter(tags);
+    
+    // Switch modes based on whether tags are selected
+    const newTagFilterMode = tags.length > 0;
+    if (newTagFilterMode !== isTagFilterMode) {
+      setIsTagFilterMode(newTagFilterMode);
+    }
   };
 
   const handleApplyTagFilter = () => {
     console.log("Applying tag filter manually");
-    applyTagFilter(contacts, selectedTagsFilter);
+    fetchContacts();
   };
 
-  // Load contacts when selectedContacts changes
+  // Load contacts when mode changes or dependencies change
   useEffect(() => {
-    fetchSelectedContacts();
-  }, [selectedContacts]);
-
-  // Reapply tag filter when contacts change
-  useEffect(() => {
-    applyTagFilter(contacts, selectedTagsFilter);
-  }, [contacts, selectedTagsFilter]);
+    fetchContacts();
+  }, [selectedContacts, isTagFilterMode, selectedTagsFilter]);
 
   const handleSendSMS = async () => {
     if (!message.trim()) {
@@ -260,6 +271,7 @@ const BulkActions: React.FC<BulkActionsProps> = ({
       if (successCount > 0) {
         setMessage("");
         setSelectedTagsFilter([]);
+        setIsTagFilterMode(false);
       }
       
       if (onContactsUpdated) {
@@ -302,6 +314,15 @@ const BulkActions: React.FC<BulkActionsProps> = ({
     return validContactsCount > 0 && message.trim().length > 0 && !isSending;
   };
 
+  // Get display mode text
+  const getDisplayModeText = () => {
+    if (isTagFilterMode) {
+      return `Showing all contacts with selected tags`;
+    } else {
+      return `Showing pre-selected contacts`;
+    }
+  };
+
   return (
     <div className="space-y-6">
       <Card>
@@ -311,10 +332,23 @@ const BulkActions: React.FC<BulkActionsProps> = ({
             Send SMS to Tagged Contacts
           </CardTitle>
           <CardDescription>
-            Compose and send SMS messages to your selected contacts. Use tag filters to refine your audience.
+            Compose and send SMS messages to your contacts. Use tag filters to target all contacts with specific tags, or work with pre-selected contacts.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Mode indicator */}
+          <div className="p-3 bg-muted rounded-lg">
+            <div className="flex items-center gap-2 text-sm">
+              <div className={`w-2 h-2 rounded-full ${isTagFilterMode ? 'bg-blue-500' : 'bg-green-500'}`} />
+              <span className="font-medium">
+                {isTagFilterMode ? 'Tag Filter Mode' : 'Selected Contacts Mode'}
+              </span>
+              <span className="text-muted-foreground">
+                - {getDisplayModeText()}
+              </span>
+            </div>
+          </div>
+
           {/* Tag Filter Section */}
           <div className="space-y-3">
             <h3 className="text-sm font-medium">Filter Recipients by Tags</h3>
@@ -323,6 +357,11 @@ const BulkActions: React.FC<BulkActionsProps> = ({
               onTagsChange={handleTagsChange}
               onApplyFilter={handleApplyTagFilter}
             />
+            {isTagFilterMode && (
+              <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded">
+                💡 Tag filter mode: Searching all contacts in database with selected tags
+              </div>
+            )}
           </div>
 
           {/* Message Composition */}
@@ -366,8 +405,8 @@ const BulkActions: React.FC<BulkActionsProps> = ({
               <div className="text-center py-8 text-muted-foreground">
                 <MessageCircle className="h-8 w-8 mx-auto mb-2" />
                 <p className="text-sm">
-                  {selectedTagsFilter.length > 0 
-                    ? "No contacts match the selected tag filters"
+                  {isTagFilterMode 
+                    ? "No contacts found with the selected tags"
                     : selectedContacts.length === 0 
                       ? "No contacts selected" 
                       : "No contacts available"
