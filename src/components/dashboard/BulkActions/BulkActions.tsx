@@ -2,490 +2,332 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from '@/components/ui/checkbox';
-import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-import { Separator } from "@/components/ui/separator";
-import { 
-  Loader2, Send, Tag, Users, TagsIcon, 
-  Smile, PaperclipIcon, ImageIcon, AlertCircle, 
-  Check, ChevronsUpDown
-} from "lucide-react";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import data from '@emoji-mart/data';
-import Picker from '@emoji-mart/react';
-import { logContactAction } from '@/utils/contactLogger';
-import { Contact } from '../ContactsTable';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Loader2, MessageCircle, Send, Users } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import TagSelectorDropdown from './components/TagSelectorDropdown';
 
 interface BulkActionsProps {
   selectedContacts: string[];
-  onClose?: () => void;
   onContactsUpdated?: () => void;
 }
 
+interface ContactInfo {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  status: string;
+  tags: string[];
+  created_at: string;
+  updated_at: string;
+  company?: string;
+}
+
 const BulkActions: React.FC<BulkActionsProps> = ({ 
-  selectedContacts, 
-  onClose,
+  selectedContacts,
   onContactsUpdated
 }) => {
-  const [isLoading, setIsLoading] = useState(false);
-  const [contacts, setContacts] = useState<Contact[]>([]);
   const [message, setMessage] = useState("");
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [availableTags, setAvailableTags] = useState<string[]>([]);
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [filteredContactIds, setFilteredContactIds] = useState<string[]>(selectedContacts);
-  const [openTagSelector, setOpenTagSelector] = useState(false);
-  const { toast } = useToast();
+  const [isSending, setIsSending] = useState(false);
+  const [contacts, setContacts] = useState<ContactInfo[]>([]);
+  const [filteredContacts, setFilteredContacts] = useState<ContactInfo[]>([]);
+  const [isLoadingContacts, setIsLoadingContacts] = useState(false);
+  const [selectedTagsFilter, setSelectedTagsFilter] = useState<string[]>([]);
 
-  // Fetch contacts data for the selected contacts
-  useEffect(() => {
-    const fetchContacts = async () => {
-      if (selectedContacts.length === 0) return;
-      
-      try {
-        const { data, error } = await supabase
-          .from('contacts')
-          .select('*')
-          .in('id', selectedContacts);
-        
-        if (error) throw error;
-        
-        if (data) {
-          // Map database fields to Contact type
-          const formattedContacts: Contact[] = data.map(contact => ({
-            id: contact.id,
-            name: contact.name,
-            email: contact.email || '',
-            phone: contact.phone || '',
-            company: contact.company || '',
-            status: contact.status as 'active' | 'inactive',
-            tags: contact.tags || [],
-            lastActivity: contact.last_activity || contact.created_at,
-            createdAt: contact.created_at
-          }));
-          
-          setContacts(formattedContacts);
-          
-          // Extract all unique tags from contacts
-          const tags = new Set<string>();
-          data.forEach(contact => {
-            if (contact.tags && Array.isArray(contact.tags)) {
-              contact.tags.forEach(tag => tags.add(tag));
-            }
-          });
-          
-          setAvailableTags(Array.from(tags));
-        }
-      } catch (error) {
-        console.error('Error fetching contacts:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load contacts',
-          variant: 'destructive',
-        });
-      }
-    };
-    
-    fetchContacts();
-  }, [selectedContacts, toast]);
-  
-  // Filter contacts based on selected tags
-  useEffect(() => {
-    if (selectedTags.length === 0) {
-      // If no tags selected, show all contacts
-      setFilteredContactIds(selectedContacts);
+  // Fetch contact details for selected contacts
+  const fetchSelectedContacts = async () => {
+    if (selectedContacts.length === 0) {
+      setContacts([]);
+      setFilteredContacts([]);
       return;
     }
     
-    // Filter contacts that have at least one of the selected tags
-    const filtered = contacts.filter(contact => {
-      if (!contact.tags || !Array.isArray(contact.tags)) return false;
-      return selectedTags.some(tag => contact.tags.includes(tag));
-    }).map(contact => contact.id);
-    
-    setFilteredContactIds(filtered);
-  }, [selectedTags, contacts, selectedContacts]);
-  
-  const handleEmojiSelect = (emoji: any) => {
-    setMessage(prev => prev + emoji.native);
-    setShowEmojiPicker(false);
-  };
-  
-  const handleTagSelection = (tag: string) => {
-    setSelectedTags(prev => {
-      if (prev.includes(tag)) {
-        return prev.filter(t => t !== tag);
-      } else {
-        return [...prev, tag];
+    setIsLoadingContacts(true);
+    try {
+      const { data, error } = await supabase
+        .from('contacts')
+        .select('*')
+        .in('id', selectedContacts);
+      
+      if (error) {
+        console.error("Error fetching contacts:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load contact information.",
+          variant: "destructive",
+        });
+        return;
       }
-    });
+      
+      if (data) {
+        const contactsData = data as ContactInfo[];
+        setContacts(contactsData);
+        applyTagFilter(contactsData, selectedTagsFilter);
+      }
+    } catch (error) {
+      console.error("Exception loading contacts:", error);
+    } finally {
+      setIsLoadingContacts(false);
+    }
   };
-  
+
+  // Apply tag filter to contacts
+  const applyTagFilter = (contactsToFilter: ContactInfo[], tagFilter: string[]) => {
+    if (tagFilter.length === 0) {
+      setFilteredContacts(contactsToFilter);
+    } else {
+      const filtered = contactsToFilter.filter(contact => 
+        contact.tags && contact.tags.some(tag => tagFilter.includes(tag))
+      );
+      setFilteredContacts(filtered);
+    }
+  };
+
+  // Handle tag filter changes
+  const handleTagsChange = (tags: string[]) => {
+    setSelectedTagsFilter(tags);
+  };
+
+  const handleApplyTagFilter = () => {
+    applyTagFilter(contacts, selectedTagsFilter);
+  };
+
+  // Load contacts when selectedContacts changes
+  useEffect(() => {
+    fetchSelectedContacts();
+  }, [selectedContacts]);
+
+  // Reapply tag filter when contacts change
+  useEffect(() => {
+    applyTagFilter(contacts, selectedTagsFilter);
+  }, [contacts, selectedTagsFilter]);
+
   const handleSendSMS = async () => {
     if (!message.trim()) {
       toast({
-        title: 'Missing Message',
-        description: 'Please enter a message to send',
-        variant: 'destructive',
+        title: "Error",
+        description: "Please enter a message to send.",
+        variant: "destructive",
       });
       return;
     }
-    
-    if (filteredContactIds.length === 0) {
+
+    if (filteredContacts.length === 0) {
       toast({
-        title: 'No Contacts Selected',
-        description: 'Please select at least one contact to send SMS',
-        variant: 'destructive',
+        title: "Error",
+        description: "No contacts available to send messages to.",
+        variant: "destructive",
       });
       return;
     }
     
-    setIsLoading(true);
-    
+    setIsSending(true);
     try {
-      // Get the contact information for the filtered contacts
-      const filteredContacts = contacts.filter(contact => filteredContactIds.includes(contact.id));
-      
-      // Keep track of successful sends
-      const successfulSends: string[] = [];
-      
-      // Send SMS to each contact
+      // Log SMS sending action for each filtered contact
       for (const contact of filteredContacts) {
-        if (!contact.phone) continue;
-        
-        // Call the Supabase Edge Function to send SMS
-        const response = await fetch('https://nzsflibcvrisxjlzuxjn.supabase.co/functions/v1/send-sms', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${process.env.SUPABASE_ANON_KEY}`,
-          },
-          body: JSON.stringify({
-            to: contact.phone,
-            message: message,
-            contactId: contact.id
-          }),
-        });
-        
-        const result = await response.json();
-        
-        if (result.success) {
-          successfulSends.push(contact.id);
-          
-          // Log the SMS action for this contact
-          await logContactAction('message_sent', {
+        await supabase.from('contact_logs').insert({
+          action: 'sms_sent',
+          contact_info: {
             id: contact.id,
             name: contact.name,
-            phone: contact.phone,
             email: contact.email,
-            company: contact.company,
+            phone: contact.phone,
             status: contact.status,
-            tags: contact.tags,
-            message: message,
-            channel: 'sms',
-            timestamp: new Date().toISOString()
-          });
-        } else {
-          console.error(`Failed to send SMS to ${contact.name}:`, result.error);
-        }
+            company: contact.company || null,
+            tags: contact.tags || [],
+            createdAt: contact.created_at,
+            lastActivity: contact.updated_at || contact.created_at,
+            timestamp: new Date().toISOString(),
+            message: message
+          },
+          created_at: new Date().toISOString(),
+          batch_id: null,
+          batch_name: null
+        });
       }
       
-      // Show success message
       toast({
-        title: 'SMS Sent',
-        description: `Successfully sent SMS to ${successfulSends.length} contacts`,
+        title: "SMS Sent",
+        description: `Message sent to ${filteredContacts.length} contact${filteredContacts.length > 1 ? 's' : ''}.`,
       });
       
-      // Clear the message
-      setMessage('');
+      // Reset form
+      setMessage("");
+      setSelectedTagsFilter([]);
       
-      // Close the dialog if needed
-      if (onClose) onClose();
-      
-      // Trigger contacts refresh if needed
-      if (onContactsUpdated) onContactsUpdated();
-      
+      if (onContactsUpdated) {
+        onContactsUpdated();
+      }
     } catch (error) {
-      console.error('Error sending SMS:', error);
+      console.error("Error sending SMS:", error);
       toast({
-        title: 'Error',
-        description: 'Failed to send SMS. Please try again.',
-        variant: 'destructive',
+        title: "Error",
+        description: "Failed to send SMS. Please try again.",
+        variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
+      setIsSending(false);
     }
   };
-  
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'active':
+        return <Badge className="bg-green-100 text-green-800">Active</Badge>;
+      case 'inactive':
+        return <Badge className="bg-gray-100 text-gray-800">Inactive</Badge>;
+      case 'lead':
+        return <Badge className="bg-blue-100 text-blue-800">Lead</Badge>;
+      case 'customer':
+        return <Badge className="bg-purple-100 text-purple-800">Customer</Badge>;
+      default:
+        return <Badge>{status}</Badge>;
+    }
+  };
+
   return (
-    <div className="space-y-4">
-      <Card className="rounded-lg border-gray-200">
+    <div className="space-y-6">
+      <Card>
         <CardHeader>
-          <CardTitle className="text-xl flex items-center">
-            <Send className="mr-2 h-5 w-5" />
-            Send SMS
+          <CardTitle className="flex items-center gap-2">
+            <Send className="h-5 w-5" />
+            Send SMS to Selected Contacts
           </CardTitle>
           <CardDescription>
-            Send SMS messages to your selected contacts
+            Compose and send SMS messages to your selected contacts. Use tag filters to refine your audience.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-6">
-            {/* Tag filtering section - REPLACED with multi-select dropdown */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Filter by Tags</Label>
-              <Popover open={openTagSelector} onOpenChange={setOpenTagSelector}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={openTagSelector}
-                    className="w-full justify-between"
-                  >
-                    {selectedTags.length > 0 ? (
-                      <div className="flex flex-wrap gap-1 max-w-[90%] overflow-hidden">
-                        {selectedTags.length <= 2 ? (
-                          selectedTags.map(tag => (
-                            <Badge key={tag} variant="secondary" className="mr-1">
-                              {tag}
-                            </Badge>
-                          ))
-                        ) : (
-                          <>
-                            <Badge variant="secondary" className="mr-1">
-                              {selectedTags[0]}
-                            </Badge>
-                            <Badge variant="secondary">
-                              +{selectedTags.length - 1} more
-                            </Badge>
-                          </>
-                        )}
-                      </div>
-                    ) : (
-                      <span className="text-muted-foreground">Select tags to filter contacts</span>
-                    )}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-full p-0" align="start">
-                  <Command>
-                    <CommandInput placeholder="Search tags..." />
-                    <CommandList>
-                      <CommandEmpty>No tags found.</CommandEmpty>
-                      <CommandGroup>
-                        <ScrollArea className="h-60">
-                          {availableTags.map((tag) => (
-                            <CommandItem
-                              key={tag}
-                              value={tag}
-                              onSelect={() => handleTagSelection(tag)}
-                            >
-                              <div className="flex items-center">
-                                <Checkbox
-                                  checked={selectedTags.includes(tag)}
-                                  className="mr-2 h-4 w-4"
-                                  onCheckedChange={(checked) => {
-                                    if (checked) {
-                                      handleTagSelection(tag);
-                                    } else {
-                                      handleTagSelection(tag);
-                                    }
-                                  }}
-                                />
-                                <span className="flex items-center">
-                                  <Tag className="mr-2 h-3 w-3" />
-                                  {tag}
-                                </span>
-                              </div>
-                              <Check
-                                className={cn(
-                                  "ml-auto h-4 w-4",
-                                  selectedTags.includes(tag) ? "opacity-100" : "opacity-0"
-                                )}
-                              />
-                            </CommandItem>
-                          ))}
-                        </ScrollArea>
-                      </CommandGroup>
-                    </CommandList>
-                    <div className="border-t p-2 flex justify-between">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setSelectedTags([])}
-                        className="text-xs"
-                      >
-                        Clear selection
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setSelectedTags(availableTags)}
-                        className="text-xs"
-                      >
-                        Select all
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => setOpenTagSelector(false)}
-                        className="text-xs"
-                      >
-                        Apply filter
-                      </Button>
-                    </div>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-              
-              {selectedTags.length > 0 && (
-                <div className="flex flex-wrap gap-1 mt-2">
-                  {selectedTags.map(tag => (
-                    <Badge 
-                      key={tag} 
-                      variant="secondary"
-                      className="flex items-center gap-1"
-                    >
-                      {tag}
-                      <button 
-                        className="ml-1 rounded-full hover:bg-gray-200 p-0.5"
-                        onClick={() => handleTagSelection(tag)}
-                      >
-                        <AlertCircle className="h-3 w-3" />
-                      </button>
-                    </Badge>
-                  ))}
-                  {selectedTags.length > 0 && (
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => setSelectedTags([])}
-                      className="h-5 text-xs px-2"
-                    >
-                      Clear all
-                    </Button>
-                  )}
-                </div>
-              )}
-            </div>
-            
-            {/* Recipient count indicator */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center text-sm">
-                <Users className="mr-2 h-4 w-4" />
-                <span>
-                  {filteredContactIds.length === 0 
-                    ? 'No recipients selected' 
-                    : `${filteredContactIds.length} recipient${filteredContactIds.length !== 1 ? 's' : ''}`}
-                </span>
-              </div>
-            </div>
-            
-            <Separator />
-            
-            {/* Message composition area */}
-            <div className="space-y-2">
-              <Label htmlFor="message" className="text-sm font-medium">Message</Label>
-              <div className="relative">
-                <Textarea
-                  id="message"
-                  placeholder="Type your SMS message here..."
-                  rows={5}
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  className="pr-10"
-                />
-                
-                {/* Character count indicator */}
-                <div className="text-xs text-muted-foreground mt-1 text-right">
-                  {message.length} / 160 characters
-                  {message.length > 160 && (
-                    <span className="text-destructive ml-1">
-                      (Message will be split)
-                    </span>
-                  )}
-                </div>
-                
-                {/* Emoji button */}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-2 bottom-2"
-                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                >
-                  <Smile className="h-4 w-4" />
-                </Button>
-              </div>
-              
-              {/* Emoji picker */}
-              {showEmojiPicker && (
-                <div className="relative z-10">
-                  <div className="absolute right-0">
-                    <Picker 
-                      data={data} 
-                      onEmojiSelect={handleEmojiSelect}
-                      theme="light"
-                      previewPosition="none"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-            
-            {/* Warning message if no contacts selected */}
-            {filteredContactIds.length === 0 && (
-              <div className="bg-amber-50 border-l-4 border-amber-500 p-4 my-4">
-                <div className="flex">
-                  <AlertCircle className="h-5 w-5 text-amber-500" />
-                  <div className="ml-3">
-                    <p className="text-sm text-amber-700">
-                      No contacts are currently selected based on your tag filters.
-                      Either clear the tag filter or select different tags.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-            
-            {/* Send button */}
-            <div className="flex justify-end">
-              <Button
-                onClick={handleSendSMS}
-                disabled={isLoading || filteredContactIds.length === 0 || !message.trim()}
-                className="w-24"
-              >
-                {isLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <>
-                    <Send className="mr-2 h-4 w-4" />
-                    Send
-                  </>
-                )}
-              </Button>
+        <CardContent className="space-y-6">
+          {/* Tag Filter Section */}
+          <div className="space-y-3">
+            <h3 className="text-sm font-medium">Filter Recipients by Tags</h3>
+            <TagSelectorDropdown
+              selectedTags={selectedTagsFilter}
+              onTagsChange={handleTagsChange}
+              onApplyFilter={handleApplyTagFilter}
+            />
+          </div>
+
+          {/* Message Composition */}
+          <div className="space-y-3">
+            <label htmlFor="sms-message" className="text-sm font-medium">
+              Message
+            </label>
+            <Textarea
+              id="sms-message"
+              placeholder="Type your message here..."
+              rows={4}
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              className="resize-none"
+            />
+            <div className="text-xs text-muted-foreground">
+              {message.length}/160 characters
             </div>
           </div>
+
+          {/* Recipients Preview */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-medium flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Recipients ({filteredContacts.length})
+              </h3>
+              {selectedTagsFilter.length > 0 && (
+                <div className="text-xs text-muted-foreground">
+                  Filtered by {selectedTagsFilter.length} tag{selectedTagsFilter.length > 1 ? 's' : ''}
+                </div>
+              )}
+            </div>
+
+            {isLoadingContacts ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                <span className="ml-2 text-sm text-muted-foreground">Loading contacts...</span>
+              </div>
+            ) : filteredContacts.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <MessageCircle className="h-8 w-8 mx-auto mb-2" />
+                <p className="text-sm">
+                  {selectedTagsFilter.length > 0 
+                    ? "No contacts match the selected tag filters"
+                    : selectedContacts.length === 0 
+                      ? "No contacts selected" 
+                      : "No contacts available"
+                  }
+                </p>
+              </div>
+            ) : (
+              <div className="border rounded-lg overflow-hidden">
+                <ScrollArea className="h-[300px]">
+                  <Table>
+                    <TableHeader className="sticky top-0 bg-white">
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Phone</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Tags</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredContacts.map((contact) => (
+                        <TableRow key={contact.id}>
+                          <TableCell className="font-medium">
+                            {contact.name}
+                            {contact.email && (
+                              <div className="text-xs text-muted-foreground">
+                                {contact.email}
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell>{contact.phone || 'N/A'}</TableCell>
+                          <TableCell>{getStatusBadge(contact.status)}</TableCell>
+                          <TableCell>
+                            <div className="flex flex-wrap gap-1">
+                              {contact.tags && contact.tags.length > 0 ? (
+                                contact.tags.map((tag, index) => (
+                                  <Badge key={index} variant="outline" className="text-xs">
+                                    {tag}
+                                  </Badge>
+                                ))
+                              ) : (
+                                <span className="text-xs text-muted-foreground">No tags</span>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </ScrollArea>
+              </div>
+            )}
+          </div>
+
+          {/* Send Button */}
+          <Button 
+            onClick={handleSendSMS}
+            disabled={isSending || !message.trim() || filteredContacts.length === 0}
+            className="w-full"
+            size="lg"
+          >
+            {isSending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Sending SMS...
+              </>
+            ) : (
+              <>
+                <Send className="mr-2 h-4 w-4" />
+                Send SMS to {filteredContacts.length} Contact{filteredContacts.length !== 1 ? 's' : ''}
+              </>
+            )}
+          </Button>
         </CardContent>
       </Card>
     </div>

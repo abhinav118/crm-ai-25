@@ -198,6 +198,111 @@ export type Database = {
         }
         Relationships: []
       }
+      fi_ai_chat_logs: {
+        Row: {
+          ai_chat_response: string
+          created_at: string | null
+          has_graph: boolean | null
+          id: string
+          session_id: string
+          stock_symbol: string | null
+          tier: string | null
+          user_chat: string
+        }
+        Insert: {
+          ai_chat_response: string
+          created_at?: string | null
+          has_graph?: boolean | null
+          id?: string
+          session_id: string
+          stock_symbol?: string | null
+          tier?: string | null
+          user_chat: string
+        }
+        Update: {
+          ai_chat_response?: string
+          created_at?: string | null
+          has_graph?: boolean | null
+          id?: string
+          session_id?: string
+          stock_symbol?: string | null
+          tier?: string | null
+          user_chat?: string
+        }
+        Relationships: []
+      }
+      fridge_inventory: {
+        Row: {
+          created_at: string
+          expiry_date: string | null
+          id: string
+          ingredient_name: string
+          quantity: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expiry_date?: string | null
+          id?: string
+          ingredient_name: string
+          quantity?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expiry_date?: string | null
+          id?: string
+          ingredient_name?: string
+          quantity?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      grocery_items: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          ingredient_name: string
+          meal_plan_id: string | null
+          owned: boolean
+          quantity: string | null
+          recipe_id: string | null
+          source: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          id?: string
+          ingredient_name: string
+          meal_plan_id?: string | null
+          owned?: boolean
+          quantity?: string | null
+          recipe_id?: string | null
+          source?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          ingredient_name?: string
+          meal_plan_id?: string | null
+          owned?: boolean
+          quantity?: string | null
+          recipe_id?: string | null
+          source?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           channel: string
@@ -232,6 +337,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      outfit_analyses: {
+        Row: {
+          cohesion_score: number
+          colors: Json
+          created_at: string
+          id: string
+          image_url: string
+          items: Json
+          original_filename: string | null
+          season: string
+          style: string
+          suggestions: Json
+          user_id: string | null
+        }
+        Insert: {
+          cohesion_score: number
+          colors: Json
+          created_at?: string
+          id?: string
+          image_url: string
+          items: Json
+          original_filename?: string | null
+          season: string
+          style: string
+          suggestions: Json
+          user_id?: string | null
+        }
+        Update: {
+          cohesion_score?: number
+          colors?: Json
+          created_at?: string
+          id?: string
+          image_url?: string
+          items?: Json
+          original_filename?: string | null
+          season?: string
+          style?: string
+          suggestions?: Json
+          user_id?: string | null
+        }
+        Relationships: []
       }
       sms_analytics: {
         Row: {
