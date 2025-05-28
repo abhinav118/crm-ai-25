@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -270,6 +271,12 @@ const BulkActions: React.FC<BulkActionsProps> = ({
     return filteredContacts.filter(contact => contact.phone && contact.phone.trim()).length;
   };
 
+  // Check if the send button should be enabled
+  const isSendButtonEnabled = () => {
+    const validContactsCount = getValidContactsCount();
+    return validContactsCount > 0 && message.trim().length > 0 && !isSending;
+  };
+
   return (
     <div className="space-y-6">
       <Card>
@@ -414,7 +421,7 @@ const BulkActions: React.FC<BulkActionsProps> = ({
           {/* Send Button */}
           <Button 
             onClick={handleSendSMS}
-            disabled={isSending || !message.trim() || getValidContactsCount() === 0}
+            disabled={!isSendButtonEnabled()}
             className="w-full"
             size="lg"
           >
