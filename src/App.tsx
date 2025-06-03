@@ -10,6 +10,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Analytics from "./pages/Analytics";
 import CampaignsPage from "./pages/CampaignsPage";
+import CreateCampaignPage from "./pages/CreateCampaignPage";
 import AiCrm from "./pages/AiCrm";
 import ReportingPage from "./pages/ReportingPage";
 import AIChat from "./components/AIChat";
@@ -57,6 +58,7 @@ const App = () => {
             <Route path="/contacts" element={<Index />} />
             <Route path="/conversations" element={<Index initialTab="conversations" />} />
             <Route path="/campaigns" element={<CampaignsPage />} />
+            <Route path="/campaigns/create" element={<CreateCampaignPage />} />
             <Route path="/reporting" element={<ReportingPage />} />
             <Route path="/settings" element={<Index />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

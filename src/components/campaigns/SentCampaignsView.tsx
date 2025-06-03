@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +8,7 @@ import { CalendarIcon, Search, MessageSquare, Users } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { DateRange } from 'react-day-picker';
+import { useNavigate } from 'react-router-dom';
 
 const SentCampaignsView: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -16,6 +16,8 @@ const SentCampaignsView: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [recipientsFilter, setRecipientsFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
+  
+  const navigate = useNavigate();
 
   const handleClearFilters = () => {
     setSearchQuery('');
@@ -26,7 +28,7 @@ const SentCampaignsView: React.FC = () => {
   };
 
   const handleCreateCampaign = () => {
-    console.log('Create campaign clicked');
+    navigate('/campaigns/create');
   };
 
   return (

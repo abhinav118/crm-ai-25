@@ -1,0 +1,714 @@
+
+import React, { useState, useEffect, useRef } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { 
+  PaperclipIcon, 
+  SmileIcon, 
+  ZapIcon,
+  SendIcon,
+  XIcon,
+  ImageIcon,
+  FileIcon,
+  Loader2,
+  ArrowLeft
+} from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { PromptSuggestion } from '@/components/ui/prompt-suggestion';
+import { PromptInput, PromptInputActions, PromptInputTextarea } from '@/components/ui/prompt-input';
+import Sidebar from '@/components/dashboard/Sidebar';
+
+type EmojiData = {
+  emoji: string;
+  description?: string;
+};
+
+// Emoji categories for the picker
+const emojiCategories = {
+  "Smiles & People": [
+    { emoji: "😀", description: "grinning" },
+    { emoji: "😁", description: "grinning with smiling eyes" },
+    { emoji: "😂", description: "joy" },
+    { emoji: "😃", description: "smiley" },
+    { emoji: "😄", description: "smile" },
+    { emoji: "😅", description: "sweat smile" },
+    { emoji: "😆", description: "laughing" },
+    { emoji: "😉", description: "wink" },
+    { emoji: "😊", description: "blush" },
+    { emoji: "😋", description: "yum" },
+    { emoji: "😎", description: "sunglasses" },
+    { emoji: "😍", description: "heart eyes" },
+    { emoji: "😘", description: "kissing heart" },
+    { emoji: "🙂", description: "slightly smiling face" },
+    { emoji: "🤔", description: "thinking face" },
+    { emoji: "😐", description: "neutral face" },
+    { emoji: "😒", description: "unamused" },
+    { emoji: "😞", description: "disappointed" },
+    { emoji: "😔", description: "pensive" },
+    { emoji: "😢", description: "cry" },
+    { emoji: "😭", description: "sob" },
+    { emoji: "😡", description: "rage" },
+    { emoji: "😱", description: "scream" },
+    { emoji: "😴", description: "sleeping" },
+  ],
+  "Animals & Nature": [
+    { emoji: "🐶", description: "dog" },
+    { emoji: "🐱", description: "cat" },
+    { emoji: "🐭", description: "mouse" },
+    { emoji: "🐹", description: "hamster" },
+    { emoji: "🐰", description: "rabbit" },
+    { emoji: "🦊", description: "fox" },
+    { emoji: "🐻", description: "bear" },
+    { emoji: "🐼", description: "panda" },
+  ],
+  "Food & Drink": [
+    { emoji: "🍎", description: "apple" },
+    { emoji: "🍐", description: "pear" },
+    { emoji: "🍊", description: "tangerine" },
+    { emoji: "🍋", description: "lemon" },
+    { emoji: "🍌", description: "banana" },
+    { emoji: "🍉", description: "watermelon" },
+    { emoji: "🍇", description: "grapes" },
+    { emoji: "🍓", description: "strawberry" },
+  ],
+  "Activities": [
+    { emoji: "⚽", description: "soccer" },
+    { emoji: "🏀", description: "basketball" },
+    { emoji: "🏈", description: "football" },
+    { emoji: "⚾", description: "baseball" },
+    { emoji: "🎾", description: "tennis" },
+    { emoji: "🏐", description: "volleyball" },
+    { emoji: "🏉", description: "rugby" },
+    { emoji: "🎱", description: "8ball" },
+  ],
+};
+
+// Message prompt suggestions
+const MESSAGE_SUGGESTIONS = [
+  "Thanks for reaching out! How can I help you today?",
+  "We received your inquiry and will get back to you shortly.",
+  "Your appointment is confirmed for tomorrow at 2 PM.",
+  "Just following up on our conversation. Any updates?",
+  "Happy birthday! 🎂 We've got a special offer just for you.",
+  "Your order has been shipped and will arrive in 2-3 business days.",
+  "Thank you for your purchase! Here's your receipt.",
+  "We miss you! Come back and enjoy 15% off your next purchase."
+];
+
+const AI_PROMPT_SUGGESTIONS = [
+  "Create a friendly welcome message",
+  "Write a professional follow-up",
+  "Generate a sales promotion announcement",
+  "Craft a birthday greeting with discount offer",
+  "Write a shipping confirmation message",
+  "Create a customer satisfaction survey request"
+];
+
+const CreateCampaignPage: React.FC = () => {
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [name, setName] = useState('');
+  const [message, setMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [charCount, setCharCount] = useState(0);
+  const [wordCount, setWordCount] = useState(0);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [searchEmoji, setSearchEmoji] = useState('');
+  const [attachments, setAttachments] = useState<{ file: File; url?: string }[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  const [showPromptInput, setShowPromptInput] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
+  
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  // Update character and word counts
+  useEffect(() => {
+    setCharCount(message.length);
+    setWordCount(message.trim() ? message.trim().split(/\s+/).length : 0);
+  }, [message]);
+
+  // Close emoji picker when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        emojiPickerRef.current && 
+        !emojiPickerRef.current.contains(event.target as Node) &&
+        !(event.target as Element).closest('[data-emoji-trigger="true"]')
+      ) {
+        setShowEmojiPicker(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  const handleEmojiClick = (emoji: string) => {
+    setMessage(prev => prev + emoji);
+    setShowEmojiPicker(false);
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      
+      // Basic validation - max size 5MB
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: "Maximum file size is 5MB",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Add file to attachments array
+      setAttachments(prev => [...prev, { file }]);
+      
+      // Upload to Twilio Assets API
+      uploadFile(file);
+    }
+  };
+
+  const uploadFile = async (file: File) => {
+    setUploading(true);
+    
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const { data, error } = await supabase.functions.invoke(
+        'upload-twilio-asset',
+        {
+          body: formData
+        }
+      );
+      
+      if (error) throw error;
+      
+      // Update attachment with URL
+      setAttachments(prev => 
+        prev.map(att => 
+          att.file === file 
+            ? { ...att, url: data.mediaUrl } 
+            : att
+        )
+      );
+      
+      toast({
+        title: "File uploaded",
+        description: "Your file has been uploaded successfully",
+      });
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      toast({
+        title: "Upload failed",
+        description: "Failed to upload file. Please try again.",
+        variant: "destructive"
+      });
+      // Remove failed attachment
+      setAttachments(prev => prev.filter(att => att.file !== file));
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removeAttachment = (index: number) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const filteredEmojis = searchEmoji 
+    ? Object.values(emojiCategories).flat().filter(emoji => 
+        emoji.description?.toLowerCase().includes(searchEmoji.toLowerCase())
+      )
+    : null;
+
+  const handleSaveCampaign = async () => {
+    if (!name.trim()) {
+      toast({
+        title: "Name is required",
+        description: "Please enter a name for your campaign",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!message.trim()) {
+      toast({
+        title: "Message is required",
+        description: "Please enter a message body",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      // Here you would save the campaign to your database
+      console.log('Saving campaign:', { name, message, attachments });
+      
+      toast({
+        title: "Campaign saved",
+        description: "Your campaign has been saved successfully",
+      });
+
+      // Navigate back to campaigns page
+      navigate('/campaigns');
+    } catch (error) {
+      console.error("Error saving campaign:", error);
+      toast({
+        title: "Error",
+        description: "An error occurred while saving the campaign",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGenerateWithAI = async () => {
+    if (!aiPrompt.trim()) {
+      toast({
+        title: "Prompt required",
+        description: "Please enter what kind of message you'd like to generate",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsGeneratingAI(true);
+
+    try {
+      console.log("Calling Supabase function with prompt:", aiPrompt);
+      
+      const { data, error } = await supabase.functions.invoke('generate-sms', {
+        body: { prompt: aiPrompt }
+      });
+      
+      if (error) {
+        console.error("Error calling function:", error);
+        throw new Error(`Failed to generate text: ${error.message}`);
+      }
+      
+      if (!data) {
+        console.error("Failed to generate text - no data in response");
+        throw new Error('Failed to generate text - no response data');
+      }
+      
+      // Check if data is a ReadableStream
+      if (data.constructor && data.constructor.name === 'ReadableStream') {
+        console.log("Received stream response");
+        const reader = data.getReader();
+        let generatedText = '';
+        const decoder = new TextDecoder();
+        
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          
+          try {
+            const chunk = decoder.decode(value, { stream: true });
+            console.log("Received chunk:", chunk);
+            
+            const lines = chunk.split('\n').filter(line => line.trim() !== '');
+            
+            for (const line of lines) {
+              if (line.startsWith('data:')) {
+                const data = line.substring(5).trim();
+                if (data === '[DONE]') continue;
+                
+                try {
+                  const parsed = JSON.parse(data);
+                  if (parsed.choices && parsed.choices[0]?.delta?.content) {
+                    generatedText += parsed.choices[0].delta.content;
+                    setMessage(generatedText);
+                  }
+                } catch (e) {
+                  console.error('Error parsing SSE data:', e, 'Raw data:', data);
+                }
+              }
+            }
+          } catch (decodeError) {
+            console.error('Error decoding chunk:', decodeError);
+          }
+        }
+      } else {
+        // Handle non-streaming response
+        console.log("Received non-stream response:", data);
+        if (typeof data === 'string') {
+          setMessage(data);
+        } else if (data.text || data.content || data.message) {
+          setMessage(data.text || data.content || data.message);
+        } else {
+          console.error("Unexpected data format:", data);
+          throw new Error('Unexpected response format from AI generation');
+        }
+      }
+      
+      // Hide the prompt input after successful generation
+      setShowPromptInput(false);
+      setAiPrompt('');
+      
+      toast({
+        title: "Message generated",
+        description: "AI-generated message has been created",
+      });
+    } catch (error) {
+      console.error("Error generating message:", error);
+      toast({
+        title: "Generation failed",
+        description: error instanceof Error ? error.message : "Failed to generate message",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGeneratingAI(false);
+    }
+  };
+
+  const renderFilePreview = (file: File) => {
+    const isImage = file.type.startsWith('image/');
+    
+    return (
+      <div className="flex items-center bg-gray-100 rounded-md p-2 mb-2">
+        {isImage ? (
+          <ImageIcon size={16} className="text-gray-500 mr-2" />
+        ) : (
+          <FileIcon size={16} className="text-gray-500 mr-2" />
+        )}
+        <span className="text-sm truncate flex-1">{file.name}</span>
+        <button 
+          onClick={() => removeAttachment(attachments.findIndex(a => a.file === file))}
+          className="p-1 hover:bg-gray-200 rounded-full"
+        >
+          <XIcon size={14} className="text-gray-500" />
+        </button>
+      </div>
+    );
+  };
+
+  return (
+    <div className="flex w-full">
+      <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
+      <div className={`flex-1 transition-all duration-300 ${sidebarCollapsed ? 'ml-[70px]' : 'ml-[240px]'}`}>
+        <div className="p-8">
+          {/* Header with back button */}
+          <div className="flex items-center mb-6">
+            <Button 
+              variant="ghost" 
+              onClick={() => navigate('/campaigns')}
+              className="mr-4 p-2"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <h1 className="text-3xl font-bold text-gray-900">Create Campaign</h1>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Left column - Form */}
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <label htmlFor="name" className="text-sm font-medium flex items-center">
+                  Name <span className="text-red-500 ml-1">*</span>
+                </label>
+                <Input 
+                  id="name"
+                  placeholder="Enter Campaign Name" 
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <label htmlFor="message" className="text-sm font-medium flex items-center">
+                  Message Body <span className="text-red-500 ml-1">*</span>
+                </label>
+
+                {/* Message suggestions */}
+                <div className="mb-3">
+                  <h4 className="text-sm text-muted-foreground mb-2">Quick templates:</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {MESSAGE_SUGGESTIONS.slice(0, 4).map((suggestion, index) => (
+                      <PromptSuggestion 
+                        key={index} 
+                        size="sm"
+                        variant="outline"
+                        className="text-xs py-1"
+                        onClick={() => setMessage(suggestion)}
+                      >
+                        {suggestion.length > 20 ? suggestion.substring(0, 20) + "..." : suggestion}
+                      </PromptSuggestion>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="border rounded-md">
+                  <div className="flex items-center p-2 border-b">
+                    <button 
+                      type="button"
+                      className="p-1 rounded hover:bg-gray-100"
+                      onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                      data-emoji-trigger="true"
+                    >
+                      <SmileIcon size={18} className="text-gray-500" />
+                    </button>
+                    <button 
+                      type="button"
+                      className="p-1 rounded hover:bg-gray-100 mx-1"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <PaperclipIcon size={18} className="text-gray-500" />
+                      <input 
+                        type="file" 
+                        ref={fileInputRef}
+                        className="hidden"
+                        onChange={handleFileUpload}
+                        accept="image/*,video/*,audio/*,.pdf,.doc,.docx"
+                      />
+                    </button>
+                    <button 
+                      className="p-1 rounded hover:bg-gray-100"
+                      onClick={() => setShowPromptInput(!showPromptInput)}
+                    >
+                      <ZapIcon size={18} className={showPromptInput ? "text-indigo-500" : "text-gray-500"} />
+                    </button>
+                    
+                    {/* Emoji Picker */}
+                    {showEmojiPicker && (
+                      <div 
+                        ref={emojiPickerRef}
+                        className="absolute top-[110px] left-6 bg-white border rounded-md shadow-lg z-50 w-64"
+                      >
+                        <div className="p-2 border-b">
+                          <div className="flex space-x-1 mb-2 overflow-x-auto">
+                            {Object.keys(emojiCategories).slice(0, 4).map(category => {
+                              const firstEmoji = emojiCategories[category as keyof typeof emojiCategories][0].emoji;
+                              return (
+                                <button 
+                                  key={category}
+                                  className="p-1 hover:bg-gray-100 rounded"
+                                  title={category}
+                                >
+                                  {firstEmoji}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          <Input 
+                            placeholder="Search emoji" 
+                            value={searchEmoji}
+                            onChange={(e) => setSearchEmoji(e.target.value)}
+                            className="w-full text-sm"
+                          />
+                        </div>
+                        
+                        <div className="max-h-64 overflow-y-auto p-2">
+                          {filteredEmojis ? (
+                            <>
+                              <div className="text-xs font-medium text-gray-500 mb-1">Search Results</div>
+                              <div className="grid grid-cols-8 gap-1">
+                                {filteredEmojis.map((emoji, i) => (
+                                  <button
+                                    key={i}
+                                    className="p-1 text-xl hover:bg-gray-100 rounded"
+                                    onClick={() => handleEmojiClick(emoji.emoji)}
+                                    title={emoji.description}
+                                  >
+                                    {emoji.emoji}
+                                  </button>
+                                ))}
+                              </div>
+                            </>
+                          ) : (
+                            Object.entries(emojiCategories).map(([category, emojis]) => (
+                              <div key={category} className="mb-3">
+                                <div className="text-xs font-medium text-gray-500 mb-1">{category}</div>
+                                <div className="grid grid-cols-8 gap-1">
+                                  {emojis.map((emoji, i) => (
+                                    <button
+                                      key={i}
+                                      className="p-1 text-xl hover:bg-gray-100 rounded"
+                                      onClick={() => handleEmojiClick(emoji.emoji)}
+                                      title={emoji.description}
+                                    >
+                                      {emoji.emoji}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {showPromptInput ? (
+                    <div className="p-3 border-b bg-slate-50">
+                      <h4 className="text-sm font-medium mb-2">Generate with AI</h4>
+                      <div className="space-y-3">
+                        <div className="flex flex-wrap gap-2">
+                          {AI_PROMPT_SUGGESTIONS.slice(0, 4).map((suggestion, index) => (
+                            <PromptSuggestion 
+                              key={index}
+                              size="sm"
+                              variant="outline" 
+                              onClick={() => setAiPrompt(suggestion)}
+                              className="text-xs py-1"
+                            >
+                              {suggestion}
+                            </PromptSuggestion>
+                          ))}
+                        </div>
+                        <PromptInput
+                          className="border-input bg-white"
+                          value={aiPrompt}
+                          onValueChange={setAiPrompt}
+                          onSubmit={handleGenerateWithAI}
+                        >
+                          <PromptInputTextarea placeholder="Describe the message you want to generate..." />
+                          <PromptInputActions className="justify-end">
+                            <Button
+                              size="sm"
+                              className="size-8 cursor-pointer rounded-full"
+                              onClick={handleGenerateWithAI}
+                              disabled={!aiPrompt.trim() || isGeneratingAI}
+                              aria-label="Generate"
+                            >
+                              {isGeneratingAI ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <ZapIcon className="h-3 w-3" />
+                              )}
+                            </Button>
+                          </PromptInputActions>
+                        </PromptInput>
+                      </div>
+                    </div>
+                  ) : null}
+                  
+                  <Textarea 
+                    id="message"
+                    placeholder="Type a message" 
+                    className="border-0 focus-visible:ring-0 resize-none min-h-[200px]"
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                  />
+                  <div className="px-3 py-2 text-xs text-gray-500 text-right">
+                    {charCount} characters | {wordCount} words | {Math.ceil(charCount / 160)} segs
+                  </div>
+                </div>
+              </div>
+              
+              {attachments.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Attachments</p>
+                  <div className="space-y-1">
+                    {attachments.map((att, index) => (
+                      <div key={index} className="relative">
+                        {renderFilePreview(att.file)}
+                        {!att.url && uploading && (
+                          <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              <Button 
+                variant="outline" 
+                className="gap-2"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <PaperclipIcon size={16} />
+                Add attachment
+              </Button>
+              
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Test Campaign</p>
+                <div className="flex space-x-2">
+                  <Input placeholder="Enter phone number" className="flex-1" />
+                  <Button variant="default" className="gap-2 bg-indigo-600 hover:bg-indigo-700">
+                    <SendIcon size={16} />
+                    Send Test
+                  </Button>
+                </div>
+              </div>
+
+              {/* Save Campaign Button */}
+              <div className="flex space-x-4 pt-4">
+                <Button 
+                  variant="outline" 
+                  onClick={() => navigate('/campaigns')}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleSaveCampaign} 
+                  className="flex-1 gap-2 bg-blue-600 hover:bg-blue-700" 
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <span>Save Campaign</span>
+                  )}
+                </Button>
+              </div>
+            </div>
+            
+            {/* Right column - Preview */}
+            <div className="flex justify-center items-start">
+              <div className="relative w-[280px] h-[540px] bg-black rounded-[36px] p-[12px] shadow-xl overflow-hidden">
+                <div className="absolute inset-0 mx-auto w-[66%] h-[4%] top-0 bg-black rounded-b-2xl"></div>
+                <div className="bg-white h-full w-full rounded-[24px] overflow-hidden flex flex-col">
+                  <div className="p-2 text-center text-xs bg-gray-100 flex justify-between items-center">
+                    <span>9:41</span>
+                    <div className="flex items-center">
+                      <span className="h-2 w-2 rounded-full bg-black mr-1"></span>
+                      <span className="h-2 w-2 rounded-full bg-black mr-1"></span>
+                      <span className="h-2 w-2 rounded-full bg-black"></span>
+                    </div>
+                  </div>
+                  <div className="flex-1 p-4 overflow-y-auto">
+                    {message ? (
+                      <div className="bg-blue-500 text-white p-3 rounded-lg max-w-[90%] ml-auto">
+                        {message}
+                        {attachments.length > 0 && (
+                          <div className="mt-1 text-xs text-blue-100">
+                            {attachments.length} attachment{attachments.length !== 1 ? 's' : ''}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center h-full text-gray-400 text-sm">
+                        Message preview will appear here
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default CreateCampaignPage;

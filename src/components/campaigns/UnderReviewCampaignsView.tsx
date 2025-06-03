@@ -1,16 +1,18 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ChevronLeft, ChevronRight, MoreHorizontal } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const UnderReviewCampaignsView: React.FC = () => {
   const [selectedMessages, setSelectedMessages] = useState<Set<string>>(new Set());
   const [sortBy, setSortBy] = useState('sending-next');
+  
+  const navigate = useNavigate();
 
   const handleCreateCampaign = () => {
-    console.log('Create campaign clicked');
+    navigate('/campaigns/create');
   };
 
   const handleSelectMessage = (messageId: string, checked: boolean) => {
