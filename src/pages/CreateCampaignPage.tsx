@@ -9,13 +9,21 @@ import {
   PaperclipIcon, 
   SmileIcon, 
   ZapIcon,
-  Loader2
+  Loader2,
+  ChevronLeft,
+  CalendarIcon,
+  Clock
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { PromptSuggestion } from '@/components/ui/prompt-suggestion';
 import { PromptInput, PromptInputActions, PromptInputTextarea } from '@/components/ui/prompt-input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 import Sidebar from '@/components/dashboard/Sidebar';
 
 // Sample audience segments for the dropdown
@@ -33,7 +41,6 @@ const sampleSegments = [
   "Age: 36-50"
 ];
 
-// Message prompt suggestions
 const MESSAGE_SUGGESTIONS = [
   "Thanks for reaching out! How can I help you today?",
   "We received your inquiry and will get back to you shortly.",
@@ -68,7 +75,19 @@ const CreateCampaignPage: React.FC = () => {
   const [aiPrompt, setAiPrompt] = useState('');
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [showPromptInput, setShowPromptInput] = useState(false);
-  const [testPhoneNumber, setTestPhoneNumber] = useState('');
+  
+  // Schedule Later fields
+  const [scheduleDate, setScheduleDate] = useState<Date>();
+  const [scheduleTime, setScheduleTime] = useState('09:00');
+  
+  // Schedule Recurring fields
+  const [repeatType, setRepeatType] = useState('daily');
+  const [repeatInterval, setRepeatInterval] = useState(1);
+  const [recurringStartDate, setRecurringStartDate] = useState<Date>(new Date());
+  const [recurringTime, setRecurringTime] = useState('09:00');
+  const [endType, setEndType] = useState('never');
+  const [endAfterOccurrences, setEndAfterOccurrences] = useState(10);
+  const [endDate, setEndDate] = useState<Date>();
   
   const dropdownRef = useRef<HTMLDivElement>(null);
   const toInputRef = useRef<HTMLInputElement>(null);
@@ -81,13 +100,11 @@ const CreateCampaignPage: React.FC = () => {
     segment.toLowerCase().includes(toQuery.toLowerCase())
   );
 
-  // Update character and word counts
   useEffect(() => {
     setCharCount(message.length);
     setWordCount(message.trim() ? message.trim().split(/\s+/).length : 0);
   }, [message]);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -154,31 +171,6 @@ const CreateCampaignPage: React.FC = () => {
     }
   };
 
-  const handleSendTest = async () => {
-    if (!testPhoneNumber.trim()) {
-      toast({
-        title: "Phone number required",
-        description: "Please enter a phone number to send test",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!message.trim()) {
-      toast({
-        title: "Message required",
-        description: "Please enter a message to test",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    toast({
-      title: "Test sent",
-      description: `Test message sent to ${testPhoneNumber}`,
-    });
-  };
-
   const handleSaveCampaign = async () => {
     if (!toQuery.trim()) {
       toast({
@@ -237,15 +229,40 @@ const CreateCampaignPage: React.FC = () => {
 
   const getSmsSegments = () => Math.ceil(charCount / 160);
 
+  const getRecurringSummary = () => {
+    if (scheduleOption !== 'schedule_recurring' || !recurringStartDate) return null;
+    
+    const intervalText = repeatInterval === 1 ? 
+      repeatType.slice(0, -2) : // Remove 'ly' ending
+      `${repeatInterval} ${repeatType === 'daily' ? 'days' : repeatType === 'weekly' ? 'weeks' : 'months'}`;
+    
+    const startText = format(recurringStartDate, 'MMMM d, yyyy');
+    const timeText = recurringTime;
+    
+    let endText = '';
+    if (endType === 'after') {
+      endText = ` for ${endAfterOccurrences} occurrences`;
+    } else if (endType === 'on' && endDate) {
+      endText = ` until ${format(endDate, 'MMMM d, yyyy')}`;
+    }
+    
+    return `Your message will be sent every ${intervalText} at ${timeText} starting ${startText}${endText}.`;
+  };
+
   return (
     <div className="flex w-full">
       <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
       <div className={`flex-1 transition-all duration-300 ${sidebarCollapsed ? 'ml-[70px]' : 'ml-[240px]'}`}>
-        {/* Two-column layout: Form left, Preview right */}
         <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr] gap-6 max-w-6xl mx-auto px-4 py-6">
           
           {/* Left Panel - Form */}
           <div className="space-y-6">
+            {/* Back to Campaigns */}
+            <Link to="/campaigns" className="flex items-center text-sm text-blue-600 hover:text-blue-800">
+              <ChevronLeft className="w-4 h-4 mr-1" />
+              Back to Campaigns
+            </Link>
+
             <h1 className="text-2xl font-semibold">Create Campaign</h1>
             
             {/* TO Field with Segment Dropdown */}
@@ -266,7 +283,6 @@ const CreateCampaignPage: React.FC = () => {
                   Message contacts and replies are only visible to you
                 </p>
                 
-                {/* Segment Dropdown */}
                 {showSegmentDropdown && filteredSegments.length > 0 && (
                   <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-md shadow-lg z-50 max-h-48 overflow-y-auto">
                     {filteredSegments.map((segment, index) => (
@@ -406,24 +422,6 @@ const CreateCampaignPage: React.FC = () => {
               <span>Add attachment</span>
             </div>
 
-            {/* Test Campaign */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Test Campaign</Label>
-              <div className="flex items-center gap-2">
-                <Input 
-                  placeholder="Enter phone number" 
-                  value={testPhoneNumber}
-                  onChange={(e) => setTestPhoneNumber(e.target.value)}
-                />
-                <Button 
-                  onClick={handleSendTest}
-                  className="bg-purple-600 hover:bg-purple-700 text-white"
-                >
-                  Send Test
-                </Button>
-              </div>
-            </div>
-
             {/* Schedule Options */}
             <div className="space-y-3">
               <Label className="text-sm font-medium">Schedule</Label>
@@ -441,6 +439,179 @@ const CreateCampaignPage: React.FC = () => {
                   <Label htmlFor="schedule_recurring" className="text-sm">Schedule Recurring</Label>
                 </div>
               </RadioGroup>
+
+              {/* Schedule for Later */}
+              {scheduleOption === 'schedule_later' && (
+                <div className="mt-4 space-y-4 p-4 border rounded-lg bg-gray-50">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-sm font-medium mb-2 block">Date</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "w-full justify-start text-left font-normal",
+                              !scheduleDate && "text-muted-foreground"
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {scheduleDate ? format(scheduleDate, "PPP") : <span>Pick a date</span>}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                          <Calendar
+                            mode="single"
+                            selected={scheduleDate}
+                            onSelect={setScheduleDate}
+                            initialFocus
+                            className="pointer-events-auto"
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium mb-2 block">Time</Label>
+                      <div className="flex items-center">
+                        <Clock className="mr-2 h-4 w-4 text-gray-500" />
+                        <Input
+                          type="time"
+                          value={scheduleTime}
+                          onChange={(e) => setScheduleTime(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Schedule Recurring */}
+              {scheduleOption === 'schedule_recurring' && (
+                <div className="mt-4 space-y-4 p-4 border rounded-lg bg-gray-50">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-sm font-medium mb-2 block">Repeats</Label>
+                      <Select value={repeatType} onValueChange={setRepeatType}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="daily">Daily</SelectItem>
+                          <SelectItem value="weekly">Weekly</SelectItem>
+                          <SelectItem value="monthly">Monthly</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium mb-2 block">Every</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        value={repeatInterval}
+                        onChange={(e) => setRepeatInterval(parseInt(e.target.value) || 1)}
+                        placeholder="1"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-sm font-medium mb-2 block">Start Date</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className="w-full justify-start text-left font-normal"
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {format(recurringStartDate, "PPP")}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                          <Calendar
+                            mode="single"
+                            selected={recurringStartDate}
+                            onSelect={(date) => setRecurringStartDate(date || new Date())}
+                            initialFocus
+                            className="pointer-events-auto"
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium mb-2 block">Time</Label>
+                      <div className="flex items-center">
+                        <Clock className="mr-2 h-4 w-4 text-gray-500" />
+                        <Input
+                          type="time"
+                          value={recurringTime}
+                          onChange={(e) => setRecurringTime(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label className="text-sm font-medium mb-2 block">Ends</Label>
+                    <RadioGroup value={endType} onValueChange={setEndType}>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="never" id="never" />
+                        <Label htmlFor="never" className="text-sm">Never</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="after" id="after" />
+                        <Label htmlFor="after" className="text-sm">After</Label>
+                        {endType === 'after' && (
+                          <Input
+                            type="number"
+                            min="1"
+                            value={endAfterOccurrences}
+                            onChange={(e) => setEndAfterOccurrences(parseInt(e.target.value) || 1)}
+                            className="w-20 ml-2"
+                          />
+                        )}
+                        {endType === 'after' && <span className="text-sm">occurrences</span>}
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="on" id="on_date" />
+                        <Label htmlFor="on_date" className="text-sm">On</Label>
+                        {endType === 'on' && (
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                className="ml-2 justify-start text-left font-normal"
+                                size="sm"
+                              >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {endDate ? format(endDate, "PPP") : <span>Pick date</span>}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0">
+                              <Calendar
+                                mode="single"
+                                selected={endDate}
+                                onSelect={setEndDate}
+                                initialFocus
+                                className="pointer-events-auto"
+                              />
+                            </PopoverContent>
+                          </Popover>
+                        )}
+                      </div>
+                    </RadioGroup>
+                  </div>
+
+                  {/* Recurring Summary */}
+                  {getRecurringSummary() && (
+                    <div className="bg-blue-50 p-3 rounded border-l-4 border-blue-400">
+                      <p className="text-sm text-blue-800">
+                        <strong>Summary:</strong> {getRecurringSummary()}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Send Campaign Button */}
