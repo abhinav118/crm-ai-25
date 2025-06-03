@@ -14,11 +14,7 @@ import { cn } from "@/lib/utils";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts";
 import { MetricsCard } from "@/components/analytics/MetricsCard";
-
-interface DateRange {
-  from: Date;
-  to: Date;
-}
+import { DateRange } from "react-day-picker";
 
 interface MessageMetrics {
   total_sent: number;
@@ -39,7 +35,7 @@ interface MessageMetrics {
 const MessagesOverview = () => {
   console.log('MessagesOverview component rendering');
   
-  const [dateRange, setDateRange] = useState<DateRange>({
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: subDays(new Date(), 7),
     to: new Date(),
   });
@@ -61,8 +57,8 @@ const MessagesOverview = () => {
   const generateMockData = (): MessageMetrics => {
     console.log('Generating mock data');
     const mockTimeSeries = [];
-    const startDate = dateRange.from;
-    const endDate = dateRange.to;
+    const startDate = dateRange?.from || subDays(new Date(), 7);
+    const endDate = dateRange?.to || new Date();
     
     for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
       mockTimeSeries.push({
@@ -232,12 +228,9 @@ const MessagesOverview = () => {
                 mode="range"
                 defaultMonth={dateRange?.from}
                 selected={dateRange}
-                onSelect={(range) => {
-                  if (range?.from && range?.to) {
-                    setDateRange({ from: range.from, to: range.to });
-                  }
-                }}
+                onSelect={setDateRange}
                 numberOfMonths={2}
+                className="pointer-events-auto"
               />
             </PopoverContent>
           </Popover>
