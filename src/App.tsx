@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Analytics from "./pages/Analytics";
-import Campaigns from "./pages/Campaigns";
+import CampaignsPage from "./pages/CampaignsPage";
 import AiCrm from "./pages/AiCrm";
 import ReportingPage from "./pages/ReportingPage";
 import AIChat from "./components/AIChat";
@@ -56,12 +56,8 @@ const App = () => {
             <Route path="/" element={<Index />} />
             <Route path="/contacts" element={<Index />} />
             <Route path="/conversations" element={<Index initialTab="conversations" />} />
-            <Route path="/calendar" element={<Index />} />
-            <Route path="/analytics" element={<Analytics />} />
-            <Route path="/campaigns" element={<Campaigns />} />
-            <Route path="/ai-crm" element={<AiCrm />} />
+            <Route path="/campaigns" element={<CampaignsPage />} />
             <Route path="/reporting" element={<ReportingPage />} />
-            <Route path="/payments" element={<Index />} />
             <Route path="/settings" element={<Index />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
