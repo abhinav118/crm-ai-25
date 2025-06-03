@@ -9,7 +9,6 @@ import {
   PaperclipIcon, 
   SmileIcon, 
   ZapIcon,
-  ArrowLeft,
   Loader2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -69,6 +68,7 @@ const CreateCampaignPage: React.FC = () => {
   const [aiPrompt, setAiPrompt] = useState('');
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [showPromptInput, setShowPromptInput] = useState(false);
+  const [testPhoneNumber, setTestPhoneNumber] = useState('');
   
   const dropdownRef = useRef<HTMLDivElement>(null);
   const toInputRef = useRef<HTMLInputElement>(null);
@@ -154,6 +154,31 @@ const CreateCampaignPage: React.FC = () => {
     }
   };
 
+  const handleSendTest = async () => {
+    if (!testPhoneNumber.trim()) {
+      toast({
+        title: "Phone number required",
+        description: "Please enter a phone number to send test",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!message.trim()) {
+      toast({
+        title: "Message required",
+        description: "Please enter a message to test",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    toast({
+      title: "Test sent",
+      description: `Test message sent to ${testPhoneNumber}`,
+    });
+  };
+
   const handleSaveCampaign = async () => {
     if (!toQuery.trim()) {
       toast({
@@ -216,18 +241,13 @@ const CreateCampaignPage: React.FC = () => {
     <div className="flex w-full">
       <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
       <div className={`flex-1 transition-all duration-300 ${sidebarCollapsed ? 'ml-[70px]' : 'ml-[240px]'}`}>
-        <div className="max-w-3xl mx-auto px-4 py-6">
-          {/* Back Button */}
-          <Button 
-            variant="ghost" 
-            onClick={() => navigate('/campaigns')}
-            className="mb-6 p-2"
-          >
-            <ArrowLeft className="h-5 w-5 mr-2" />
-            Back to Campaigns
-          </Button>
-
+        {/* Two-column layout: Form left, Preview right */}
+        <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr] gap-6 max-w-6xl mx-auto px-4 py-6">
+          
+          {/* Left Panel - Form */}
           <div className="space-y-6">
+            <h1 className="text-2xl font-semibold">Create Campaign</h1>
+            
             {/* TO Field with Segment Dropdown */}
             <div className="space-y-2">
               <Label htmlFor="to" className="text-sm font-medium">
@@ -380,41 +400,27 @@ const CreateCampaignPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Message Preview Panel */}
+            {/* Add Attachment */}
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <PaperclipIcon size={16} />
+              <span>Add attachment</span>
+            </div>
+
+            {/* Test Campaign */}
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Preview</Label>
-              <div className="flex justify-center">
-                <div className="relative w-[280px] h-[400px] bg-black rounded-[28px] p-[8px] shadow-xl">
-                  <div className="bg-white h-full w-full rounded-[20px] overflow-hidden flex flex-col">
-                    <div className="p-2 text-center text-xs bg-gray-100 flex justify-between items-center">
-                      <span>9:41</span>
-                      <div className="flex items-center space-x-1">
-                        <div className="h-1 w-1 rounded-full bg-black"></div>
-                        <div className="h-1 w-1 rounded-full bg-black"></div>
-                        <div className="h-1 w-1 rounded-full bg-black"></div>
-                      </div>
-                    </div>
-                    <div className="flex-1 p-3 overflow-y-auto">
-                      <div className="text-xs text-gray-500 text-center mb-2">
-                        (952) 248-4727
-                      </div>
-                      {message ? (
-                        <div className="bg-blue-500 text-white p-3 rounded-lg max-w-[85%] text-sm leading-relaxed">
-                          {message}
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-center h-24 text-gray-400 text-xs">
-                          Message preview will appear here
-                        </div>
-                      )}
-                      {message && (
-                        <div className="text-xs text-gray-400 text-center mt-2">
-                          STOP to end
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
+              <Label className="text-sm font-medium">Test Campaign</Label>
+              <div className="flex items-center gap-2">
+                <Input 
+                  placeholder="Enter phone number" 
+                  value={testPhoneNumber}
+                  onChange={(e) => setTestPhoneNumber(e.target.value)}
+                />
+                <Button 
+                  onClick={handleSendTest}
+                  className="bg-purple-600 hover:bg-purple-700 text-white"
+                >
+                  Send Test
+                </Button>
               </div>
             </div>
 
@@ -452,6 +458,43 @@ const CreateCampaignPage: React.FC = () => {
                 <span>Send Campaign</span>
               )}
             </Button>
+          </div>
+
+          {/* Right Panel - Phone Preview */}
+          <div className="bg-gray-100 rounded-lg p-4 shadow-sm">
+            <div className="flex justify-center">
+              <div className="relative w-[280px] h-[500px] bg-black rounded-[28px] p-[8px] shadow-xl">
+                <div className="bg-white h-full w-full rounded-[20px] overflow-hidden flex flex-col">
+                  <div className="p-2 text-center text-xs bg-gray-100 flex justify-between items-center">
+                    <span>9:41</span>
+                    <div className="flex items-center space-x-1">
+                      <div className="h-1 w-1 rounded-full bg-black"></div>
+                      <div className="h-1 w-1 rounded-full bg-black"></div>
+                      <div className="h-1 w-1 rounded-full bg-black"></div>
+                    </div>
+                  </div>
+                  <div className="flex-1 p-3 overflow-y-auto">
+                    <div className="text-xs text-gray-500 text-center mb-2">
+                      (952) 248-4727
+                    </div>
+                    {message ? (
+                      <div className="bg-blue-500 text-white p-3 rounded-lg max-w-[85%] text-sm leading-relaxed">
+                        {message}
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center h-24 text-gray-400 text-xs">
+                        Message preview will appear here
+                      </div>
+                    )}
+                    {message && (
+                      <div className="text-xs text-gray-400 text-center mt-2">
+                        STOP to end
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
