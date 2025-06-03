@@ -11,10 +11,7 @@ import NotFound from "./pages/NotFound";
 import Analytics from "./pages/Analytics";
 import Campaigns from "./pages/Campaigns";
 import AiCrm from "./pages/AiCrm";
-import MessagesOverview from "./pages/MessagesOverview";
-import DeliveryReports from "./pages/DeliveryReports";
-import CampaignPerformance from "./pages/CampaignPerformance";
-import ContactsOverview from "./pages/ContactsOverview";
+import ReportingPage from "./pages/ReportingPage";
 import AIChat from "./components/AIChat";
 
 // Configure QueryClient with better error handling
@@ -63,10 +60,7 @@ const App = () => {
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/campaigns" element={<Campaigns />} />
             <Route path="/ai-crm" element={<AiCrm />} />
-            <Route path="/reporting/messages-overview" element={<MessagesOverview />} />
-            <Route path="/reporting/delivery-reports" element={<DeliveryReports />} />
-            <Route path="/reporting/campaign-performance" element={<CampaignPerformance />} />
-            <Route path="/reporting/contacts-overview" element={<ContactsOverview />} />
+            <Route path="/reporting" element={<ReportingPage />} />
             <Route path="/payments" element={<Index />} />
             <Route path="/settings" element={<Index />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

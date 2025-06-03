@@ -5,16 +5,7 @@ import { TrendingUp } from "lucide-react";
 
 const DeliveryReports = () => {
   return (
-    <div className="flex-1 space-y-6 p-6 ml-[240px]">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Delivery Reports</h1>
-          <p className="text-muted-foreground">
-            Detailed SMS delivery logs and status tracking
-          </p>
-        </div>
-      </div>
-
+    <div className="space-y-6">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">

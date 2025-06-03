@@ -184,16 +184,7 @@ const MessagesOverview = () => {
   };
 
   return (
-    <div className="flex-1 space-y-6 p-6 ml-[240px]">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Messages Overview</h1>
-          <p className="text-muted-foreground">
-            Track SMS message performance and delivery statistics
-          </p>
-        </div>
-      </div>
-
+    <div className="space-y-6">
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
         <div className="flex items-center gap-2">

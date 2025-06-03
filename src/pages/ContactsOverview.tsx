@@ -5,16 +5,7 @@ import { MessageCircle } from "lucide-react";
 
 const ContactsOverview = () => {
   return (
-    <div className="flex-1 space-y-6 p-6 ml-[240px]">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Contacts Overview</h1>
-          <p className="text-muted-foreground">
-            Contact-specific interaction statistics and engagement metrics
-          </p>
-        </div>
-      </div>
-
+    <div className="space-y-6">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">

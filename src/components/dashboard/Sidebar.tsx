@@ -14,10 +14,7 @@ import {
   ChevronRight,
   Megaphone,
   Brain,
-  FileText,
-  TrendingUp,
-  MessageCircle,
-  Target
+  FileText
 } from 'lucide-react';
 
 type SidebarProps = {
@@ -67,20 +64,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           <SidebarItem icon={<Calendar size={20} />} label="Calendar" to="/calendar" collapsed={collapsed} />
           <SidebarItem icon={<BarChart3 size={20} />} label="Analytics" to="/analytics" collapsed={collapsed} />
           <SidebarItem icon={<Megaphone size={20} />} label="Campaigns" to="/campaigns" collapsed={collapsed} />
-          
-          {/* New Reporting Section */}
-          <div className="pt-2">
-            {!collapsed && (
-              <div className="px-3 py-2">
-                <h3 className="text-xs font-semibold text-white/70 uppercase tracking-wider">Reporting</h3>
-              </div>
-            )}
-            <SidebarItem icon={<FileText size={20} />} label="Messages Overview" to="/reporting/messages-overview" collapsed={collapsed} />
-            <SidebarItem icon={<TrendingUp size={20} />} label="Delivery Reports" to="/reporting/delivery-reports" collapsed={collapsed} />
-            <SidebarItem icon={<Target size={20} />} label="Campaign Performance" to="/reporting/campaign-performance" collapsed={collapsed} />
-            <SidebarItem icon={<MessageCircle size={20} />} label="Contacts Overview" to="/reporting/contacts-overview" collapsed={collapsed} />
-          </div>
-          
+          <SidebarItem icon={<FileText size={20} />} label="Reporting" to="/reporting" collapsed={collapsed} />
           <SidebarItem icon={<CreditCard size={20} />} label="Payments" to="/payments" collapsed={collapsed} />
         </nav>
         
