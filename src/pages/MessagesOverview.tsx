@@ -37,6 +37,8 @@ interface MessageMetrics {
 }
 
 const MessagesOverview = () => {
+  console.log('MessagesOverview component rendering');
+  
   const [dateRange, setDateRange] = useState<DateRange>({
     from: subDays(new Date(), 7),
     to: new Date(),
@@ -57,6 +59,7 @@ const MessagesOverview = () => {
 
   // Mock data for demonstration
   const generateMockData = (): MessageMetrics => {
+    console.log('Generating mock data');
     const mockTimeSeries = [];
     const startDate = dateRange.from;
     const endDate = dateRange.to;
@@ -70,7 +73,7 @@ const MessagesOverview = () => {
       });
     }
 
-    return {
+    const mockData = {
       total_sent: 120,
       delivered_count: 95,
       bounced_count: 10,
@@ -80,12 +83,17 @@ const MessagesOverview = () => {
       opt_out_count: 2,
       time_series: mockTimeSeries
     };
+    
+    console.log('Mock data generated:', mockData);
+    return mockData;
   };
 
   useEffect(() => {
+    console.log('useEffect triggered for fetching metrics');
     const fetchMetrics = async () => {
       setIsLoading(true);
       try {
+        console.log('Starting to fetch metrics');
         // In a real implementation, this would be an API call
         // const response = await fetch(`/api/reporting/messages-overview?start=${format(dateRange.from, 'yyyy-MM-dd')}&end=${format(dateRange.to, 'yyyy-MM-dd')}&type=${messageType}`);
         // const data = await response.json();
@@ -93,10 +101,12 @@ const MessagesOverview = () => {
         // Using mock data for now
         await new Promise(resolve => setTimeout(resolve, 500)); // Simulate API delay
         const mockData = generateMockData();
+        console.log('Setting metrics with mock data');
         setMetrics(mockData);
       } catch (error) {
         console.error('Error fetching metrics:', error);
       } finally {
+        console.log('Finished fetching metrics');
         setIsLoading(false);
       }
     };
@@ -109,6 +119,7 @@ const MessagesOverview = () => {
     return Math.round((value / total) * 100);
   };
 
+  console.log('Creating metric cards data');
   const metricCards = [
     {
       title: "Messages Sent",
@@ -183,6 +194,8 @@ const MessagesOverview = () => {
     },
   };
 
+  console.log('About to render MessagesOverview component');
+
   return (
     <div className="space-y-6">
       {/* Filters */}
@@ -248,31 +261,34 @@ const MessagesOverview = () => {
 
       {/* Metrics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {metricCards.map((metric, index) => (
-          <TooltipProvider key={index}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="relative">
-                  <MetricsCard
-                    title={metric.title}
-                    value={metric.value}
-                    icon={metric.icon}
-                    color={metric.color}
-                  />
-                  <div className="absolute top-2 right-2">
-                    <Badge variant="secondary" className="text-xs">
-                      {metric.percentage}%
-                    </Badge>
+        {metricCards.map((metric, index) => {
+          console.log(`Rendering metric card ${index}:`, metric);
+          return (
+            <TooltipProvider key={index}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="relative">
+                    <MetricsCard
+                      title={metric.title}
+                      value={metric.value}
+                      icon={metric.icon}
+                      color={metric.color}
+                    />
+                    <div className="absolute top-2 right-2">
+                      <Badge variant="secondary" className="text-xs">
+                        {metric.percentage}%
+                      </Badge>
+                    </div>
+                    <Info className="absolute top-2 right-12 h-4 w-4 text-muted-foreground" />
                   </div>
-                  <Info className="absolute top-2 right-12 h-4 w-4 text-muted-foreground" />
-                </div>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>{metric.tooltip}</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        ))}
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{metric.tooltip}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          );
+        })}
       </div>
 
       {/* Messages Over Time Chart */}
