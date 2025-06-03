@@ -1,0 +1,42 @@
+
+import React from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { MessageCircle } from "lucide-react";
+
+const ContactsOverview = () => {
+  return (
+    <div className="flex-1 space-y-6 p-6 ml-[240px]">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold">Contacts Overview</h1>
+          <p className="text-muted-foreground">
+            Contact-specific interaction statistics and engagement metrics
+          </p>
+        </div>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MessageCircle className="h-5 w-5" />
+            Contacts Overview
+          </CardTitle>
+          <CardDescription>
+            This section will contain contact-specific interaction stats and engagement metrics.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center h-[400px] text-muted-foreground">
+            <div className="text-center">
+              <MessageCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>Coming Soon</p>
+              <p className="text-sm">Contact interaction analytics will be available here</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+export default ContactsOverview;
