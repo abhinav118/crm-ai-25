@@ -3,8 +3,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { 
   PaperclipIcon, 
   SmileIcon, 
@@ -111,12 +109,11 @@ const AI_PROMPT_SUGGESTIONS = [
 
 const CreateCampaignPage: React.FC = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [toField, setToField] = useState('');
-  const [senderName, setSenderName] = useState('Angel Flight Marketing Service');
+  const [name, setName] = useState('');
   const [message, setMessage] = useState('');
-  const [scheduleOption, setScheduleOption] = useState('send_now');
   const [isLoading, setIsLoading] = useState(false);
   const [charCount, setCharCount] = useState(0);
+  const [wordCount, setWordCount] = useState(0);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [searchEmoji, setSearchEmoji] = useState('');
   const [attachments, setAttachments] = useState<{ file: File; url?: string }[]>([]);
@@ -130,9 +127,10 @@ const CreateCampaignPage: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Update character count
+  // Update character and word counts
   useEffect(() => {
     setCharCount(message.length);
+    setWordCount(message.trim() ? message.trim().split(/\s+/).length : 0);
   }, [message]);
 
   // Close emoji picker when clicking outside
@@ -174,6 +172,8 @@ const CreateCampaignPage: React.FC = () => {
       
       // Add file to attachments array
       setAttachments(prev => [...prev, { file }]);
+      
+      // Upload to Twilio Assets API
       uploadFile(file);
     }
   };
@@ -231,11 +231,11 @@ const CreateCampaignPage: React.FC = () => {
       )
     : null;
 
-  const handleSendCampaign = async () => {
-    if (!toField.trim()) {
+  const handleSaveCampaign = async () => {
+    if (!name.trim()) {
       toast({
-        title: "Recipients required",
-        description: "Please enter phone numbers, contacts, or groups",
+        title: "Name is required",
+        description: "Please enter a name for your campaign",
         variant: "destructive"
       });
       return;
@@ -253,25 +253,21 @@ const CreateCampaignPage: React.FC = () => {
     setIsLoading(true);
 
     try {
-      console.log('Sending campaign:', { 
-        to: toField, 
-        senderName, 
-        message, 
-        scheduleOption, 
-        attachments 
-      });
+      // Here you would save the campaign to your database
+      console.log('Saving campaign:', { name, message, attachments });
       
       toast({
-        title: "Campaign sent",
-        description: "Your campaign has been sent successfully",
+        title: "Campaign saved",
+        description: "Your campaign has been saved successfully",
       });
 
+      // Navigate back to campaigns page
       navigate('/campaigns');
     } catch (error) {
-      console.error("Error sending campaign:", error);
+      console.error("Error saving campaign:", error);
       toast({
         title: "Error",
-        description: "An error occurred while sending the campaign",
+        description: "An error occurred while saving the campaign",
         variant: "destructive"
       });
     } finally {
@@ -358,6 +354,7 @@ const CreateCampaignPage: React.FC = () => {
         }
       }
       
+      // Hide the prompt input after successful generation
       setShowPromptInput(false);
       setAiPrompt('');
       
@@ -398,113 +395,168 @@ const CreateCampaignPage: React.FC = () => {
     );
   };
 
-  const segmentCount = Math.ceil(charCount / 160);
-
   return (
     <div className="flex w-full">
       <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
       <div className={`flex-1 transition-all duration-300 ${sidebarCollapsed ? 'ml-[70px]' : 'ml-[240px]'}`}>
-        <div className="max-w-5xl mx-auto px-4 py-6">
-          {/* Back Navigation */}
+        <div className="p-8">
+          {/* Header with back button */}
           <div className="flex items-center mb-6">
             <Button 
               variant="ghost" 
               onClick={() => navigate('/campaigns')}
-              className="text-blue-600 hover:text-blue-700 p-0 h-auto font-normal"
+              className="mr-4 p-2"
             >
-              <ArrowLeft className="h-4 w-4 mr-1" />
-              Back
+              <ArrowLeft className="h-5 w-5" />
             </Button>
+            <h1 className="text-3xl font-bold text-gray-900">Create Campaign</h1>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {/* Left Panel - Form */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Left column - Form */}
             <div className="space-y-6">
-              {/* TO Field */}
               <div className="space-y-2">
-                <Label htmlFor="to" className="text-sm font-medium text-gray-700">
-                  TO
-                </Label>
+                <label htmlFor="name" className="text-sm font-medium flex items-center">
+                  Name <span className="text-red-500 ml-1">*</span>
+                </label>
                 <Input 
-                  id="to"
-                  placeholder="Enter numbers, contacts, or groups" 
-                  value={toField}
-                  onChange={(e) => setToField(e.target.value)}
-                  className="w-full"
+                  id="name"
+                  placeholder="Enter Campaign Name" 
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
                 />
-                <p className="text-xs text-gray-500">
-                  Message contacts and replies are only visible to you
-                </p>
               </div>
+              
+              <div className="space-y-2">
+                <label htmlFor="message" className="text-sm font-medium flex items-center">
+                  Message Body <span className="text-red-500 ml-1">*</span>
+                </label>
 
-              {/* MESSAGE Section */}
-              <div className="space-y-4">
-                <Label className="text-sm font-medium text-gray-700">
-                  MESSAGE
-                </Label>
-                
-                {/* Sender Name */}
-                <div>
-                  <Input 
-                    placeholder="Sender Name" 
-                    value={senderName}
-                    onChange={(e) => setSenderName(e.target.value)}
-                    className="w-full mb-3"
-                  />
+                {/* Message suggestions */}
+                <div className="mb-3">
+                  <h4 className="text-sm text-muted-foreground mb-2">Quick templates:</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {MESSAGE_SUGGESTIONS.slice(0, 4).map((suggestion, index) => (
+                      <PromptSuggestion 
+                        key={index} 
+                        size="sm"
+                        variant="outline"
+                        className="text-xs py-1"
+                        onClick={() => setMessage(suggestion)}
+                      >
+                        {suggestion.length > 20 ? suggestion.substring(0, 20) + "..." : suggestion}
+                      </PromptSuggestion>
+                    ))}
+                  </div>
                 </div>
 
-                {/* Message Text Area with Controls */}
                 <div className="border rounded-md">
-                  <div className="flex items-center justify-between p-3 border-b bg-gray-50">
-                    <div className="flex items-center space-x-2">
-                      <button 
-                        type="button"
-                        className="p-1 rounded hover:bg-gray-200"
-                        onClick={() => setShowPromptInput(!showPromptInput)}
-                        title="AI Compose"
-                      >
-                        <ZapIcon size={18} className={showPromptInput ? "text-indigo-500" : "text-gray-500"} />
-                      </button>
-                      <button 
-                        type="button"
-                        className="p-1 rounded hover:bg-gray-200"
-                        onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                        data-emoji-trigger="true"
-                        title="Add Emoji"
-                      >
-                        <SmileIcon size={18} className="text-gray-500" />
-                      </button>
-                      <button 
-                        type="button"
-                        className="p-1 rounded hover:bg-gray-200"
-                        onClick={() => fileInputRef.current?.click()}
-                        title="Attach File"
-                      >
-                        <PaperclipIcon size={18} className="text-gray-500" />
-                        <input 
-                          type="file" 
-                          ref={fileInputRef}
-                          className="hidden"
-                          onChange={handleFileUpload}
-                          accept="image/*,video/*,audio/*,.pdf,.doc,.docx"
-                        />
-                      </button>
-                    </div>
+                  <div className="flex items-center p-2 border-b">
+                    <button 
+                      type="button"
+                      className="p-1 rounded hover:bg-gray-100"
+                      onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                      data-emoji-trigger="true"
+                    >
+                      <SmileIcon size={18} className="text-gray-500" />
+                    </button>
+                    <button 
+                      type="button"
+                      className="p-1 rounded hover:bg-gray-100 mx-1"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <PaperclipIcon size={18} className="text-gray-500" />
+                      <input 
+                        type="file" 
+                        ref={fileInputRef}
+                        className="hidden"
+                        onChange={handleFileUpload}
+                        accept="image/*,video/*,audio/*,.pdf,.doc,.docx"
+                      />
+                    </button>
+                    <button 
+                      className="p-1 rounded hover:bg-gray-100"
+                      onClick={() => setShowPromptInput(!showPromptInput)}
+                    >
+                      <ZapIcon size={18} className={showPromptInput ? "text-indigo-500" : "text-gray-500"} />
+                    </button>
                     
-                    <div className="text-sm text-gray-500">
-                      {charCount} / 160 
-                      <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
-                        SMS
-                      </span>
-                    </div>
+                    {/* Emoji Picker */}
+                    {showEmojiPicker && (
+                      <div 
+                        ref={emojiPickerRef}
+                        className="absolute top-[110px] left-6 bg-white border rounded-md shadow-lg z-50 w-64"
+                      >
+                        <div className="p-2 border-b">
+                          <div className="flex space-x-1 mb-2 overflow-x-auto">
+                            {Object.keys(emojiCategories).slice(0, 4).map(category => {
+                              const firstEmoji = emojiCategories[category as keyof typeof emojiCategories][0].emoji;
+                              return (
+                                <button 
+                                  key={category}
+                                  className="p-1 hover:bg-gray-100 rounded"
+                                  title={category}
+                                >
+                                  {firstEmoji}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          <Input 
+                            placeholder="Search emoji" 
+                            value={searchEmoji}
+                            onChange={(e) => setSearchEmoji(e.target.value)}
+                            className="w-full text-sm"
+                          />
+                        </div>
+                        
+                        <div className="max-h-64 overflow-y-auto p-2">
+                          {filteredEmojis ? (
+                            <>
+                              <div className="text-xs font-medium text-gray-500 mb-1">Search Results</div>
+                              <div className="grid grid-cols-8 gap-1">
+                                {filteredEmojis.map((emoji, i) => (
+                                  <button
+                                    key={i}
+                                    className="p-1 text-xl hover:bg-gray-100 rounded"
+                                    onClick={() => handleEmojiClick(emoji.emoji)}
+                                    title={emoji.description}
+                                  >
+                                    {emoji.emoji}
+                                  </button>
+                                ))}
+                              </div>
+                            </>
+                          ) : (
+                            Object.entries(emojiCategories).map(([category, emojis]) => (
+                              <div key={category} className="mb-3">
+                                <div className="text-xs font-medium text-gray-500 mb-1">{category}</div>
+                                <div className="grid grid-cols-8 gap-1">
+                                  {emojis.map((emoji, i) => (
+                                    <button
+                                      key={i}
+                                      className="p-1 text-xl hover:bg-gray-100 rounded"
+                                      onClick={() => handleEmojiClick(emoji.emoji)}
+                                      title={emoji.description}
+                                    >
+                                      {emoji.emoji}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
-
-                  {/* AI Prompt Input */}
-                  {showPromptInput && (
+                  
+                  {showPromptInput ? (
                     <div className="p-3 border-b bg-slate-50">
+                      <h4 className="text-sm font-medium mb-2">Generate with AI</h4>
                       <div className="space-y-3">
                         <div className="flex flex-wrap gap-2">
-                          {AI_PROMPT_SUGGESTIONS.slice(0, 3).map((suggestion, index) => (
+                          {AI_PROMPT_SUGGESTIONS.slice(0, 4).map((suggestion, index) => (
                             <PromptSuggestion 
                               key={index}
                               size="sm"
@@ -541,169 +593,113 @@ const CreateCampaignPage: React.FC = () => {
                         </PromptInput>
                       </div>
                     </div>
-                  )}
-
+                  ) : null}
+                  
                   <Textarea 
-                    placeholder="Type your message" 
-                    className="border-0 focus-visible:ring-0 resize-none min-h-[120px]"
+                    id="message"
+                    placeholder="Type a message" 
+                    className="border-0 focus-visible:ring-0 resize-none min-h-[200px]"
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                   />
-                  
-                  {/* Emoji Picker */}
-                  {showEmojiPicker && (
-                    <div 
-                      ref={emojiPickerRef}
-                      className="absolute z-50 bg-white border rounded-md shadow-lg w-64 mt-1"
-                    >
-                      <div className="p-2 border-b">
-                        <Input 
-                          placeholder="Search emoji" 
-                          value={searchEmoji}
-                          onChange={(e) => setSearchEmoji(e.target.value)}
-                          className="w-full text-sm"
-                        />
-                      </div>
-                      
-                      <div className="max-h-48 overflow-y-auto p-2">
-                        {filteredEmojis ? (
-                          <div className="grid grid-cols-8 gap-1">
-                            {filteredEmojis.map((emoji, i) => (
-                              <button
-                                key={i}
-                                className="p-1 text-lg hover:bg-gray-100 rounded"
-                                onClick={() => handleEmojiClick(emoji.emoji)}
-                                title={emoji.description}
-                              >
-                                {emoji.emoji}
-                              </button>
-                            ))}
-                          </div>
-                        ) : (
-                          Object.entries(emojiCategories).slice(0, 2).map(([category, emojis]) => (
-                            <div key={category} className="mb-2">
-                              <div className="text-xs font-medium text-gray-500 mb-1">{category}</div>
-                              <div className="grid grid-cols-8 gap-1">
-                                {emojis.slice(0, 16).map((emoji, i) => (
-                                  <button
-                                    key={i}
-                                    className="p-1 text-lg hover:bg-gray-100 rounded"
-                                    onClick={() => handleEmojiClick(emoji.emoji)}
-                                    title={emoji.description}
-                                  >
-                                    {emoji.emoji}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    </div>
-                  )}
+                  <div className="px-3 py-2 text-xs text-gray-500 text-right">
+                    {charCount} characters | {wordCount} words | {Math.ceil(charCount / 160)} segs
+                  </div>
                 </div>
-
-                {/* Character Counter */}
-                <p className="text-sm text-gray-500">
-                  {charCount} / 160 characters • {segmentCount} segment{segmentCount !== 1 ? 's' : ''}
-                </p>
               </div>
-
-              {/* Attachments */}
+              
               {attachments.length > 0 && (
                 <div className="space-y-2">
-                  {attachments.map((att, index) => (
-                    <div key={index} className="relative">
-                      {renderFilePreview(att.file)}
-                      {!att.url && uploading && (
-                        <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                  <p className="text-sm font-medium">Attachments</p>
+                  <div className="space-y-1">
+                    {attachments.map((att, index) => (
+                      <div key={index} className="relative">
+                        {renderFilePreview(att.file)}
+                        {!att.url && uploading && (
+                          <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
-
-              {/* Schedule Options */}
-              <div className="space-y-3">
-                <Label className="text-sm font-medium text-gray-700">
-                  SCHEDULE
-                </Label>
-                <RadioGroup value={scheduleOption} onValueChange={setScheduleOption}>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="send_now" id="send_now" />
-                    <Label htmlFor="send_now" className="font-normal">Send Now</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="schedule_later" id="schedule_later" />
-                    <Label htmlFor="schedule_later" className="font-normal">Schedule for Later</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="schedule_recurring" id="schedule_recurring" />
-                    <Label htmlFor="schedule_recurring" className="font-normal">Schedule Recurring</Label>
-                  </div>
-                </RadioGroup>
+              
+              <Button 
+                variant="outline" 
+                className="gap-2"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <PaperclipIcon size={16} />
+                Add attachment
+              </Button>
+              
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Test Campaign</p>
+                <div className="flex space-x-2">
+                  <Input placeholder="Enter phone number" className="flex-1" />
+                  <Button variant="default" className="gap-2 bg-indigo-600 hover:bg-indigo-700">
+                    <SendIcon size={16} />
+                    Send Test
+                  </Button>
+                </div>
               </div>
 
-              {/* Credit Info */}
-              <p className="text-sm text-gray-500">
-                Message will be sent as SMS at <strong>1 CREDIT</strong> per contact.{' '}
-                <a href="#" className="text-blue-600 hover:text-blue-700">Learn more</a>
-              </p>
-
-              {/* Send Button */}
-              <Button 
-                onClick={handleSendCampaign} 
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white" 
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    <span>Sending...</span>
-                  </>
-                ) : (
-                  <span>Send</span>
-                )}
-              </Button>
+              {/* Save Campaign Button */}
+              <div className="flex space-x-4 pt-4">
+                <Button 
+                  variant="outline" 
+                  onClick={() => navigate('/campaigns')}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleSaveCampaign} 
+                  className="flex-1 gap-2 bg-blue-600 hover:bg-blue-700" 
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <span>Save Campaign</span>
+                  )}
+                </Button>
+              </div>
             </div>
             
-            {/* Right Panel - Phone Preview */}
-            <div className="flex justify-center">
-              <div className="bg-blue-600 rounded-3xl p-3 w-72 h-96">
-                <div className="bg-white h-full w-full rounded-2xl overflow-hidden flex flex-col">
-                  <div className="p-3 text-center text-xs bg-gray-100 flex justify-between items-center">
+            {/* Right column - Preview */}
+            <div className="flex justify-center items-start">
+              <div className="relative w-[280px] h-[540px] bg-black rounded-[36px] p-[12px] shadow-xl overflow-hidden">
+                <div className="absolute inset-0 mx-auto w-[66%] h-[4%] top-0 bg-black rounded-b-2xl"></div>
+                <div className="bg-white h-full w-full rounded-[24px] overflow-hidden flex flex-col">
+                  <div className="p-2 text-center text-xs bg-gray-100 flex justify-between items-center">
                     <span>9:41</span>
-                    <div className="flex items-center space-x-1">
-                      <div className="h-1 w-1 rounded-full bg-black"></div>
-                      <div className="h-1 w-1 rounded-full bg-black"></div>
-                      <div className="h-1 w-1 rounded-full bg-black"></div>
+                    <div className="flex items-center">
+                      <span className="h-2 w-2 rounded-full bg-black mr-1"></span>
+                      <span className="h-2 w-2 rounded-full bg-black mr-1"></span>
+                      <span className="h-2 w-2 rounded-full bg-black"></span>
                     </div>
                   </div>
                   <div className="flex-1 p-4 overflow-y-auto">
-                    <div className="text-center text-xs text-gray-500 mb-2">
-                      (952) 248-4727
-                    </div>
-                    <div className="space-y-2">
-                      {message ? (
-                        <div className="bg-gray-200 text-gray-900 p-3 rounded-lg max-w-[85%]">
-                          <div className="text-xs text-gray-600 mb-1">
-                            ({senderName}) STOP to end
+                    {message ? (
+                      <div className="bg-blue-500 text-white p-3 rounded-lg max-w-[90%] ml-auto">
+                        {message}
+                        {attachments.length > 0 && (
+                          <div className="mt-1 text-xs text-blue-100">
+                            {attachments.length} attachment{attachments.length !== 1 ? 's' : ''}
                           </div>
-                          <div>{message}</div>
-                          {attachments.length > 0 && (
-                            <div className="mt-1 text-xs text-gray-600">
-                              📎 {attachments.length} attachment{attachments.length !== 1 ? 's' : ''}
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-center h-32 text-gray-400 text-sm">
-                          Message preview will appear here
-                        </div>
-                      )}
-                    </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center h-full text-gray-400 text-sm">
+                        Message preview will appear here
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
