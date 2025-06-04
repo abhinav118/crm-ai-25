@@ -1,5 +1,5 @@
-
 import { useState } from 'react';
+import TopToolbar from '@/components/TopToolbar';
 import Sidebar from '@/components/dashboard/Sidebar';
 import TopBar from '@/components/dashboard/TopBar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -32,10 +32,7 @@ const AiCrm = () => {
           sidebarCollapsed ? "ml-[70px]" : "ml-[240px]"
         }`}
       >
-        <TopBar 
-          sidebarCollapsed={sidebarCollapsed} 
-          onMenuClick={toggleSidebar} 
-        />
+        <TopToolbar />
         
         <main className="p-4 sm:p-6">
           <div className="mb-6">

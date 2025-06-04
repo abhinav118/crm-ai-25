@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import TopToolbar from '@/components/TopToolbar';
 import Sidebar from '@/components/dashboard/Sidebar';
 import { LinksAnalytics } from '@/components/analytics/LinksAnalytics';
 import { SMSAnalytics } from '@/components/analytics/SMSAnalytics';
@@ -17,6 +18,7 @@ const Analytics = () => {
       />
       
       <div className={`flex-1 transition-all duration-300 ${sidebarCollapsed ? 'ml-[70px]' : 'ml-[240px]'}`}>
+        <TopToolbar />
         <div className="p-6 h-full overflow-y-auto">
           <div className="mb-6">
             <h1 className="text-2xl font-bold">Analytics</h1>

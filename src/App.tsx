@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -6,7 +5,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import TopToolbar from "@/components/TopToolbar";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Analytics from "./pages/Analytics";
@@ -52,21 +50,18 @@ const App = () => {
     <BrowserRouter>
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
-          <div className="flex flex-col min-h-screen w-full">
-            <TopToolbar />
-            <main className="flex-1 overflow-auto">
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/contacts" element={<Index />} />
-                <Route path="/conversations" element={<Index initialTab="conversations" />} />
-                <Route path="/campaigns" element={<CampaignsPage />} />
-                <Route path="/campaigns/create" element={<CreateCampaignPage />} />
-                <Route path="/reporting" element={<ReportingPage />} />
-                <Route path="/settings" element={<Index />} />
-                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </main>
+          <div className="min-h-screen w-full">
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/contacts" element={<Index />} />
+              <Route path="/conversations" element={<Index initialTab="conversations" />} />
+              <Route path="/campaigns" element={<CampaignsPage />} />
+              <Route path="/campaigns/create" element={<CreateCampaignPage />} />
+              <Route path="/reporting" element={<ReportingPage />} />
+              <Route path="/settings" element={<Index />} />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
           </div>
           <Toaster />
           <Sonner />

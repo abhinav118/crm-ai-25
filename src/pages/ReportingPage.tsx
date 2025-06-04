@@ -1,4 +1,3 @@
-
 import React, { useState, createContext, useContext } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -8,6 +7,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { CalendarIcon, Download } from "lucide-react";
 import { format, subDays, subWeeks, subMonths } from "date-fns";
 import { cn } from "@/lib/utils";
+import TopToolbar from '@/components/TopToolbar';
 import Sidebar from '@/components/dashboard/Sidebar';
 import DeliveryReports from './DeliveryReports';
 import CampaignPerformance from './CampaignPerformance';
@@ -91,105 +91,108 @@ const ReportingPage = () => {
       <div className="flex min-h-screen bg-gray-50">
         <Sidebar collapsed={sidebarCollapsed} onToggle={handleSidebarToggle} />
         
-        <div className="flex-1 space-y-6 p-4 sm:p-6 ml-0 sm:ml-[240px]">
-          {/* Header */}
-          <div className="py-4 px-2">
-            <h1 className="text-2xl font-bold text-primary">Reporting</h1>
-          </div>
+        <div className="flex-1 ml-0 sm:ml-[240px]">
+          <TopToolbar />
+          <div className="space-y-6 p-4 sm:p-6">
+            {/* Header */}
+            <div className="py-4 px-2">
+              <h1 className="text-2xl font-bold text-primary">Reporting</h1>
+            </div>
 
-          <div className="flex flex-col gap-2">
-            {/* Tab Selectors */}
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
-                <TabsTrigger value="messages" className="text-xs sm:text-sm">Messages Overview</TabsTrigger>
-                <TabsTrigger value="delivery" className="text-xs sm:text-sm">Delivery Reports</TabsTrigger>
-                <TabsTrigger value="campaign" className="text-xs sm:text-sm">Campaign Performance</TabsTrigger>
-                <TabsTrigger value="contacts" className="text-xs sm:text-sm">Contacts Overview</TabsTrigger>
-              </TabsList>
+            <div className="flex flex-col gap-2">
+              {/* Tab Selectors */}
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
+                  <TabsTrigger value="messages" className="text-xs sm:text-sm">Messages Overview</TabsTrigger>
+                  <TabsTrigger value="delivery" className="text-xs sm:text-sm">Delivery Reports</TabsTrigger>
+                  <TabsTrigger value="campaign" className="text-xs sm:text-sm">Campaign Performance</TabsTrigger>
+                  <TabsTrigger value="contacts" className="text-xs sm:text-sm">Contacts Overview</TabsTrigger>
+                </TabsList>
 
-              {/* Controls Below Tabs */}
-              <div className="flex items-center justify-between mt-2 px-2">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="w-[150px]">
-                      {getSelectedRangeLabel()} <CalendarIcon className="ml-2 h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    <DropdownMenuItem onClick={() => handleRangeSelect("day")}>Past Day</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleRangeSelect("week")}>Past Week</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleRangeSelect("month")}>Past Month</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleRangeSelect("custom")}>Custom Range</DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-
-                {/* Conditionally show Export button - hide on Messages Overview */}
-                {activeTab !== "messages" && (
-                  <Button variant="default">
-                    <Download className="mr-2 h-4 w-4" />
-                    Export Report
-                  </Button>
-                )}
-              </div>
-
-              {/* Custom Date Range Picker */}
-              {showCustomRange && (
-                <div className="flex justify-start px-2 mt-2">
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-[300px] justify-start text-left font-normal",
-                          !dateRange && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {dateRange?.from ? (
-                          dateRange.to ? (
-                            <>
-                              {format(dateRange.from, "LLL dd, y")} -{" "}
-                              {format(dateRange.to, "LLL dd, y")}
-                            </>
-                          ) : (
-                            format(dateRange.from, "LLL dd, y")
-                          )
-                        ) : (
-                          <span>Pick a date range</span>
-                        )}
+                {/* Controls Below Tabs */}
+                <div className="flex items-center justify-between mt-2 px-2">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" className="w-[150px]">
+                        {getSelectedRangeLabel()} <CalendarIcon className="ml-2 h-4 w-4" />
                       </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        initialFocus
-                        mode="range"
-                        defaultMonth={dateRange?.from}
-                        selected={dateRange}
-                        onSelect={setDateRange}
-                        numberOfMonths={2}
-                        className="pointer-events-auto"
-                      />
-                    </PopoverContent>
-                  </Popover>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      <DropdownMenuItem onClick={() => handleRangeSelect("day")}>Past Day</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleRangeSelect("week")}>Past Week</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleRangeSelect("month")}>Past Month</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleRangeSelect("custom")}>Custom Range</DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
+                  {/* Conditionally show Export button - hide on Messages Overview */}
+                  {activeTab !== "messages" && (
+                    <Button variant="default">
+                      <Download className="mr-2 h-4 w-4" />
+                      Export Report
+                    </Button>
+                  )}
                 </div>
-              )}
-              
-              <TabsContent value="messages" className="space-y-4 mt-6">
-                <MessagesOverview />
-              </TabsContent>
-              
-              <TabsContent value="delivery" className="space-y-4 mt-6">
-                <DeliveryReports />
-              </TabsContent>
-              
-              <TabsContent value="campaign" className="space-y-4 mt-6">
-                <CampaignPerformance />
-              </TabsContent>
-              
-              <TabsContent value="contacts" className="space-y-4 mt-6">
-                <ContactsOverview />
-              </TabsContent>
-            </Tabs>
+
+                {/* Custom Date Range Picker */}
+                {showCustomRange && (
+                  <div className="flex justify-start px-2 mt-2">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-[300px] justify-start text-left font-normal",
+                            !dateRange && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {dateRange?.from ? (
+                            dateRange.to ? (
+                              <>
+                                {format(dateRange.from, "LLL dd, y")} -{" "}
+                                {format(dateRange.to, "LLL dd, y")}
+                              </>
+                            ) : (
+                              format(dateRange.from, "LLL dd, y")
+                            )
+                          ) : (
+                            <span>Pick a date range</span>
+                          )}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          initialFocus
+                          mode="range"
+                          defaultMonth={dateRange?.from}
+                          selected={dateRange}
+                          onSelect={setDateRange}
+                          numberOfMonths={2}
+                          className="pointer-events-auto"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                )}
+                
+                <TabsContent value="messages" className="space-y-4 mt-6">
+                  <MessagesOverview />
+                </TabsContent>
+                
+                <TabsContent value="delivery" className="space-y-4 mt-6">
+                  <DeliveryReports />
+                </TabsContent>
+                
+                <TabsContent value="campaign" className="space-y-4 mt-6">
+                  <CampaignPerformance />
+                </TabsContent>
+                
+                <TabsContent value="contacts" className="space-y-4 mt-6">
+                  <ContactsOverview />
+                </TabsContent>
+              </Tabs>
+            </div>
           </div>
         </div>
       </div>

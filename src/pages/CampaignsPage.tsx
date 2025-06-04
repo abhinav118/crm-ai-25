@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import TopToolbar from '@/components/TopToolbar';
 import Sidebar from '@/components/dashboard/Sidebar';
 import SentCampaignsView from '@/components/campaigns/SentCampaignsView';
 import ScheduledCampaignsView from '@/components/campaigns/ScheduledCampaignsView';
@@ -11,9 +12,10 @@ const CampaignsPage: React.FC = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   return (
-    <div className="flex">
+    <div className="flex min-h-screen">
       <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
       <div className={`flex-1 transition-all duration-300 ${sidebarCollapsed ? 'ml-[70px]' : 'ml-[240px]'}`}>
+        <TopToolbar />
         <div className="p-8">
           <Tabs defaultValue="sent" className="w-full">
             <TabsList className="mb-6">
