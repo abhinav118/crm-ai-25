@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,9 +12,10 @@ import {
   Loader2,
   ChevronLeft,
   CalendarIcon,
-  Clock
+  Clock,
+  Info
 } from 'lucide-react';
-import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { useNavigate, Link, useLocation, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { PromptSuggestion } from '@/components/ui/prompt-suggestion';
@@ -28,6 +28,7 @@ import { cn } from '@/lib/utils';
 import Sidebar from '@/components/dashboard/Sidebar';
 import Picker from '@emoji-mart/react';
 import data from '@emoji-mart/data';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 // Sample audience segments for the dropdown
 const sampleSegments = [
@@ -43,6 +44,34 @@ const sampleSegments = [
   "Age: 26-35",
   "Age: 36-50"
 ];
+
+// Sample campaign data for pre-population
+const sampleCampaignData = {
+  '1': {
+    id: '1',
+    name: 'June Flash Deal',
+    message: '🔥 Don\'t miss our Flash Deal! Get 50% off everything until midnight. Use code FLASH50 🛍️',
+    to: 'VIP Customers',
+    scheduledFor: '2025-06-14T08:00',
+    scheduleType: 'schedule_later'
+  },
+  '2': {
+    id: '2',
+    name: 'Summer Sale Blast',
+    message: 'Hey {{first_name}}! ☀️ Summer sale is here - Up to 70% off on summer collection. Limited time offer!',
+    to: 'All Contacts',
+    scheduledFor: '2025-06-18T10:30',
+    scheduleType: 'schedule_later'
+  },
+  '3': {
+    id: '3',
+    name: 'Father\'s Day Special',
+    message: 'Celebrate Dad with our special Father\'s Day menu! 👨‍👩‍👧‍👦 Book your table now for June 15th.',
+    to: 'Family Diners',
+    scheduledFor: '2025-06-15T09:00',
+    scheduleType: 'schedule_later'
+  }
+};
 
 const AI_PROMPT_SUGGESTIONS = [
   "Create a friendly welcome message",
@@ -69,6 +98,7 @@ const CreateCampaignPage: React.FC = () => {
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [showPromptInput, setShowPromptInput] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState<Array<{name: string, url: string}>>([]);
+  const [calendarInfo, setCalendarInfo] = useState<string | null>(null);
   
   // Schedule Later fields
   const [scheduleDate, setScheduleDate] = useState<Date>();
@@ -91,6 +121,7 @@ const CreateCampaignPage: React.FC = () => {
   
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
 
   // Personalization tags with display names and corresponding template tags
@@ -105,9 +136,53 @@ const CreateCampaignPage: React.FC = () => {
     segment.toLowerCase().includes(toQuery.toLowerCase())
   );
 
-  // Handle prefilled message from navigation state
+  // Handle URL parameters and prefilled data
   useEffect(() => {
-    if (location.state?.prefilledMessage) {
+    const scheduleFor = searchParams.get('scheduleFor');
+    const fromCampaignId = searchParams.get('fromCampaignId');
+
+    // Handle schedule for parameter (from calendar day click)
+    if (scheduleFor) {
+      const scheduleDate = new Date(scheduleFor);
+      
+      // Check if date is in the past, if so, set to today + 1 hour
+      const now = new Date();
+      const targetDate = scheduleDate < now ? new Date(now.getTime() + 60 * 60 * 1000) : scheduleDate;
+      
+      setScheduleOption('schedule_later');
+      setScheduleDate(new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate()));
+      setScheduleTime(targetDate.toTimeString().slice(0, 5));
+      
+      setCalendarInfo(`Scheduled from calendar for ${format(targetDate, 'MMMM d, yyyy')}`);
+    }
+
+    // Handle campaign ID parameter (from "View Campaign" button)
+    if (fromCampaignId && sampleCampaignData[fromCampaignId as keyof typeof sampleCampaignData]) {
+      const campaign = sampleCampaignData[fromCampaignId as keyof typeof sampleCampaignData];
+      
+      setCampaignName(campaign.name);
+      setMessage(campaign.message);
+      setToQuery(campaign.to);
+      
+      if (campaign.scheduleType === 'schedule_later') {
+        const campaignDate = new Date(campaign.scheduledFor);
+        setScheduleOption('schedule_later');
+        setScheduleDate(new Date(campaignDate.getFullYear(), campaignDate.getMonth(), campaignDate.getDate()));
+        setScheduleTime(campaignDate.toTimeString().slice(0, 5));
+      }
+      
+      // Scroll to message area after a brief delay
+      setTimeout(() => {
+        messageRef.current?.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'center' 
+        });
+        messageRef.current?.focus();
+      }, 100);
+    }
+
+    // Handle prefilled message from navigation state (existing functionality)
+    if (location.state?.prefilledMessage && !fromCampaignId) {
       setMessage(location.state.prefilledMessage);
       if (location.state?.campaignName) {
         setCampaignName(`${location.state.campaignName} - Copy`);
@@ -122,7 +197,7 @@ const CreateCampaignPage: React.FC = () => {
         messageRef.current?.focus();
       }, 100);
     }
-  }, [location.state]);
+  }, [searchParams, location.state]);
 
   useEffect(() => {
     setCharCount(message.length);
@@ -347,6 +422,16 @@ const CreateCampaignPage: React.FC = () => {
               </Link>
 
               <h1 className="text-2xl font-semibold">Create Campaign</h1>
+              
+              {/* Calendar Info Alert */}
+              {calendarInfo && (
+                <Alert className="border-blue-200 bg-blue-50">
+                  <Info className="h-4 w-4 text-blue-600" />
+                  <AlertDescription className="text-blue-800">
+                    {calendarInfo}
+                  </AlertDescription>
+                </Alert>
+              )}
               
               {/* TO Field with Segment Dropdown */}
               <div className="space-y-2">

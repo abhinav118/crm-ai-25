@@ -1,10 +1,40 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, Settings } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Settings, Eye } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+
+// Sample scheduled campaigns data
+const scheduledCampaigns = [
+  {
+    id: '1',
+    title: 'June Flash Deal',
+    message: '🔥 Don\'t miss our Flash Deal! Get 50% off everything until midnight. Use code FLASH50 🛍️',
+    scheduledFor: '2025-06-14T08:00',
+    recipientGroup: 'VIP Customers',
+    recipients: 320
+  },
+  {
+    id: '2',
+    title: 'Summer Sale Blast',
+    message: 'Hey {{first_name}}! ☀️ Summer sale is here - Up to 70% off on summer collection. Limited time offer!',
+    scheduledFor: '2025-06-18T10:30',
+    recipientGroup: 'All Contacts',
+    recipients: 450
+  },
+  {
+    id: '3',
+    title: 'Father\'s Day Special',
+    message: 'Celebrate Dad with our special Father\'s Day menu! 👨‍👩‍👧‍👦 Book your table now for June 15th.',
+    scheduledFor: '2025-06-15T09:00',
+    recipientGroup: 'Family Diners',
+    recipients: 180
+  }
+];
 
 const CampaignCalendarView: React.FC = () => {
   const [currentDate, setCurrentDate] = useState(new Date(2025, 5)); // June 2025
+  const navigate = useNavigate();
 
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -27,6 +57,16 @@ const CampaignCalendarView: React.FC = () => {
 
   const goToToday = () => {
     setCurrentDate(new Date());
+  };
+
+  const handleDayClick = (date: Date) => {
+    // Navigate to create campaign with pre-filled schedule date
+    const formatted = date.toISOString();
+    navigate(`/campaigns/create?scheduleFor=${formatted}`);
+  };
+
+  const handleViewCampaign = (campaignId: string) => {
+    navigate(`/campaigns/create?fromCampaignId=${campaignId}`);
   };
 
   const getDaysInMonth = () => {
@@ -57,24 +97,15 @@ const CampaignCalendarView: React.FC = () => {
     return date.toDateString() === today.toDateString();
   };
 
-  const getEventsForDate = (date: Date) => {
-    const events = [];
-    
-    // Sample events based on the calendar image
-    if (date.getDate() === 3 && date.getMonth() === 5) {
-      events.push({ name: 'Today', color: 'bg-blue-500' });
-    }
-    if (date.getDate() === 14 && date.getMonth() === 5) {
-      events.push({ name: 'Flag Day', color: 'bg-purple-400' });
-    }
-    if (date.getDate() === 15 && date.getMonth() === 5) {
-      events.push({ name: "Father's Day", color: 'bg-pink-400' });
-    }
-    if (date.getDate() === 19 && date.getMonth() === 5) {
-      events.push({ name: 'Juneteenth', color: 'bg-pink-400' });
-    }
-    
-    return events;
+  const getCampaignsForDate = (date: Date) => {
+    return scheduledCampaigns.filter(campaign => {
+      const campaignDate = new Date(campaign.scheduledFor);
+      return (
+        campaignDate.getDate() === date.getDate() &&
+        campaignDate.getMonth() === date.getMonth() &&
+        campaignDate.getFullYear() === date.getFullYear()
+      );
+    });
   };
 
   const days = getDaysInMonth();
@@ -120,29 +151,53 @@ const CampaignCalendarView: React.FC = () => {
           
           {/* Calendar Days */}
           {days.map((day, index) => {
-            const events = getEventsForDate(day);
+            const campaigns = getCampaignsForDate(day);
             const isCurrentMonthDay = isCurrentMonth(day);
             const isTodayDay = isToday(day);
             
             return (
               <div 
                 key={index} 
-                className={`bg-white p-2 min-h-[100px] border-r border-b border-gray-100 ${
+                className={`bg-white p-2 min-h-[120px] border-r border-b border-gray-100 cursor-pointer hover:bg-gray-50 ${
                   !isCurrentMonthDay ? 'text-gray-300' : 'text-gray-900'
                 }`}
+                onClick={() => handleDayClick(day)}
               >
-                <div className={`text-sm font-medium mb-1 ${
+                <div className={`text-sm font-medium mb-2 ${
                   isTodayDay ? 'bg-blue-500 text-white w-6 h-6 rounded-full flex items-center justify-center' : ''
                 }`}>
                   {day.getDate()}
                 </div>
+                
+                {/* Scheduled Campaigns */}
                 <div className="space-y-1">
-                  {events.map((event, eventIndex) => (
+                  {campaigns.map((campaign) => (
                     <div 
-                      key={eventIndex}
-                      className={`text-xs px-2 py-1 rounded text-white ${event.color}`}
+                      key={campaign.id}
+                      className="bg-blue-100 border border-blue-200 rounded p-1 text-xs"
+                      onClick={(e) => e.stopPropagation()}
                     >
-                      {event.name}
+                      <div className="font-medium text-blue-800 truncate mb-1">
+                        {campaign.title}
+                      </div>
+                      <div className="text-blue-600 text-xs mb-1">
+                        {new Date(campaign.scheduledFor).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-200 w-full"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleViewCampaign(campaign.id);
+                        }}
+                      >
+                        <Eye className="h-3 w-3 mr-1" />
+                        View Campaign
+                      </Button>
                     </div>
                   ))}
                 </div>
