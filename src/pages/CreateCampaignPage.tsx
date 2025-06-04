@@ -86,19 +86,16 @@ const CreateCampaignPage: React.FC = () => {
   const toInputRef = useRef<HTMLInputElement>(null);
   const messageRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const personalizationRef = useRef<HTMLDivElement>(null);
   
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Personalization tags
-  const personalizationTags = [
-    '{first_name}',
-    '{last_name}',
-    '{email}',
-    '{phone}',
-    '{company}',
-    '{city}',
-    '{state}'
+  // Personalization tags with display names and corresponding template tags
+  const personalizationOptions = [
+    { label: 'First Name', tag: '{{first_name}}' },
+    { label: 'Last Name', tag: '{{last_name}}' },
+    { label: 'Company', tag: '{{company}}' }
   ];
 
   // Filter segments based on search query
@@ -115,6 +112,9 @@ const CreateCampaignPage: React.FC = () => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setShowSegmentDropdown(false);
+      }
+      if (personalizationRef.current && !personalizationRef.current.contains(event.target as Node)) {
+        setShowPersonalizationTags(false);
       }
     };
 
@@ -410,36 +410,35 @@ const CreateCampaignPage: React.FC = () => {
                       <TooltipContent>Attach file</TooltipContent>
                     </Tooltip>
 
-                    <Popover open={showPersonalizationTags} onOpenChange={setShowPersonalizationTags}>
-                      <PopoverTrigger asChild>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button 
-                              type="button"
-                              className="p-1 rounded hover:bg-gray-100"
-                              aria-label="Personalize"
-                            >
-                              <span className="text-gray-500 font-mono text-sm">{'{}'}</span>
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent>Insert merge tag</TooltipContent>
-                        </Tooltip>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-60 p-2">
-                        <div className="space-y-1">
-                          <p className="text-sm font-medium mb-2">Personalization Tags</p>
-                          {personalizationTags.map((tag) => (
+                    <div className="relative" ref={personalizationRef}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button 
+                            type="button"
+                            className="p-1 rounded hover:bg-gray-100"
+                            onClick={() => setShowPersonalizationTags(!showPersonalizationTags)}
+                            aria-label="Personalize"
+                          >
+                            <span className="text-gray-500 font-mono text-sm">{'{}'}</span>
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>Insert merge tag</TooltipContent>
+                      </Tooltip>
+                      
+                      {showPersonalizationTags && (
+                        <div className="absolute top-full left-0 z-50 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg min-w-[140px]">
+                          {personalizationOptions.map((option) => (
                             <button
-                              key={tag}
-                              onClick={() => handlePersonalizationTag(tag)}
-                              className="w-full text-left px-2 py-1 text-sm hover:bg-gray-100 rounded"
+                              key={option.tag}
+                              onClick={() => handlePersonalizationTag(option.tag)}
+                              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 first:rounded-t-lg last:rounded-b-lg transition-colors"
                             >
-                              {tag}
+                              {option.label}
                             </button>
                           ))}
                         </div>
-                      </PopoverContent>
-                    </Popover>
+                      )}
+                    </div>
 
                     <Tooltip>
                       <TooltipTrigger asChild>
