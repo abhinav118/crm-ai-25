@@ -32,6 +32,22 @@ const scheduledCampaigns = [
   }
 ];
 
+// U.S. Holidays data
+const holidays = [
+  { date: '2025-01-01', name: 'New Year\'s Day' },
+  { date: '2025-01-20', name: 'Martin Luther King Jr. Day' },
+  { date: '2025-02-17', name: 'Presidents\' Day' },
+  { date: '2025-05-11', name: 'Mother\'s Day' },
+  { date: '2025-05-26', name: 'Memorial Day' },
+  { date: '2025-06-15', name: 'Father\'s Day' },
+  { date: '2025-07-04', name: 'Independence Day' },
+  { date: '2025-09-01', name: 'Labor Day' },
+  { date: '2025-10-13', name: 'Columbus Day' },
+  { date: '2025-11-11', name: 'Veterans Day' },
+  { date: '2025-11-27', name: 'Thanksgiving' },
+  { date: '2025-12-25', name: 'Christmas' }
+];
+
 const CampaignCalendarView: React.FC = () => {
   const [currentDate, setCurrentDate] = useState(new Date(2025, 5)); // June 2025
   const navigate = useNavigate();
@@ -108,6 +124,11 @@ const CampaignCalendarView: React.FC = () => {
     });
   };
 
+  const getHolidaysForDate = (date: Date) => {
+    const dateString = date.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+    return holidays.filter(holiday => holiday.date === dateString);
+  };
+
   const days = getDaysInMonth();
 
   return (
@@ -152,6 +173,7 @@ const CampaignCalendarView: React.FC = () => {
           {/* Calendar Days */}
           {days.map((day, index) => {
             const campaigns = getCampaignsForDate(day);
+            const dayHolidays = getHolidaysForDate(day);
             const isCurrentMonthDay = isCurrentMonth(day);
             const isTodayDay = isToday(day);
             
@@ -169,35 +191,46 @@ const CampaignCalendarView: React.FC = () => {
                   {day.getDate()}
                 </div>
                 
+                {/* U.S. Holidays */}
+                {dayHolidays.map((holiday) => (
+                  <div 
+                    key={holiday.name}
+                    className="bg-red-500 text-white text-xs rounded-md px-2 py-0.5 mb-1 w-full"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {holiday.name}
+                  </div>
+                ))}
+                
                 {/* Scheduled Campaigns */}
                 <div className="space-y-1">
                   {campaigns.map((campaign) => (
                     <div 
                       key={campaign.id}
-                      className="bg-blue-100 border border-blue-200 rounded p-1 text-xs"
+                      className="bg-blue-100 text-blue-800 rounded-md px-2 py-1 text-sm shadow-sm"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <div className="font-medium text-blue-800 truncate mb-1">
+                      <div className="font-medium truncate mb-1">
                         {campaign.title}
                       </div>
-                      <div className="text-blue-600 text-xs mb-1">
+                      <div className="text-xs mb-1">
                         {new Date(campaign.scheduledFor).toLocaleTimeString([], {
                           hour: '2-digit',
                           minute: '2-digit'
                         })}
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 px-2 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-200 w-full"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleViewCampaign(campaign.id);
-                        }}
-                      >
-                        <Eye className="h-3 w-3 mr-1" />
-                        View Campaign
-                      </Button>
+                      <div className="text-xs text-blue-500 flex items-center gap-1 mt-1">
+                        <Eye className="h-3 w-3" />
+                        <button
+                          className="hover:underline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleViewCampaign(campaign.id);
+                          }}
+                        >
+                          View
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
