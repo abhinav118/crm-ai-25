@@ -1,10 +1,9 @@
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { Users, UserPlus, TrendingDown, Activity, Download } from "lucide-react";
+import { Users, UserPlus, TrendingDown, Activity } from "lucide-react";
 import { useDateRange } from './ReportingPage';
 
 // Sample data
@@ -92,18 +91,6 @@ const ContactsOverview = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header with Export Button */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h2 className="text-xl sm:text-2xl font-bold">Contacts Overview</h2>
-          <p className="text-muted-foreground text-sm">Monitor contact growth, engagement, and segment performance</p>
-        </div>
-        <Button variant="outline" size="sm">
-          <Download className="h-4 w-4 mr-2" />
-          Export Report
-        </Button>
-      </div>
-
       {/* Contact Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {contactStats.map((stat) => (
@@ -122,48 +109,46 @@ const ContactsOverview = () => {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        {/* Contact Growth Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Contact Growth Trends</CardTitle>
-            <CardDescription>Monthly contact acquisition and activity trends</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer config={chartConfig} className="h-[250px] sm:h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={contactGrowthData} margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" fontSize={12} />
-                  <YAxis fontSize={12} />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Area 
-                    type="monotone" 
-                    dataKey="total" 
-                    stackId="1"
-                    stroke="var(--color-total)" 
-                    fill="var(--color-total)"
-                    fillOpacity={0.1}
-                  />
-                  <Area 
-                    type="monotone" 
-                    dataKey="active" 
-                    stackId="2"
-                    stroke="var(--color-active)" 
-                    fill="var(--color-active)"
-                    fillOpacity={0.2}
-                  />
-                  <Area 
-                    type="monotone" 
-                    dataKey="new" 
-                    stackId="3"
-                    stroke="var(--color-new)" 
-                    fill="var(--color-new)"
-                    fillOpacity={0.3}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </ChartContainer>
+      {/* Contact Growth Chart */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Contact Growth Trends</CardTitle>
+          <CardDescription>Monthly contact acquisition and activity trends</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ChartContainer config={chartConfig} className="h-[250px] sm:h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={contactGrowthData} margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" fontSize={12} />
+                <YAxis fontSize={12} />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Area 
+                  type="monotone" 
+                  dataKey="total" 
+                  stackId="1"
+                  stroke="var(--color-total)" 
+                  fill="var(--color-total)"
+                  fillOpacity={0.1}
+                />
+                <Area 
+                  type="monotone" 
+                  dataKey="active" 
+                  stackId="2"
+                  stroke="var(--color-active)" 
+                  fill="var(--color-active)"
+                  fillOpacity={0.2}
+                />
+                <Area 
+                  type="monotone" 
+                  dataKey="new" 
+                  stackId="3"
+                  stroke="var(--color-new)" 
+                  fill="var(--color-new)"
+                  fillOpacity={0.3}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
           </CardContent>
         </Card>
 

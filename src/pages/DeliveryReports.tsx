@@ -1,10 +1,10 @@
-
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { TrendingUp, MessageSquare, CheckCircle, XCircle, Clock } from "lucide-react";
+import { useDateRange } from './ReportingPage';
 
 // Sample data
 const deliveryStats = [
@@ -46,6 +46,8 @@ const chartConfig = {
 };
 
 const DeliveryReports = () => {
+  const { dateRange } = useDateRange();
+
   const getStatusBadge = (status: string) => {
     const styles = {
       Delivered: "bg-green-100 text-green-800",

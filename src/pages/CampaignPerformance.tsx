@@ -4,6 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
 import { Target, DollarSign, MousePointer, Eye, TrendingUp } from "lucide-react";
+import { useDateRange } from './ReportingPage';
 
 // Sample data
 const performanceMetrics = [
@@ -84,6 +85,8 @@ const chartConfig = {
 };
 
 const CampaignPerformance = () => {
+  const { dateRange } = useDateRange();
+
   return (
     <div className="space-y-6">
       {/* Performance Metrics */}

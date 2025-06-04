@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, Download } from "lucide-react";
 import { format, subDays, subWeeks, subMonths } from "date-fns";
 import { cn } from "@/lib/utils";
 import Sidebar from '@/components/dashboard/Sidebar';
@@ -32,6 +32,7 @@ export const useDateRange = () => {
 
 const ReportingPage = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [activeTab, setActiveTab] = useState("messages");
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: subDays(new Date(), 7),
     to: new Date(),
@@ -91,19 +92,14 @@ const ReportingPage = () => {
         <Sidebar collapsed={sidebarCollapsed} onToggle={handleSidebarToggle} />
         
         <div className="flex-1 space-y-6 p-4 sm:p-6 ml-0 sm:ml-[240px]">
-          {/* Header with Date Filter */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold">Reporting</h1>
-              <p className="text-muted-foreground text-sm sm:text-base">
-                Comprehensive analytics and reports for your SMS campaigns and performance
-              </p>
-            </div>
+          {/* Header with Date Filter and Export Button */}
+          <div className="flex flex-wrap items-center justify-between gap-4 py-4 px-2">
+            <h1 className="text-2xl font-bold text-primary">Reporting</h1>
             
-            <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-4 ml-auto">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline">
+                  <Button variant="outline" className="min-w-[150px]">
                     {getSelectedRangeLabel()} <CalendarIcon className="ml-2 h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -111,52 +107,63 @@ const ReportingPage = () => {
                   <DropdownMenuItem onClick={() => handleRangeSelect("day")}>Past Day</DropdownMenuItem>
                   <DropdownMenuItem onClick={() => handleRangeSelect("week")}>Past Week</DropdownMenuItem>
                   <DropdownMenuItem onClick={() => handleRangeSelect("month")}>Past Month</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleRangeSelect("custom")}>Custom Date Range</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleRangeSelect("custom")}>Custom Range</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              
-              {showCustomRange && (
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-[300px] justify-start text-left font-normal",
-                        !dateRange && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {dateRange?.from ? (
-                        dateRange.to ? (
-                          <>
-                            {format(dateRange.from, "LLL dd, y")} -{" "}
-                            {format(dateRange.to, "LLL dd, y")}
-                          </>
-                        ) : (
-                          format(dateRange.from, "LLL dd, y")
-                        )
-                      ) : (
-                        <span>Pick a date range</span>
-                      )}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      initialFocus
-                      mode="range"
-                      defaultMonth={dateRange?.from}
-                      selected={dateRange}
-                      onSelect={setDateRange}
-                      numberOfMonths={2}
-                      className="pointer-events-auto"
-                    />
-                  </PopoverContent>
-                </Popover>
+
+              {/* Conditionally show Export button - hide on Messages Overview */}
+              {activeTab !== "messages" && (
+                <Button variant="default">
+                  <Download className="mr-2 h-4 w-4" />
+                  Export Report
+                </Button>
               )}
             </div>
           </div>
 
-          <Tabs defaultValue="messages" className="w-full space-y-6">
+          {/* Custom Date Range Picker */}
+          {showCustomRange && (
+            <div className="flex justify-end px-2">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-[300px] justify-start text-left font-normal",
+                      !dateRange && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dateRange?.from ? (
+                      dateRange.to ? (
+                        <>
+                          {format(dateRange.from, "LLL dd, y")} -{" "}
+                          {format(dateRange.to, "LLL dd, y")}
+                        </>
+                      ) : (
+                        format(dateRange.from, "LLL dd, y")
+                      )
+                    ) : (
+                      <span>Pick a date range</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    initialFocus
+                    mode="range"
+                    defaultMonth={dateRange?.from}
+                    selected={dateRange}
+                    onSelect={setDateRange}
+                    numberOfMonths={2}
+                    className="pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          )}
+
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-6">
             <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
               <TabsTrigger value="messages" className="text-xs sm:text-sm">Messages Overview</TabsTrigger>
               <TabsTrigger value="delivery" className="text-xs sm:text-sm">Delivery Reports</TabsTrigger>
