@@ -1,20 +1,15 @@
 
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { CalendarIcon, Info, MessageSquare, TrendingUp, TrendingDown } from "lucide-react";
+import { Info, MessageSquare, TrendingUp, TrendingDown } from "lucide-react";
 import { format, subDays } from "date-fns";
-import { cn } from "@/lib/utils";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts";
 import { MetricsCard } from "@/components/analytics/MetricsCard";
-import { DateRange } from "react-day-picker";
+import { useDateRange } from "./ReportingPage";
 
 interface MessageMetrics {
   total_sent: number;
@@ -35,11 +30,7 @@ interface MessageMetrics {
 const MessagesOverview = () => {
   console.log('MessagesOverview component rendering');
   
-  const [dateRange, setDateRange] = useState<DateRange | undefined>({
-    from: subDays(new Date(), 7),
-    to: new Date(),
-  });
-  const [messageType, setMessageType] = useState<string>("all");
+  const { dateRange } = useDateRange();
   const [metrics, setMetrics] = useState<MessageMetrics>({
     total_sent: 0,
     delivered_count: 0,
@@ -91,7 +82,7 @@ const MessagesOverview = () => {
       try {
         console.log('Starting to fetch metrics');
         // In a real implementation, this would be an API call
-        // const response = await fetch(`/api/reporting/messages-overview?start=${format(dateRange.from, 'yyyy-MM-dd')}&end=${format(dateRange.to, 'yyyy-MM-dd')}&type=${messageType}`);
+        // const response = await fetch(`/api/reporting/messages-overview?start=${format(dateRange.from, 'yyyy-MM-dd')}&end=${format(dateRange.to, 'yyyy-MM-dd')}`);
         // const data = await response.json();
         
         // Using mock data for now
@@ -108,7 +99,7 @@ const MessagesOverview = () => {
     };
 
     fetchMetrics();
-  }, [dateRange, messageType]);
+  }, [dateRange]);
 
   const calculatePercentage = (value: number, total: number) => {
     if (total === 0) return 0;
@@ -194,64 +185,6 @@ const MessagesOverview = () => {
 
   return (
     <div className="space-y-6">
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-        <div className="flex items-center gap-2">
-          <label className="text-sm font-medium">Date Range:</label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className={cn(
-                  "w-[300px] justify-start text-left font-normal",
-                  !dateRange && "text-muted-foreground"
-                )}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {dateRange?.from ? (
-                  dateRange.to ? (
-                    <>
-                      {format(dateRange.from, "LLL dd, y")} -{" "}
-                      {format(dateRange.to, "LLL dd, y")}
-                    </>
-                  ) : (
-                    format(dateRange.from, "LLL dd, y")
-                  )
-                ) : (
-                  <span>Pick a date range</span>
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                initialFocus
-                mode="range"
-                defaultMonth={dateRange?.from}
-                selected={dateRange}
-                onSelect={setDateRange}
-                numberOfMonths={2}
-                className="pointer-events-auto"
-              />
-            </PopoverContent>
-          </Popover>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <label className="text-sm font-medium">Message Type:</label>
-          <Select value={messageType} onValueChange={setMessageType}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Select type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Messages</SelectItem>
-              <SelectItem value="campaign">Campaign</SelectItem>
-              <SelectItem value="manual">Manual</SelectItem>
-              <SelectItem value="automation">Automation</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
       {/* Metrics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {metricCards.map((metric, index) => {

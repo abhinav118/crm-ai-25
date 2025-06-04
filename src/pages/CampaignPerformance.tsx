@@ -1,11 +1,9 @@
-
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
-import { Target, DollarSign, MousePointer, Eye, TrendingUp, Download } from "lucide-react";
+import { Target, DollarSign, MousePointer, Eye, TrendingUp } from "lucide-react";
 
 // Sample data
 const performanceMetrics = [
@@ -88,18 +86,6 @@ const chartConfig = {
 const CampaignPerformance = () => {
   return (
     <div className="space-y-6">
-      {/* Header with Export Button */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h2 className="text-xl sm:text-2xl font-bold">Campaign Performance</h2>
-          <p className="text-muted-foreground text-sm">Analyze campaign effectiveness and ROI metrics</p>
-        </div>
-        <Button variant="outline" size="sm">
-          <Download className="h-4 w-4 mr-2" />
-          Export Report
-        </Button>
-      </div>
-
       {/* Performance Metrics */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {performanceMetrics.map((metric) => (

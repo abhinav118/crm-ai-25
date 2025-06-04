@@ -1,10 +1,10 @@
+
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { TrendingUp, MessageSquare, CheckCircle, XCircle, Clock, Download } from "lucide-react";
+import { TrendingUp, MessageSquare, CheckCircle, XCircle, Clock } from "lucide-react";
 
 // Sample data
 const deliveryStats = [
@@ -57,18 +57,6 @@ const DeliveryReports = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header with Export Button */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h2 className="text-xl sm:text-2xl font-bold">Delivery Reports</h2>
-          <p className="text-muted-foreground text-sm">Track message delivery status and performance metrics</p>
-        </div>
-        <Button variant="outline" size="sm">
-          <Download className="h-4 w-4 mr-2" />
-          Export Report
-        </Button>
-      </div>
-
       {/* Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {deliveryStats.map((stat) => (
