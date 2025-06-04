@@ -89,29 +89,29 @@ const CampaignPerformance = () => {
   return (
     <div className="space-y-6">
       {/* Header with Export Button */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold">Campaign Performance</h2>
-          <p className="text-muted-foreground">Analyze campaign effectiveness and ROI metrics</p>
+          <h2 className="text-xl sm:text-2xl font-bold">Campaign Performance</h2>
+          <p className="text-muted-foreground text-sm">Analyze campaign effectiveness and ROI metrics</p>
         </div>
-        <Button variant="outline">
+        <Button variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
           Export Report
         </Button>
       </div>
 
       {/* Performance Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {performanceMetrics.map((metric) => (
           <Card key={metric.label}>
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">{metric.label}</p>
-                  <p className="text-2xl font-bold">{metric.value}</p>
-                  <p className="text-sm text-green-600 font-medium">{metric.change}</p>
+                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">{metric.label}</p>
+                  <p className="text-lg sm:text-2xl font-bold">{metric.value}</p>
+                  <p className="text-xs sm:text-sm text-green-600 font-medium">{metric.change}</p>
                 </div>
-                <metric.icon className={`h-8 w-8 ${metric.color}`} />
+                <metric.icon className={`h-6 w-6 sm:h-8 sm:w-8 ${metric.color}`} />
               </div>
             </CardContent>
           </Card>
@@ -121,54 +121,54 @@ const CampaignPerformance = () => {
       {/* Campaign Trends Chart */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-lg">
             <TrendingUp className="h-5 w-5" />
             Campaign Performance Trends
           </CardTitle>
           <CardDescription>Weekly campaign performance metrics over time</CardDescription>
         </CardHeader>
         <CardContent>
-          <ChartContainer config={chartConfig} className="h-[400px]">
+          <ChartContainer config={chartConfig} className="h-[300px] sm:h-[400px]">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={campaignTrendsData}>
+              <LineChart data={campaignTrendsData} margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="week" />
-                <YAxis />
+                <XAxis dataKey="week" fontSize={12} />
+                <YAxis fontSize={12} />
                 <ChartTooltip content={<ChartTooltipContent />} />
                 <Line 
                   type="monotone" 
                   dataKey="sent" 
                   stroke="var(--color-sent)" 
                   strokeWidth={2}
-                  dot={{ r: 4 }}
+                  dot={{ r: 3 }}
                 />
                 <Line 
                   type="monotone" 
                   dataKey="delivered" 
                   stroke="var(--color-delivered)" 
                   strokeWidth={2}
-                  dot={{ r: 4 }}
+                  dot={{ r: 3 }}
                 />
                 <Line 
                   type="monotone" 
                   dataKey="opened" 
                   stroke="var(--color-opened)" 
                   strokeWidth={2}
-                  dot={{ r: 4 }}
+                  dot={{ r: 3 }}
                 />
                 <Line 
                   type="monotone" 
                   dataKey="clicked" 
                   stroke="var(--color-clicked)" 
                   strokeWidth={2}
-                  dot={{ r: 4 }}
+                  dot={{ r: 3 }}
                 />
                 <Line 
                   type="monotone" 
                   dataKey="converted" 
                   stroke="var(--color-converted)" 
                   strokeWidth={2}
-                  dot={{ r: 4 }}
+                  dot={{ r: 3 }}
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -179,36 +179,38 @@ const CampaignPerformance = () => {
       {/* Top Performing Campaigns Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Top Performing Campaigns</CardTitle>
+          <CardTitle className="text-lg">Top Performing Campaigns</CardTitle>
           <CardDescription>Best performing campaigns ranked by ROI and conversion rate</CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Campaign Name</TableHead>
-                <TableHead>Messages Sent</TableHead>
-                <TableHead>Open Rate</TableHead>
-                <TableHead>Click Rate</TableHead>
-                <TableHead>Conversion Rate</TableHead>
-                <TableHead>Revenue</TableHead>
-                <TableHead>ROI</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {topCampaigns.map((campaign) => (
-                <TableRow key={campaign.id}>
-                  <TableCell className="font-medium">{campaign.name}</TableCell>
-                  <TableCell>{campaign.sent.toLocaleString()}</TableCell>
-                  <TableCell>{campaign.openRate}</TableCell>
-                  <TableCell>{campaign.clickRate}</TableCell>
-                  <TableCell>{campaign.conversionRate}</TableCell>
-                  <TableCell className="font-medium text-green-600">{campaign.revenue}</TableCell>
-                  <TableCell className="font-bold text-orange-600">{campaign.roi}</TableCell>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="min-w-[150px]">Campaign Name</TableHead>
+                  <TableHead className="min-w-[100px]">Messages Sent</TableHead>
+                  <TableHead className="min-w-[80px]">Open Rate</TableHead>
+                  <TableHead className="min-w-[80px]">Click Rate</TableHead>
+                  <TableHead className="min-w-[100px]">Conversion Rate</TableHead>
+                  <TableHead className="min-w-[80px]">Revenue</TableHead>
+                  <TableHead className="min-w-[60px]">ROI</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {topCampaigns.map((campaign) => (
+                  <TableRow key={campaign.id}>
+                    <TableCell className="font-medium">{campaign.name}</TableCell>
+                    <TableCell>{campaign.sent.toLocaleString()}</TableCell>
+                    <TableCell>{campaign.openRate}</TableCell>
+                    <TableCell>{campaign.clickRate}</TableCell>
+                    <TableCell>{campaign.conversionRate}</TableCell>
+                    <TableCell className="font-medium text-green-600">{campaign.revenue}</TableCell>
+                    <TableCell className="font-bold text-orange-600">{campaign.roi}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </div>

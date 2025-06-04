@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,11 +31,11 @@ const deliveryStatusData = [
 ];
 
 const recentDeliveries = [
-  { id: 1, campaign: "Summer Sale Blast", recipient: "+1 (555) 123-4567", status: "Delivered", timestamp: "2 mins ago", deliveryTime: "1.2s" },
-  { id: 2, campaign: "Welcome Series #1", recipient: "+1 (555) 987-6543", status: "Delivered", timestamp: "5 mins ago", deliveryTime: "0.8s" },
-  { id: 3, campaign: "Cart Abandonment", recipient: "+1 (555) 246-8135", status: "Failed", timestamp: "12 mins ago", deliveryTime: "-" },
-  { id: 4, campaign: "Weekly Newsletter", recipient: "+1 (555) 369-2580", status: "Delivered", timestamp: "18 mins ago", deliveryTime: "1.5s" },
-  { id: 5, campaign: "Flash Deal Alert", recipient: "+1 (555) 147-8520", status: "Pending", timestamp: "25 mins ago", deliveryTime: "-" }
+  { id: 1, recipientName: "John Smith", recipient: "+1 (555) 123-4567", status: "Delivered", timestamp: "2 mins ago", deliveryTime: "1.2s" },
+  { id: 2, recipientName: "Sarah Johnson", recipient: "+1 (555) 987-6543", status: "Delivered", timestamp: "5 mins ago", deliveryTime: "0.8s" },
+  { id: 3, recipientName: "Mike Wilson", recipient: "+1 (555) 246-8135", status: "Failed", timestamp: "12 mins ago", deliveryTime: "-" },
+  { id: 4, recipientName: "Emily Davis", recipient: "+1 (555) 369-2580", status: "Delivered", timestamp: "18 mins ago", deliveryTime: "1.5s" },
+  { id: 5, recipientName: "Robert Brown", recipient: "+1 (555) 147-8520", status: "Pending", timestamp: "25 mins ago", deliveryTime: "-" }
 ];
 
 const chartConfig = {
@@ -59,51 +58,51 @@ const DeliveryReports = () => {
   return (
     <div className="space-y-6">
       {/* Header with Export Button */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold">Delivery Reports</h2>
-          <p className="text-muted-foreground">Track message delivery status and performance metrics</p>
+          <h2 className="text-xl sm:text-2xl font-bold">Delivery Reports</h2>
+          <p className="text-muted-foreground text-sm">Track message delivery status and performance metrics</p>
         </div>
-        <Button variant="outline">
+        <Button variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
           Export Report
         </Button>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {deliveryStats.map((stat) => (
           <Card key={stat.label}>
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">{stat.label}</p>
-                  <p className="text-2xl font-bold">{stat.value}</p>
+                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">{stat.label}</p>
+                  <p className="text-lg sm:text-2xl font-bold">{stat.value}</p>
                 </div>
-                <stat.icon className={`h-8 w-8 ${stat.color}`} />
+                <stat.icon className={`h-6 w-6 sm:h-8 sm:w-8 ${stat.color}`} />
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         {/* Delivery Trends Chart */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-lg">
               <TrendingUp className="h-5 w-5" />
               Delivery Trends (Last 7 Days)
             </CardTitle>
             <CardDescription>Daily message delivery performance</CardDescription>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={chartConfig} className="h-[300px]">
+            <ChartContainer config={chartConfig} className="h-[250px] sm:h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={deliveryTrendsData}>
+                <BarChart data={deliveryTrendsData} margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="day" />
-                  <YAxis />
+                  <XAxis dataKey="day" fontSize={12} />
+                  <YAxis fontSize={12} />
                   <ChartTooltip content={<ChartTooltipContent />} />
                   <Bar dataKey="delivered" fill="var(--color-delivered)" />
                   <Bar dataKey="failed" fill="var(--color-failed)" />
@@ -117,19 +116,19 @@ const DeliveryReports = () => {
         {/* Delivery Status Breakdown */}
         <Card>
           <CardHeader>
-            <CardTitle>Delivery Status Breakdown</CardTitle>
+            <CardTitle className="text-lg">Delivery Status Breakdown</CardTitle>
             <CardDescription>Current month delivery distribution</CardDescription>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={chartConfig} className="h-[300px]">
+            <ChartContainer config={chartConfig} className="h-[250px] sm:h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={deliveryStatusData}
                     cx="50%"
                     cy="50%"
-                    innerRadius={60}
-                    outerRadius={120}
+                    innerRadius={40}
+                    outerRadius={80}
                     paddingAngle={5}
                     dataKey="value"
                   >
@@ -159,36 +158,38 @@ const DeliveryReports = () => {
       {/* Recent Deliveries Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Recent Deliveries</CardTitle>
+          <CardTitle className="text-lg">Recent Deliveries</CardTitle>
           <CardDescription>Latest message delivery activities</CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Campaign</TableHead>
-                <TableHead>Recipient</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Delivery Time</TableHead>
-                <TableHead>Timestamp</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {recentDeliveries.map((delivery) => (
-                <TableRow key={delivery.id}>
-                  <TableCell className="font-medium">{delivery.campaign}</TableCell>
-                  <TableCell>{delivery.recipient}</TableCell>
-                  <TableCell>
-                    <span className={getStatusBadge(delivery.status)}>
-                      {delivery.status}
-                    </span>
-                  </TableCell>
-                  <TableCell>{delivery.deliveryTime}</TableCell>
-                  <TableCell className="text-muted-foreground">{delivery.timestamp}</TableCell>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="min-w-[120px]">Recipient Name</TableHead>
+                  <TableHead className="min-w-[140px]">Phone Number</TableHead>
+                  <TableHead className="min-w-[100px]">Status</TableHead>
+                  <TableHead className="min-w-[100px]">Delivery Time</TableHead>
+                  <TableHead className="min-w-[120px]">Timestamp</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {recentDeliveries.map((delivery) => (
+                  <TableRow key={delivery.id}>
+                    <TableCell className="font-medium">{delivery.recipientName}</TableCell>
+                    <TableCell>{delivery.recipient}</TableCell>
+                    <TableCell>
+                      <span className={getStatusBadge(delivery.status)}>
+                        {delivery.status}
+                      </span>
+                    </TableCell>
+                    <TableCell>{delivery.deliveryTime}</TableCell>
+                    <TableCell className="text-muted-foreground">{delivery.timestamp}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </div>

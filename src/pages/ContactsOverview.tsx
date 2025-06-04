@@ -91,49 +91,49 @@ const ContactsOverview = () => {
   return (
     <div className="space-y-6">
       {/* Header with Export Button */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold">Contacts Overview</h2>
-          <p className="text-muted-foreground">Monitor contact growth, engagement, and segment performance</p>
+          <h2 className="text-xl sm:text-2xl font-bold">Contacts Overview</h2>
+          <p className="text-muted-foreground text-sm">Monitor contact growth, engagement, and segment performance</p>
         </div>
-        <Button variant="outline">
+        <Button variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
           Export Report
         </Button>
       </div>
 
       {/* Contact Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {contactStats.map((stat) => (
           <Card key={stat.label}>
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">{stat.label}</p>
-                  <p className="text-2xl font-bold">{stat.value}</p>
-                  <p className="text-sm text-green-600 font-medium">{stat.change}</p>
+                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">{stat.label}</p>
+                  <p className="text-lg sm:text-2xl font-bold">{stat.value}</p>
+                  <p className="text-xs sm:text-sm text-green-600 font-medium">{stat.change}</p>
                 </div>
-                <stat.icon className={`h-8 w-8 ${stat.color}`} />
+                <stat.icon className={`h-6 w-6 sm:h-8 sm:w-8 ${stat.color}`} />
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         {/* Contact Growth Chart */}
         <Card>
           <CardHeader>
-            <CardTitle>Contact Growth Trends</CardTitle>
+            <CardTitle className="text-lg">Contact Growth Trends</CardTitle>
             <CardDescription>Monthly contact acquisition and activity trends</CardDescription>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={chartConfig} className="h-[300px]">
+            <ChartContainer config={chartConfig} className="h-[250px] sm:h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={contactGrowthData}>
+                <AreaChart data={contactGrowthData} margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis />
+                  <XAxis dataKey="month" fontSize={12} />
+                  <YAxis fontSize={12} />
                   <ChartTooltip content={<ChartTooltipContent />} />
                   <Area 
                     type="monotone" 
@@ -168,19 +168,19 @@ const ContactsOverview = () => {
         {/* Contact Segments Donut */}
         <Card>
           <CardHeader>
-            <CardTitle>Contact Segments</CardTitle>
+            <CardTitle className="text-lg">Contact Segments</CardTitle>
             <CardDescription>Distribution by customer type and engagement level</CardDescription>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={chartConfig} className="h-[300px]">
+            <ChartContainer config={chartConfig} className="h-[250px] sm:h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={segmentData}
                     cx="50%"
                     cy="50%"
-                    innerRadius={60}
-                    outerRadius={120}
+                    innerRadius={40}
+                    outerRadius={80}
                     paddingAngle={5}
                     dataKey="value"
                   >
@@ -213,38 +213,40 @@ const ContactsOverview = () => {
       {/* Segment Performance Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Segment Performance</CardTitle>
+          <CardTitle className="text-lg">Segment Performance</CardTitle>
           <CardDescription>Detailed performance metrics for each contact segment</CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Segment</TableHead>
-                <TableHead>Contacts</TableHead>
-                <TableHead>Growth</TableHead>
-                <TableHead>Engagement Rate</TableHead>
-                <TableHead>Avg. Value</TableHead>
-                <TableHead>Retention Rate</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {segmentPerformance.map((segment) => (
-                <TableRow key={segment.segment}>
-                  <TableCell className="font-medium">{segment.segment}</TableCell>
-                  <TableCell>{segment.contacts.toLocaleString()}</TableCell>
-                  <TableCell>
-                    <span className={getGrowthBadge(segment.growth)}>
-                      {segment.growth}
-                    </span>
-                  </TableCell>
-                  <TableCell>{segment.engagement}</TableCell>
-                  <TableCell className="font-medium">{segment.avgValue}</TableCell>
-                  <TableCell>{segment.retention}</TableCell>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="min-w-[120px]">Segment</TableHead>
+                  <TableHead className="min-w-[80px]">Contacts</TableHead>
+                  <TableHead className="min-w-[80px]">Growth</TableHead>
+                  <TableHead className="min-w-[100px]">Engagement Rate</TableHead>
+                  <TableHead className="min-w-[80px]">Avg. Value</TableHead>
+                  <TableHead className="min-w-[100px]">Retention Rate</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {segmentPerformance.map((segment) => (
+                  <TableRow key={segment.segment}>
+                    <TableCell className="font-medium">{segment.segment}</TableCell>
+                    <TableCell>{segment.contacts.toLocaleString()}</TableCell>
+                    <TableCell>
+                      <span className={getGrowthBadge(segment.growth)}>
+                        {segment.growth}
+                      </span>
+                    </TableCell>
+                    <TableCell>{segment.engagement}</TableCell>
+                    <TableCell className="font-medium">{segment.avgValue}</TableCell>
+                    <TableCell>{segment.retention}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </div>
