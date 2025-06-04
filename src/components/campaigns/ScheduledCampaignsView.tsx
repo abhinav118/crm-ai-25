@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CalendarIcon, Search, MessageSquare, Users, Eye } from 'lucide-react';
+import { CalendarIcon, Search, MessageSquare, Users, Eye, Plus } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { DateRange } from 'react-day-picker';
@@ -81,8 +81,12 @@ const ScheduledCampaignsView: React.FC = () => {
             Group Texts are an effective way to attract new customers, connect with existing customers, and increase sales. Here you can create new texts and edit the settings of previously scheduled texts.
           </p>
         </div>
-        <Button onClick={handleCreateCampaign} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2">
-          CREATE CAMPAIGN
+        <Button 
+          onClick={handleCreateCampaign} 
+          className="bg-[#6366F1] hover:bg-[#5855EB] text-white font-medium px-6 py-2 gap-2 rounded-md"
+        >
+          <Plus size={16} />
+          Create Campaign
         </Button>
       </div>
 
