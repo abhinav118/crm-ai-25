@@ -110,93 +110,96 @@ const ContactsOverview = () => {
         ))}
       </div>
 
-      {/* Contact Growth Chart */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Contact Growth Trends</CardTitle>
-          <CardDescription>Monthly contact acquisition and activity trends</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ChartContainer config={chartConfig} className="h-[250px] sm:h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={contactGrowthData} margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" fontSize={12} />
-                <YAxis fontSize={12} />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Area 
-                  type="monotone" 
-                  dataKey="total" 
-                  stackId="1"
-                  stroke="var(--color-total)" 
-                  fill="var(--color-total)"
-                  fillOpacity={0.1}
-                />
-                <Area 
-                  type="monotone" 
-                  dataKey="active" 
-                  stackId="2"
-                  stroke="var(--color-active)" 
-                  fill="var(--color-active)"
-                  fillOpacity={0.2}
-                />
-                <Area 
-                  type="monotone" 
-                  dataKey="new" 
-                  stackId="3"
-                  stroke="var(--color-new)" 
-                  fill="var(--color-new)"
-                  fillOpacity={0.3}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </ChartContainer>
-        </CardContent>
-      </Card>
+      {/* Contact Growth Trends and Contact Segments Side by Side */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Contact Growth Chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Contact Growth Trends</CardTitle>
+            <CardDescription>Monthly contact acquisition and activity trends</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ChartContainer config={chartConfig} className="h-[250px] sm:h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={contactGrowthData} margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" fontSize={12} />
+                  <YAxis fontSize={12} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Area 
+                    type="monotone" 
+                    dataKey="total" 
+                    stackId="1"
+                    stroke="var(--color-total)" 
+                    fill="var(--color-total)"
+                    fillOpacity={0.1}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="active" 
+                    stackId="2"
+                    stroke="var(--color-active)" 
+                    fill="var(--color-active)"
+                    fillOpacity={0.2}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="new" 
+                    stackId="3"
+                    stroke="var(--color-new)" 
+                    fill="var(--color-new)"
+                    fillOpacity={0.3}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </ChartContainer>
+          </CardContent>
+        </Card>
 
-      {/* Contact Segments Donut */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Contact Segments</CardTitle>
-          <CardDescription>Distribution by customer type and engagement level</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ChartContainer config={chartConfig} className="h-[250px] sm:h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={segmentData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={40}
-                  outerRadius={80}
-                  paddingAngle={5}
-                  dataKey="value"
-                >
-                  {segmentData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <ChartTooltip content={<ChartTooltipContent />} />
-              </PieChart>
-            </ResponsiveContainer>
-          </ChartContainer>
-          <div className="mt-4 space-y-2">
-            {segmentData.map((item) => (
-              <div key={item.name} className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                  <span className="text-sm">{item.name}</span>
+        {/* Contact Segments Donut */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Contact Segments</CardTitle>
+            <CardDescription>Distribution by customer type and engagement level</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ChartContainer config={chartConfig} className="h-[250px] sm:h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={segmentData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={40}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {segmentData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                </PieChart>
+              </ResponsiveContainer>
+            </ChartContainer>
+            <div className="mt-4 space-y-2">
+              {segmentData.map((item) => (
+                <div key={item.name} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
+                    <span className="text-sm">{item.name}</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-sm font-medium">{item.value.toLocaleString()}</span>
+                    <span className="text-xs text-muted-foreground ml-2">({item.engagement})</span>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <span className="text-sm font-medium">{item.value.toLocaleString()}</span>
-                  <span className="text-xs text-muted-foreground ml-2">({item.engagement})</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Segment Performance Table */}
       <Card>

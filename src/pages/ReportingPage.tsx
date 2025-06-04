@@ -1,3 +1,4 @@
+
 import React, { useState, createContext, useContext } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -86,6 +87,36 @@ const ReportingPage = () => {
     return `${format(dateRange.from, "MMM dd")} - ${format(dateRange.to, "MMM dd")}`;
   };
 
+  const getTabDescription = (tab: string) => {
+    switch (tab) {
+      case "messages":
+        return "Comprehensive view of messaging activity and performance";
+      case "delivery":
+        return "Detailed delivery status and success rates for your campaigns";
+      case "campaign":
+        return "Analyze campaign effectiveness and engagement metrics";
+      case "contacts":
+        return "Monitor contact growth, segmentation, and engagement trends";
+      default:
+        return "";
+    }
+  };
+
+  const getTabTitle = (tab: string) => {
+    switch (tab) {
+      case "messages":
+        return "Messages Overview";
+      case "delivery":
+        return "Delivery Reports";
+      case "campaign":
+        return "Campaign Performance";
+      case "contacts":
+        return "Contacts Overview";
+      default:
+        return "";
+    }
+  };
+
   return (
     <DateRangeContext.Provider value={{ dateRange, setDateRange }}>
       <div className="flex min-h-screen bg-gray-50">
@@ -95,43 +126,45 @@ const ReportingPage = () => {
           <TopToolbar pageTitle="Reporting" />
           <div className="space-y-6 p-4 sm:p-6">
             <div className="flex flex-col gap-2">
-              {/* Tab Selectors */}
+              {/* Tab Selectors with Date Range Controls */}
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
-                  <TabsTrigger value="messages" className="text-xs sm:text-sm">Messages Overview</TabsTrigger>
-                  <TabsTrigger value="delivery" className="text-xs sm:text-sm">Delivery Reports</TabsTrigger>
-                  <TabsTrigger value="campaign" className="text-xs sm:text-sm">Campaign Performance</TabsTrigger>
-                  <TabsTrigger value="contacts" className="text-xs sm:text-sm">Contacts Overview</TabsTrigger>
-                </TabsList>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+                  <TabsList className="grid w-full sm:w-auto grid-cols-2 sm:grid-cols-4">
+                    <TabsTrigger value="messages" className="text-xs sm:text-sm">Messages Overview</TabsTrigger>
+                    <TabsTrigger value="delivery" className="text-xs sm:text-sm">Delivery Reports</TabsTrigger>
+                    <TabsTrigger value="campaign" className="text-xs sm:text-sm">Campaign Performance</TabsTrigger>
+                    <TabsTrigger value="contacts" className="text-xs sm:text-sm">Contacts Overview</TabsTrigger>
+                  </TabsList>
 
-                {/* Controls Below Tabs */}
-                <div className="flex items-center justify-between mt-2 px-2">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" className="w-[150px]">
-                        {getSelectedRangeLabel()} <CalendarIcon className="ml-2 h-4 w-4" />
+                  {/* Date Range Controls on the Right */}
+                  <div className="flex items-center gap-3">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" className="w-[150px]">
+                          {getSelectedRangeLabel()} <CalendarIcon className="ml-2 h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuItem onClick={() => handleRangeSelect("day")}>Past Day</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleRangeSelect("week")}>Past Week</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleRangeSelect("month")}>Past Month</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleRangeSelect("custom")}>Custom Range</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    {/* Conditionally show Export button - hide on Messages Overview */}
+                    {activeTab !== "messages" && (
+                      <Button variant="default">
+                        <Download className="mr-2 h-4 w-4" />
+                        Export Report
                       </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      <DropdownMenuItem onClick={() => handleRangeSelect("day")}>Past Day</DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleRangeSelect("week")}>Past Week</DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleRangeSelect("month")}>Past Month</DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleRangeSelect("custom")}>Custom Range</DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-
-                  {/* Conditionally show Export button - hide on Messages Overview */}
-                  {activeTab !== "messages" && (
-                    <Button variant="default">
-                      <Download className="mr-2 h-4 w-4" />
-                      Export Report
-                    </Button>
-                  )}
+                    )}
+                  </div>
                 </div>
 
                 {/* Custom Date Range Picker */}
                 {showCustomRange && (
-                  <div className="flex justify-start px-2 mt-2">
+                  <div className="flex justify-end mb-4">
                     <Popover>
                       <PopoverTrigger asChild>
                         <Button
@@ -156,7 +189,7 @@ const ReportingPage = () => {
                           )}
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
+                      <PopoverContent className="w-auto p-0" align="end">
                         <Calendar
                           initialFocus
                           mode="range"
@@ -170,20 +203,37 @@ const ReportingPage = () => {
                     </Popover>
                   </div>
                 )}
-                
-                <TabsContent value="messages" className="space-y-4 mt-6">
+
+                {/* Tab Content with Headers */}
+                <TabsContent value="messages" className="space-y-6">
+                  <div className="mb-6">
+                    <h2 className="text-2xl font-bold text-gray-900">{getTabTitle("messages")}</h2>
+                    <p className="text-gray-600 mt-1">{getTabDescription("messages")}</p>
+                  </div>
                   <MessagesOverview />
                 </TabsContent>
                 
-                <TabsContent value="delivery" className="space-y-4 mt-6">
+                <TabsContent value="delivery" className="space-y-6">
+                  <div className="mb-6">
+                    <h2 className="text-2xl font-bold text-gray-900">{getTabTitle("delivery")}</h2>
+                    <p className="text-gray-600 mt-1">{getTabDescription("delivery")}</p>
+                  </div>
                   <DeliveryReports />
                 </TabsContent>
                 
-                <TabsContent value="campaign" className="space-y-4 mt-6">
+                <TabsContent value="campaign" className="space-y-6">
+                  <div className="mb-6">
+                    <h2 className="text-2xl font-bold text-gray-900">{getTabTitle("campaign")}</h2>
+                    <p className="text-gray-600 mt-1">{getTabDescription("campaign")}</p>
+                  </div>
                   <CampaignPerformance />
                 </TabsContent>
                 
-                <TabsContent value="contacts" className="space-y-4 mt-6">
+                <TabsContent value="contacts" className="space-y-6">
+                  <div className="mb-6">
+                    <h2 className="text-2xl font-bold text-gray-900">{getTabTitle("contacts")}</h2>
+                    <p className="text-gray-600 mt-1">{getTabDescription("contacts")}</p>
+                  </div>
                   <ContactsOverview />
                 </TabsContent>
               </Tabs>
