@@ -1,9 +1,11 @@
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { Users, UserPlus, TrendingDown, Activity } from "lucide-react";
+import { Users, UserPlus, TrendingDown, Activity, Download } from "lucide-react";
+import { useDateRange } from './ReportingPage';
 
 // Sample data
 const contactStats = [
@@ -79,6 +81,8 @@ const chartConfig = {
 };
 
 const ContactsOverview = () => {
+  const { dateRange } = useDateRange();
+
   const getGrowthBadge = (growth: string) => {
     const isPositive = growth.startsWith('+');
     return `px-2 py-1 rounded-full text-xs font-medium ${
