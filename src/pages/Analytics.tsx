@@ -18,10 +18,9 @@ const Analytics = () => {
       />
       
       <div className={`flex-1 transition-all duration-300 ${sidebarCollapsed ? 'ml-[70px]' : 'ml-[240px]'}`}>
-        <TopToolbar />
+        <TopToolbar pageTitle="Analytics" />
         <div className="p-6 h-full overflow-y-auto">
           <div className="mb-6">
-            <h1 className="text-2xl font-bold">Analytics</h1>
             <p className="text-muted-foreground">Track performance metrics across your platform</p>
           </div>
           

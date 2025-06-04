@@ -92,13 +92,8 @@ const ReportingPage = () => {
         <Sidebar collapsed={sidebarCollapsed} onToggle={handleSidebarToggle} />
         
         <div className="flex-1 ml-0 sm:ml-[240px]">
-          <TopToolbar />
+          <TopToolbar pageTitle="Reporting" />
           <div className="space-y-6 p-4 sm:p-6">
-            {/* Header */}
-            {/* <div className="py-4 px-2">
-              <h1 className="text-2xl font-bold text-primary">Reporting</h1>
-            </div> */}
-
             <div className="flex flex-col gap-2">
               {/* Tab Selectors */}
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">

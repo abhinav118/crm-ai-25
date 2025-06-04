@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import TopToolbar from '@/components/TopToolbar';
 import Sidebar from '@/components/dashboard/Sidebar';
@@ -32,11 +33,10 @@ const AiCrm = () => {
           sidebarCollapsed ? "ml-[70px]" : "ml-[240px]"
         }`}
       >
-        <TopToolbar />
+        <TopToolbar pageTitle="AI CRM" />
         
         <main className="p-4 sm:p-6">
           <div className="mb-6">
-            <h1 className="text-2xl font-semibold text-gray-900 mb-1">AI CRM</h1>
             <p className="text-gray-500">Smart customer engagement powered by AI</p>
           </div>
           

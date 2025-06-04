@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { cn } from '@/lib/utils';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   Users, 
@@ -22,9 +22,15 @@ const Sidebar: React.FC<SidebarProps> = ({
   collapsed = false, 
   onToggle 
 }) => {
+  const location = useLocation();
+
+  const isActive = (path: string) => {
+    return location.pathname === path;
+  };
+
   return (
     <aside className={cn(
-      "h-screen fixed top-0 left-0 z-30 flex flex-col transition-all duration-300 ease-in-out bg-[#69e2c7] text-white",
+      "h-screen fixed top-0 left-0 z-30 flex flex-col transition-all duration-300 ease-in-out bg-black text-white",
       collapsed ? "w-[70px]" : "w-[240px]"
     )}>
       <div className="flex items-center h-16 px-3 border-b border-white/20">
@@ -34,12 +40,12 @@ const Sidebar: React.FC<SidebarProps> = ({
         )}>
           {!collapsed && (
             <div className="flex items-center">
-              <div className="text-white font-semibold tracking-tight text-xl">Lumen CRM</div>
+              <div className="text-white font-semibold tracking-tight text-xl">TextFlow</div>
             </div>
           )}
           {collapsed && (
             <div className="flex items-center justify-center">
-              <div className="text-white text-xl font-bold">L</div>
+              <div className="text-white text-xl font-bold">T</div>
             </div>
           )}
           <button 
@@ -53,15 +59,51 @@ const Sidebar: React.FC<SidebarProps> = ({
       
       <div className="flex flex-col flex-1 py-4 overflow-y-auto">
         <nav className="px-2 space-y-1">
-          <SidebarItem icon={<LayoutDashboard size={20} />} label="Dashboard" to="/" collapsed={collapsed} />
-          <SidebarItem icon={<Users size={20} />} label="Contacts" to="/contacts" collapsed={collapsed} />
-          <SidebarItem icon={<MessageSquare size={20} />} label="Conversations" to="/conversations" collapsed={collapsed} />
-          <SidebarItem icon={<Megaphone size={20} />} label="Campaigns" to="/campaigns" collapsed={collapsed} />
-          <SidebarItem icon={<FileText size={20} />} label="Reporting" to="/reporting" collapsed={collapsed} />
+          <SidebarItem 
+            icon={<LayoutDashboard size={20} />} 
+            label="Dashboard" 
+            to="/" 
+            collapsed={collapsed} 
+            active={isActive('/')}
+          />
+          <SidebarItem 
+            icon={<Users size={20} />} 
+            label="Contacts" 
+            to="/contacts" 
+            collapsed={collapsed} 
+            active={isActive('/contacts')}
+          />
+          <SidebarItem 
+            icon={<MessageSquare size={20} />} 
+            label="Conversations" 
+            to="/conversations" 
+            collapsed={collapsed} 
+            active={isActive('/conversations')}
+          />
+          <SidebarItem 
+            icon={<Megaphone size={20} />} 
+            label="Campaigns" 
+            to="/campaigns" 
+            collapsed={collapsed} 
+            active={isActive('/campaigns')}
+          />
+          <SidebarItem 
+            icon={<FileText size={20} />} 
+            label="Reporting" 
+            to="/reporting" 
+            collapsed={collapsed} 
+            active={isActive('/reporting')}
+          />
         </nav>
         
         <div className="mt-auto px-2">
-          <SidebarItem icon={<Settings size={20} />} label="Settings" to="/settings" collapsed={collapsed} />
+          <SidebarItem 
+            icon={<Settings size={20} />} 
+            label="Settings" 
+            to="/settings" 
+            collapsed={collapsed} 
+            active={isActive('/settings')}
+          />
         </div>
       </div>
       
@@ -104,9 +146,11 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
     <Link 
       to={to} 
       className={cn(
-        "flex items-center px-3 py-2 rounded-md text-white/80 hover:text-white hover:bg-white/10 transition-colors",
-        active && "bg-white/20 text-white font-medium",
-        collapsed ? "justify-center" : "space-x-3"
+        "flex items-center px-3 py-2 rounded-md transition-colors",
+        collapsed ? "justify-center" : "space-x-3",
+        active 
+          ? "bg-[#69e2c7] text-black font-medium" 
+          : "text-[#69e2c7] hover:bg-[#69e2c7]/20 hover:text-[#69e2c7]"
       )}
     >
       <span className="text-xl">{icon}</span>
