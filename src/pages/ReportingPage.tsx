@@ -2,13 +2,11 @@
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Sidebar from '@/components/dashboard/Sidebar';
-import MessagesOverview from './MessagesOverview';
 import DeliveryReports from './DeliveryReports';
 import CampaignPerformance from './CampaignPerformance';
 import ContactsOverview from './ContactsOverview';
 
 const ReportingPage = () => {
-  const [activeTab, setActiveTab] = useState("overview");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const handleSidebarToggle = () => {
@@ -29,23 +27,18 @@ const ReportingPage = () => {
           </div>
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="overview">Messages Overview</TabsTrigger>
+        <Tabs defaultValue="delivery" className="w-full space-y-6">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="delivery">Delivery Reports</TabsTrigger>
-            <TabsTrigger value="campaigns">Campaign Performance</TabsTrigger>
+            <TabsTrigger value="campaign">Campaign Performance</TabsTrigger>
             <TabsTrigger value="contacts">Contacts Overview</TabsTrigger>
           </TabsList>
-          
-          <TabsContent value="overview" className="space-y-4">
-            <MessagesOverview />
-          </TabsContent>
           
           <TabsContent value="delivery" className="space-y-4">
             <DeliveryReports />
           </TabsContent>
           
-          <TabsContent value="campaigns" className="space-y-4">
+          <TabsContent value="campaign" className="space-y-4">
             <CampaignPerformance />
           </TabsContent>
           
