@@ -210,7 +210,6 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
-        </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
