@@ -1,14 +1,47 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CalendarIcon, Search, MessageSquare, Users } from 'lucide-react';
+import { CalendarIcon, Search, MessageSquare, Users, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { DateRange } from 'react-day-picker';
 import { useNavigate } from 'react-router-dom';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+
+// Sample campaign data for demonstration
+const sampleCampaigns = [
+  {
+    id: '1',
+    name: 'Welcome Campaign',
+    message: 'Hi {{first_name}}, welcome to our restaurant! Get 15% off your first order with code WELCOME15. 🎉',
+    recipients: 250,
+    sent: '2024-01-15',
+    deliveryRate: 98.4,
+    status: 'completed'
+  },
+  {
+    id: '2', 
+    name: 'Weekend Special',
+    message: 'Hey {{first_name}}! Join us this weekend for our special brunch menu. Fresh ingredients, great atmosphere! Book now: restaurantlink.com 🍳',
+    recipients: 180,
+    sent: '2024-01-12',
+    deliveryRate: 96.7,
+    status: 'completed'
+  },
+  {
+    id: '3',
+    name: 'Birthday Promotion',
+    message: 'Happy Birthday {{first_name}}! 🎂 Celebrate with us and get a FREE dessert on your special day. Valid until {{date}}.',
+    recipients: 45,
+    sent: '2024-01-10',
+    deliveryRate: 100.0,
+    status: 'completed'
+  }
+];
 
 const SentCampaignsView: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -30,6 +63,21 @@ const SentCampaignsView: React.FC = () => {
   const handleCreateCampaign = () => {
     navigate('/campaigns/create');
   };
+
+  const handleViewMessage = (campaign: typeof sampleCampaigns[0]) => {
+    navigate('/campaigns/create', {
+      state: {
+        prefilledMessage: campaign.message,
+        campaignName: campaign.name
+      }
+    });
+  };
+
+  // Filter campaigns based on search query
+  const filteredCampaigns = sampleCampaigns.filter(campaign =>
+    campaign.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    campaign.message.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <div>
@@ -157,27 +205,71 @@ const SentCampaignsView: React.FC = () => {
         </div>
       </div>
 
-      {/* Empty State */}
-      <div className="bg-white rounded-lg border border-gray-200 p-12">
-        <div className="text-center">
-          <div className="mb-6">
-            <div className="relative inline-block">
-              <MessageSquare className="h-16 w-16 text-blue-500 mb-2" />
-              <Users className="h-12 w-12 text-purple-500 absolute -bottom-2 -right-2" />
-            </div>
-          </div>
-          <h3 className="text-xl font-medium text-gray-900 mb-4">
-            You haven't created any group texts yet
-          </h3>
-          <Button 
-            variant="link" 
-            onClick={handleCreateCampaign}
-            className="text-blue-600 hover:text-blue-700 font-medium text-base"
-          >
-            CREATE A NEW TEXT NOW!
-          </Button>
+      {/* Campaigns Table */}
+      {filteredCampaigns.length > 0 ? (
+        <div className="bg-white rounded-lg border border-gray-200">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Campaign Name</TableHead>
+                <TableHead>Recipients</TableHead>
+                <TableHead>Sent Date</TableHead>
+                <TableHead>Delivery Rate</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredCampaigns.map((campaign) => (
+                <TableRow key={campaign.id}>
+                  <TableCell className="font-medium">{campaign.name}</TableCell>
+                  <TableCell>{campaign.recipients}</TableCell>
+                  <TableCell>{format(new Date(campaign.sent), 'MMM d, yyyy')}</TableCell>
+                  <TableCell>{campaign.deliveryRate}%</TableCell>
+                  <TableCell>
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                      {campaign.status}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      variant="link"
+                      size="sm"
+                      onClick={() => handleViewMessage(campaign)}
+                      className="text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+                    >
+                      <Eye className="h-4 w-4" />
+                      View Message
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
-      </div>
+      ) : (
+        /* Empty State */
+        <div className="bg-white rounded-lg border border-gray-200 p-12">
+          <div className="text-center">
+            <div className="mb-6">
+              <div className="relative inline-block">
+                <MessageSquare className="h-16 w-16 text-blue-500 mb-2" />
+                <Users className="h-12 w-12 text-purple-500 absolute -bottom-2 -right-2" />
+              </div>
+            </div>
+            <h3 className="text-xl font-medium text-gray-900 mb-4">
+              You haven't created any group texts yet
+            </h3>
+            <Button 
+              variant="link" 
+              onClick={handleCreateCampaign}
+              className="text-blue-600 hover:text-blue-700 font-medium text-base"
+            >
+              CREATE A NEW TEXT NOW!
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,7 +15,7 @@ import {
   CalendarIcon,
   Clock
 } from 'lucide-react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { PromptSuggestion } from '@/components/ui/prompt-suggestion';
@@ -89,6 +90,7 @@ const CreateCampaignPage: React.FC = () => {
   const personalizationRef = useRef<HTMLDivElement>(null);
   
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
 
   // Personalization tags with display names and corresponding template tags
@@ -102,6 +104,25 @@ const CreateCampaignPage: React.FC = () => {
   const filteredSegments = sampleSegments.filter(segment =>
     segment.toLowerCase().includes(toQuery.toLowerCase())
   );
+
+  // Handle prefilled message from navigation state
+  useEffect(() => {
+    if (location.state?.prefilledMessage) {
+      setMessage(location.state.prefilledMessage);
+      if (location.state?.campaignName) {
+        setCampaignName(`${location.state.campaignName} - Copy`);
+      }
+      
+      // Scroll to message area after a brief delay
+      setTimeout(() => {
+        messageRef.current?.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'center' 
+        });
+        messageRef.current?.focus();
+      }, 100);
+    }
+  }, [location.state]);
 
   useEffect(() => {
     setCharCount(message.length);
