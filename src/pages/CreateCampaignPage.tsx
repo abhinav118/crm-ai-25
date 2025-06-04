@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,6 +25,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import Sidebar from '@/components/dashboard/Sidebar';
+import Picker from '@emoji-mart/react';
+import data from '@emoji-mart/data';
 
 // Sample audience segments for the dropdown
 const sampleSegments = [
@@ -62,9 +63,11 @@ const CreateCampaignPage: React.FC = () => {
   const [wordCount, setWordCount] = useState(0);
   const [showSegmentDropdown, setShowSegmentDropdown] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showPersonalizationTags, setShowPersonalizationTags] = useState(false);
   const [aiPrompt, setAiPrompt] = useState('');
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [showPromptInput, setShowPromptInput] = useState(false);
+  const [attachedFiles, setAttachedFiles] = useState<Array<{name: string, url: string}>>([]);
   
   // Schedule Later fields
   const [scheduleDate, setScheduleDate] = useState<Date>();
@@ -81,9 +84,22 @@ const CreateCampaignPage: React.FC = () => {
   
   const dropdownRef = useRef<HTMLDivElement>(null);
   const toInputRef = useRef<HTMLInputElement>(null);
+  const messageRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Personalization tags
+  const personalizationTags = [
+    '{first_name}',
+    '{last_name}',
+    '{email}',
+    '{phone}',
+    '{company}',
+    '{city}',
+    '{state}'
+  ];
 
   // Filter segments based on search query
   const filteredSegments = sampleSegments.filter(segment =>
@@ -120,26 +136,41 @@ const CreateCampaignPage: React.FC = () => {
     toInputRef.current?.blur();
   };
 
-  const handleEmojiPicker = () => {
-    setShowEmojiPicker(!showEmojiPicker);
-    toast({
-      title: "Emoji picker",
-      description: "Emoji picker functionality coming soon",
-    });
+  const handleEmojiSelect = (emoji: any) => {
+    const newMessage = insertAtCursor(message, emoji.native);
+    setMessage(newMessage);
+    setShowEmojiPicker(false);
   };
 
   const handleFileAttach = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Create a preview URL for the file
+    const fileUrl = URL.createObjectURL(file);
+    const fileInfo = { name: file.name, url: fileUrl };
+    
+    setAttachedFiles(prev => [...prev, fileInfo]);
+    
+    // Insert file reference in message
+    const fileRef = `📎 ${file.name}`;
+    const newMessage = insertAtCursor(message, fileRef);
+    setMessage(newMessage);
+    
     toast({
-      title: "File attachment",
-      description: "File attachment functionality coming soon",
+      title: "File attached",
+      description: `${file.name} has been attached to your message`,
     });
   };
 
-  const handleMergeTags = () => {
-    toast({
-      title: "Personalization",
-      description: "Merge tags functionality coming soon",
-    });
+  const handlePersonalizationTag = (tag: string) => {
+    const newMessage = insertAtCursor(message, tag);
+    setMessage(newMessage);
+    setShowPersonalizationTags(false);
   };
 
   const handleGenerateWithAI = async () => {
@@ -261,6 +292,24 @@ const CreateCampaignPage: React.FC = () => {
     return `Your message will be sent every ${intervalText} at ${timeText} starting ${startText}${endText}.`;
   };
 
+  const insertAtCursor = (text: string, insert: string) => {
+    if (!messageRef.current) return text;
+    
+    const textarea = messageRef.current;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    
+    const newText = text.substring(0, start) + insert + text.substring(end);
+    
+    // Update cursor position after insertion
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + insert.length, start + insert.length);
+    }, 0);
+    
+    return newText;
+  };
+
   return (
     <TooltipProvider>
       <div className="flex w-full">
@@ -331,14 +380,14 @@ const CreateCampaignPage: React.FC = () => {
                   Message <span className="text-red-500">*</span>
                 </Label>
 
-                <div className="border rounded-md">
+                <div className="border rounded-md relative">
                   <div className="flex items-center p-2 border-b bg-gray-50 gap-2">
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <button 
                           type="button"
                           className="p-1 rounded hover:bg-gray-100"
-                          onClick={handleEmojiPicker}
+                          onClick={() => setShowEmojiPicker(!showEmojiPicker)}
                           aria-label="Insert emoji"
                         >
                           <SmileIcon size={18} className="text-gray-500" />
@@ -361,19 +410,36 @@ const CreateCampaignPage: React.FC = () => {
                       <TooltipContent>Attach file</TooltipContent>
                     </Tooltip>
 
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button 
-                          type="button"
-                          className="p-1 rounded hover:bg-gray-100"
-                          onClick={handleMergeTags}
-                          aria-label="Personalize"
-                        >
-                          <span className="text-gray-500 font-mono text-sm">{'{}'}</span>
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent>Insert merge tag</TooltipContent>
-                    </Tooltip>
+                    <Popover open={showPersonalizationTags} onOpenChange={setShowPersonalizationTags}>
+                      <PopoverTrigger asChild>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button 
+                              type="button"
+                              className="p-1 rounded hover:bg-gray-100"
+                              aria-label="Personalize"
+                            >
+                              <span className="text-gray-500 font-mono text-sm">{'{}'}</span>
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent>Insert merge tag</TooltipContent>
+                        </Tooltip>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-60 p-2">
+                        <div className="space-y-1">
+                          <p className="text-sm font-medium mb-2">Personalization Tags</p>
+                          {personalizationTags.map((tag) => (
+                            <button
+                              key={tag}
+                              onClick={() => handlePersonalizationTag(tag)}
+                              className="w-full text-left px-2 py-1 text-sm hover:bg-gray-100 rounded"
+                            >
+                              {tag}
+                            </button>
+                          ))}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
 
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -390,6 +456,29 @@ const CreateCampaignPage: React.FC = () => {
                     </Tooltip>
                   </div>
                   
+                  {/* Emoji Picker */}
+                  {showEmojiPicker && (
+                    <div className="absolute top-full left-0 z-50 mt-1">
+                      <Picker
+                        data={data}
+                        onEmojiSelect={handleEmojiSelect}
+                        theme="light"
+                        previewPosition="none"
+                        skinTonePosition="none"
+                      />
+                    </div>
+                  )}
+                  
+                  {/* Hidden file input */}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*,.pdf,.doc,.docx"
+                    className="hidden"
+                    onChange={handleFileSelect}
+                  />
+                  
+                  {/* AI prompt input section */}
                   {showPromptInput && (
                     <div className="p-3 border-b bg-slate-50">
                       <h4 className="text-sm font-medium mb-2">AI Compose</h4>
@@ -434,12 +523,27 @@ const CreateCampaignPage: React.FC = () => {
                   )}
                   
                   <Textarea 
+                    ref={messageRef}
                     id="message"
                     placeholder="Type your message here..." 
                     className="border-0 focus-visible:ring-0 resize-none min-h-[120px]"
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                   />
+                  
+                  {/* Attached Files Display */}
+                  {attachedFiles.length > 0 && (
+                    <div className="px-3 py-2 border-t bg-gray-50">
+                      <p className="text-xs text-gray-600 mb-1">Attached files:</p>
+                      {attachedFiles.map((file, index) => (
+                        <div key={index} className="flex items-center gap-2 text-xs">
+                          <PaperclipIcon size={12} className="text-gray-500" />
+                          <span>{file.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
                   <div className="px-3 py-2 text-xs text-gray-500 bg-gray-50 flex justify-between">
                     <span>{charCount} / 160 characters</span>
                     <span>{getSmsSegments()} SMS segment{getSmsSegments() !== 1 ? 's' : ''}</span>
