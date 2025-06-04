@@ -29,7 +29,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   if (collapsed) {
     return (
-      <aside className="h-screen fixed top-0 left-0 z-30 flex flex-col w-[70px] bg-[#0F172A] text-white">
+      <aside className="h-screen fixed top-0 left-0 z-30 flex flex-col w-[63px] bg-[#0F172A] text-white">
         <div className="flex items-center justify-center h-16 px-3">
           <div className="bg-purple-600 text-white h-8 w-8 rounded-full flex items-center justify-center font-bold text-lg">
             T
@@ -93,7 +93,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   }
 
   return (
-    <aside className="h-screen fixed top-0 left-0 z-30 flex flex-col w-[260px] bg-[#0F172A] text-white justify-between">
+    <aside className="h-screen fixed top-0 left-0 z-30 flex flex-col w-[234px] bg-[#0F172A] text-white justify-between">
       {/* Logo */}
       <div>
         <div className="p-4 flex items-center gap-3 text-white font-semibold text-lg">

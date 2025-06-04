@@ -139,7 +139,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
     <>
       <div className={`flex transition-all duration-300 ease-in-out ${compactMode ? 'flex-shrink-0' : ''} ${className}`}>
         <Button 
-          className={`gap-1 mr-2 bg-indigo-600 hover:bg-indigo-700 transition-all duration-300 ${compactMode ? 'w-10 p-0' : ''}`}
+          className={`gap-1 mr-2 bg-[#6366F1] hover:bg-[#5855EB] text-white font-medium transition-all duration-300 ${compactMode ? 'w-10 p-0' : ''}`}
           onClick={onAddContact}
         >
           <UserPlus size={16} />
@@ -210,6 +210,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
+        </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 

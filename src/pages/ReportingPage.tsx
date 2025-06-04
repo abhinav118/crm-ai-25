@@ -122,7 +122,7 @@ const ReportingPage = () => {
       <div className="flex min-h-screen bg-gray-50">
         <Sidebar collapsed={sidebarCollapsed} onToggle={handleSidebarToggle} />
         
-        <div className="flex-1 ml-0 sm:ml-[240px]">
+        <div className="flex-1 ml-0 sm:ml-[234px]">
           <TopToolbar pageTitle="Reporting" />
           <div className="space-y-6 p-4 sm:p-6">
             <div className="flex flex-col gap-2">
@@ -154,7 +154,7 @@ const ReportingPage = () => {
 
                     {/* Conditionally show Export button - hide on Messages Overview */}
                     {activeTab !== "messages" && (
-                      <Button variant="default">
+                      <Button className="bg-[#6366F1] hover:bg-[#5855EB] text-white px-4 py-2 h-10 font-medium">
                         <Download className="mr-2 h-4 w-4" />
                         Export Report
                       </Button>
