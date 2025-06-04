@@ -6,11 +6,14 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import TopToolbar from "@/components/TopToolbar";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Analytics from "./pages/Analytics";
-import Campaigns from "./pages/Campaigns";
+import CampaignsPage from "./pages/CampaignsPage";
+import CreateCampaignPage from "./pages/CreateCampaignPage";
 import AiCrm from "./pages/AiCrm";
+import ReportingPage from "./pages/ReportingPage";
 import AIChat from "./components/AIChat";
 
 // Configure QueryClient with better error handling
@@ -49,21 +52,24 @@ const App = () => {
     <BrowserRouter>
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
+          <div className="flex flex-col min-h-screen w-full">
+            <TopToolbar />
+            <main className="flex-1 overflow-auto">
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/contacts" element={<Index />} />
+                <Route path="/conversations" element={<Index initialTab="conversations" />} />
+                <Route path="/campaigns" element={<CampaignsPage />} />
+                <Route path="/campaigns/create" element={<CreateCampaignPage />} />
+                <Route path="/reporting" element={<ReportingPage />} />
+                <Route path="/settings" element={<Index />} />
+                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </main>
+          </div>
           <Toaster />
           <Sonner />
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/contacts" element={<Index />} />
-            <Route path="/conversations" element={<Index initialTab="conversations" />} />
-            <Route path="/calendar" element={<Index />} />
-            <Route path="/analytics" element={<Analytics />} />
-            <Route path="/campaigns" element={<Campaigns />} />
-            <Route path="/ai-crm" element={<AiCrm />} />
-            <Route path="/payments" element={<Index />} />
-            <Route path="/settings" element={<Index />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
           <AIChat />
         </TooltipProvider>
       </QueryClientProvider>

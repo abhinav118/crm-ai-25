@@ -6,14 +6,11 @@ import {
   LayoutDashboard, 
   Users, 
   MessageSquare, 
-  Calendar, 
-  BarChart3, 
-  CreditCard, 
   Settings, 
   PanelLeft,
   ChevronRight,
   Megaphone,
-  Brain
+  FileText
 } from 'lucide-react';
 
 type SidebarProps = {
@@ -59,11 +56,8 @@ const Sidebar: React.FC<SidebarProps> = ({
           <SidebarItem icon={<LayoutDashboard size={20} />} label="Dashboard" to="/" collapsed={collapsed} />
           <SidebarItem icon={<Users size={20} />} label="Contacts" to="/contacts" collapsed={collapsed} />
           <SidebarItem icon={<MessageSquare size={20} />} label="Conversations" to="/conversations" collapsed={collapsed} />
-          <SidebarItem icon={<Brain size={20} />} label="AI CRM" to="/ai-crm" collapsed={collapsed} />
-          <SidebarItem icon={<Calendar size={20} />} label="Calendar" to="/calendar" collapsed={collapsed} />
-          <SidebarItem icon={<BarChart3 size={20} />} label="Analytics" to="/analytics" collapsed={collapsed} />
           <SidebarItem icon={<Megaphone size={20} />} label="Campaigns" to="/campaigns" collapsed={collapsed} />
-          <SidebarItem icon={<CreditCard size={20} />} label="Payments" to="/payments" collapsed={collapsed} />
+          <SidebarItem icon={<FileText size={20} />} label="Reporting" to="/reporting" collapsed={collapsed} />
         </nav>
         
         <div className="mt-auto px-2">
