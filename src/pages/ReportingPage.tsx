@@ -95,9 +95,9 @@ const ReportingPage = () => {
           <TopToolbar />
           <div className="space-y-6 p-4 sm:p-6">
             {/* Header */}
-            <div className="py-4 px-2">
+            {/* <div className="py-4 px-2">
               <h1 className="text-2xl font-bold text-primary">Reporting</h1>
-            </div>
+            </div> */}
 
             <div className="flex flex-col gap-2">
               {/* Tab Selectors */}
