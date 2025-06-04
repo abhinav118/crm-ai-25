@@ -1,44 +1,75 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ChevronLeft, ChevronRight, MoreHorizontal } from 'lucide-react';
+import { CalendarIcon, Search, MessageSquare, Users, Eye } from 'lucide-react';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
+import { DateRange } from 'react-day-picker';
 import { useNavigate } from 'react-router-dom';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+
+// Sample under review campaign data for demonstration
+const sampleCampaigns = [
+  {
+    id: '1',
+    name: 'Holiday Special Offer',
+    message: 'Hi {{first_name}}! 🎁 Special holiday discount - Get 25% off your next order with code HOLIDAY25. Limited time offer!',
+    recipients: 280,
+    submitted: '2024-01-16',
+    status: 'under review'
+  },
+  {
+    id: '2', 
+    name: 'New Product Launch',
+    message: 'Hey {{first_name}}! We\'re excited to introduce our new product line. Be the first to try it with 20% off! 🚀',
+    recipients: 95,
+    submitted: '2024-01-15',
+    status: 'under review'
+  }
+];
 
 const UnderReviewCampaignsView: React.FC = () => {
-  const [selectedMessages, setSelectedMessages] = useState<Set<string>>(new Set());
-  const [sortBy, setSortBy] = useState('sending-next');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const [recipientsFilter, setRecipientsFilter] = useState('all');
   
   const navigate = useNavigate();
+
+  const handleClearFilters = () => {
+    setSearchQuery('');
+    setDateRange(undefined);
+    setRecipientsFilter('all');
+  };
 
   const handleCreateCampaign = () => {
     navigate('/campaigns/create');
   };
 
-  const handleSelectMessage = (messageId: string, checked: boolean) => {
-    const newSelected = new Set(selectedMessages);
-    if (checked) {
-      newSelected.add(messageId);
-    } else {
-      newSelected.delete(messageId);
-    }
-    setSelectedMessages(newSelected);
+  const handleViewMessage = (campaign: typeof sampleCampaigns[0]) => {
+    navigate('/campaigns/create', {
+      state: {
+        prefilledMessage: campaign.message,
+        campaignName: campaign.name
+      }
+    });
   };
 
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      setSelectedMessages(new Set(['msg-1']));
-    } else {
-      setSelectedMessages(new Set());
-    }
-  };
-
-  const sampleMessage = {
-    id: 'msg-1',
-    to: '(718) 406-1667',
-    preview: "(test) EZ Texting: Don't miss out! Get your PRODUCT now at COMPANY NAME and enjoy a 15% discount with...",
-    status: 'In Review'
-  };
+  // Filter campaigns based on search query and recipients
+  const filteredCampaigns = sampleCampaigns.filter(campaign => {
+    const matchesSearch = campaign.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         campaign.message.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesRecipients = recipientsFilter === 'all' || 
+                             (recipientsFilter === 'customers' && campaign.recipients > 100) ||
+                             (recipientsFilter === 'prospects' && campaign.recipients <= 100) ||
+                             (recipientsFilter === 'vip' && campaign.recipients > 200);
+    
+    return matchesSearch && matchesRecipients;
+  });
 
   return (
     <div>
@@ -56,91 +87,150 @@ const UnderReviewCampaignsView: React.FC = () => {
         </Button>
       </div>
 
-      {/* Table Header */}
-      <div className="bg-white rounded-lg border border-gray-200">
-        <div className="flex justify-between items-center p-4 border-b border-gray-200">
-          <div className="flex items-center space-x-4">
-            <Checkbox
-              checked={selectedMessages.size > 0}
-              onCheckedChange={handleSelectAll}
+      {/* Filters Section */}
+      <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
+          {/* Search Field */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Input
+              placeholder="Search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
             />
-            <span className="text-sm text-gray-600">Select</span>
           </div>
-          <div className="flex items-center space-x-2">
-            <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-40">
-                <SelectValue />
+
+          {/* Date Range Picker */}
+          <div>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !dateRange && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {dateRange?.from ? (
+                    dateRange.to ? (
+                      <>
+                        {format(dateRange.from, "MM/dd/yyyy")} – {format(dateRange.to, "MM/dd/yyyy")}
+                      </>
+                    ) : (
+                      format(dateRange.from, "MM/dd/yyyy")
+                    )
+                  ) : (
+                    <span>mm/dd/yyyy – mm/dd/yyyy</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  initialFocus
+                  mode="range"
+                  defaultMonth={dateRange?.from}
+                  selected={dateRange}
+                  onSelect={setDateRange}
+                  numberOfMonths={2}
+                  className="pointer-events-auto"
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          {/* Recipients Filter */}
+          <div>
+            <Select value={recipientsFilter} onValueChange={setRecipientsFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="Recipients: All" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="sending-next">Sending Next</SelectItem>
-                <SelectItem value="created-date">Created Date</SelectItem>
-                <SelectItem value="recipient">Recipient</SelectItem>
+                <SelectItem value="all">Recipients: All</SelectItem>
+                <SelectItem value="customers">Customers</SelectItem>
+                <SelectItem value="prospects">Prospects</SelectItem>
+                <SelectItem value="vip">VIP</SelectItem>
               </SelectContent>
             </Select>
           </div>
         </div>
 
-        {/* Message Row */}
-        <div className="p-4 border-b border-gray-200 last:border-b-0">
-          <div className="flex items-start space-x-4">
-            <Checkbox
-              checked={selectedMessages.has(sampleMessage.id)}
-              onCheckedChange={(checked) => handleSelectMessage(sampleMessage.id, checked as boolean)}
-            />
-            <div className="flex-1">
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <p className="font-medium text-gray-900 mb-1">
-                    To: {sampleMessage.to}
-                  </p>
-                  <p className="text-gray-600 text-sm mb-2">
-                    {sampleMessage.preview}
-                  </p>
-                  <span className="inline-block px-2 py-1 text-xs font-medium text-red-600 bg-red-50 rounded">
-                    {sampleMessage.status}
-                  </span>
-                </div>
-                <div className="flex items-center space-x-2 ml-4">
-                  <Button variant="link" className="text-blue-600 hover:text-blue-700 text-sm font-medium">
-                    VIEW MESSAGE
-                  </Button>
-                  <Button variant="ghost" size="sm">
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Pagination */}
-        <div className="flex justify-between items-center p-4 border-t border-gray-200">
-          <div className="flex items-center space-x-2">
-            <Button variant="ghost" size="sm" disabled>
-              <ChevronLeft className="h-4 w-4 mr-1" />
-              PREV
-            </Button>
-            <span className="text-sm text-gray-600">1-1</span>
-            <Button variant="ghost" size="sm" disabled>
-              NEXT
-              <ChevronRight className="h-4 w-4 ml-1" />
-            </Button>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Select defaultValue="50">
-              <SelectTrigger className="w-16">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="25">25</SelectItem>
-                <SelectItem value="50">50</SelectItem>
-                <SelectItem value="100">100</SelectItem>
-              </SelectContent>
-            </Select>
-            <span className="text-sm text-gray-600">Items per page</span>
-          </div>
+        <div className="flex justify-end items-center mt-4">
+          {/* Clear Filter */}
+          <Button 
+            variant="link" 
+            onClick={handleClearFilters}
+            className="text-blue-600 hover:text-blue-700 font-medium"
+          >
+            CLEAR
+          </Button>
         </div>
       </div>
+
+      {/* Campaigns Table */}
+      {filteredCampaigns.length > 0 ? (
+        <div className="bg-white rounded-lg border border-gray-200">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Campaign Name</TableHead>
+                <TableHead>Recipients</TableHead>
+                <TableHead>Submitted Date</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredCampaigns.map((campaign) => (
+                <TableRow key={campaign.id}>
+                  <TableCell className="font-medium">{campaign.name}</TableCell>
+                  <TableCell>{campaign.recipients}</TableCell>
+                  <TableCell>{format(new Date(campaign.submitted), 'MMM d, yyyy')}</TableCell>
+                  <TableCell>
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                      {campaign.status}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      variant="link"
+                      size="sm"
+                      onClick={() => handleViewMessage(campaign)}
+                      className="text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+                    >
+                      <Eye className="h-4 w-4" />
+                      View Message
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      ) : (
+        /* Empty State */
+        <div className="bg-white rounded-lg border border-gray-200 p-12">
+          <div className="text-center">
+            <div className="mb-6">
+              <div className="relative inline-block">
+                <MessageSquare className="h-16 w-16 text-blue-500 mb-2" />
+                <Users className="h-12 w-12 text-purple-500 absolute -bottom-2 -right-2" />
+              </div>
+            </div>
+            <h3 className="text-xl font-medium text-gray-900 mb-4">
+              No campaigns under review
+            </h3>
+            <Button 
+              variant="link" 
+              onClick={handleCreateCampaign}
+              className="text-blue-600 hover:text-blue-700 font-medium text-base"
+            >
+              CREATE A NEW TEXT NOW!
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

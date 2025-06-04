@@ -46,18 +46,14 @@ const sampleCampaigns = [
 const SentCampaignsView: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
-  const [statusFilter, setStatusFilter] = useState('all');
   const [recipientsFilter, setRecipientsFilter] = useState('all');
-  const [typeFilter, setTypeFilter] = useState('all');
   
   const navigate = useNavigate();
 
   const handleClearFilters = () => {
     setSearchQuery('');
     setDateRange(undefined);
-    setStatusFilter('all');
     setRecipientsFilter('all');
-    setTypeFilter('all');
   };
 
   const handleCreateCampaign = () => {
@@ -68,16 +64,23 @@ const SentCampaignsView: React.FC = () => {
     navigate('/campaigns/create', {
       state: {
         prefilledMessage: campaign.message,
-        campaignName: campaign.name
+        campaignName: campaign.name + ' - Copy'
       }
     });
   };
 
-  // Filter campaigns based on search query
-  const filteredCampaigns = sampleCampaigns.filter(campaign =>
-    campaign.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    campaign.message.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Filter campaigns based on search query and recipients
+  const filteredCampaigns = sampleCampaigns.filter(campaign => {
+    const matchesSearch = campaign.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         campaign.message.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesRecipients = recipientsFilter === 'all' || 
+                             (recipientsFilter === 'customers' && campaign.recipients > 100) ||
+                             (recipientsFilter === 'prospects' && campaign.recipients <= 100) ||
+                             (recipientsFilter === 'vip' && campaign.recipients > 200);
+    
+    return matchesSearch && matchesRecipients;
+  });
 
   return (
     <div>
@@ -96,7 +99,7 @@ const SentCampaignsView: React.FC = () => {
 
       {/* Filters Section */}
       <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
           {/* Search Field */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -109,7 +112,7 @@ const SentCampaignsView: React.FC = () => {
           </div>
 
           {/* Date Range Picker */}
-          <div className="lg:col-span-2">
+          <div>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
@@ -147,21 +150,6 @@ const SentCampaignsView: React.FC = () => {
             </Popover>
           </div>
 
-          {/* Status Filter */}
-          <div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="Status: All" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Status: All</SelectItem>
-                <SelectItem value="sent">Sent</SelectItem>
-                <SelectItem value="delivered">Delivered</SelectItem>
-                <SelectItem value="failed">Failed</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
           {/* Recipients Filter */}
           <div>
             <Select value={recipientsFilter} onValueChange={setRecipientsFilter}>
@@ -178,22 +166,7 @@ const SentCampaignsView: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex justify-between items-center mt-4">
-          {/* Type Filter */}
-          <div className="w-48">
-            <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="Type: All" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Type: All</SelectItem>
-                <SelectItem value="promotional">Promotional</SelectItem>
-                <SelectItem value="reminder">Reminder</SelectItem>
-                <SelectItem value="announcement">Announcement</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
+        <div className="flex justify-end items-center mt-4">
           {/* Clear Filter */}
           <Button 
             variant="link" 

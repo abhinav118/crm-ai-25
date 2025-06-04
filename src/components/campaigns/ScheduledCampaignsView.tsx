@@ -1,20 +1,41 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CalendarIcon, Search, MessageSquare, Users } from 'lucide-react';
+import { CalendarIcon, Search, MessageSquare, Users, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { DateRange } from 'react-day-picker';
 import { useNavigate } from 'react-router-dom';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+
+// Sample scheduled campaign data for demonstration
+const sampleCampaigns = [
+  {
+    id: '1',
+    name: 'Flash Sale Alert',
+    message: 'Hey {{first_name}}! ⚡ Flash sale happening now - 30% off everything until midnight. Don\'t miss out! Use code FLASH30 🛍️',
+    recipients: 320,
+    scheduledDate: '2024-01-18',
+    status: 'scheduled'
+  },
+  {
+    id: '2', 
+    name: 'Weekly Newsletter',
+    message: 'Hi {{first_name}}, here\'s what\'s new this week at our restaurant! Check out our new seasonal menu items. 🍂',
+    recipients: 150,
+    scheduledDate: '2024-01-20',
+    status: 'scheduled'
+  }
+];
 
 const ScheduledCampaignsView: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [recipientsFilter, setRecipientsFilter] = useState('all');
-  const [typeFilter, setTypeFilter] = useState('all');
   
   const navigate = useNavigate();
 
@@ -22,12 +43,33 @@ const ScheduledCampaignsView: React.FC = () => {
     setSearchQuery('');
     setDateRange(undefined);
     setRecipientsFilter('all');
-    setTypeFilter('all');
   };
 
   const handleCreateCampaign = () => {
     navigate('/campaigns/create');
   };
+
+  const handleViewMessage = (campaign: typeof sampleCampaigns[0]) => {
+    navigate('/campaigns/create', {
+      state: {
+        prefilledMessage: campaign.message,
+        campaignName: campaign.name
+      }
+    });
+  };
+
+  // Filter campaigns based on search query and recipients
+  const filteredCampaigns = sampleCampaigns.filter(campaign => {
+    const matchesSearch = campaign.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         campaign.message.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesRecipients = recipientsFilter === 'all' || 
+                             (recipientsFilter === 'customers' && campaign.recipients > 100) ||
+                             (recipientsFilter === 'prospects' && campaign.recipients <= 100) ||
+                             (recipientsFilter === 'vip' && campaign.recipients > 200);
+    
+    return matchesSearch && matchesRecipients;
+  });
 
   return (
     <div>
@@ -46,7 +88,7 @@ const ScheduledCampaignsView: React.FC = () => {
 
       {/* Filters Section */}
       <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
           {/* Search Field */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -111,21 +153,6 @@ const ScheduledCampaignsView: React.FC = () => {
               </SelectContent>
             </Select>
           </div>
-
-          {/* Type Filter */}
-          <div>
-            <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="Type: All" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Type: All</SelectItem>
-                <SelectItem value="promotional">Promotional</SelectItem>
-                <SelectItem value="reminder">Reminder</SelectItem>
-                <SelectItem value="announcement">Announcement</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
         </div>
 
         <div className="flex justify-end items-center mt-4">
@@ -140,27 +167,69 @@ const ScheduledCampaignsView: React.FC = () => {
         </div>
       </div>
 
-      {/* Empty State */}
-      <div className="bg-white rounded-lg border border-gray-200 p-12">
-        <div className="text-center">
-          <div className="mb-6">
-            <div className="relative inline-block">
-              <MessageSquare className="h-16 w-16 text-blue-500 mb-2" />
-              <Users className="h-12 w-12 text-purple-500 absolute -bottom-2 -right-2" />
-            </div>
-          </div>
-          <h3 className="text-xl font-medium text-gray-900 mb-4">
-            You haven't scheduled any group texts yet
-          </h3>
-          <Button 
-            variant="link" 
-            onClick={handleCreateCampaign}
-            className="text-blue-600 hover:text-blue-700 font-medium text-base"
-          >
-            CREATE A NEW TEXT NOW!
-          </Button>
+      {/* Campaigns Table */}
+      {filteredCampaigns.length > 0 ? (
+        <div className="bg-white rounded-lg border border-gray-200">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Campaign Name</TableHead>
+                <TableHead>Recipients</TableHead>
+                <TableHead>Scheduled Date</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredCampaigns.map((campaign) => (
+                <TableRow key={campaign.id}>
+                  <TableCell className="font-medium">{campaign.name}</TableCell>
+                  <TableCell>{campaign.recipients}</TableCell>
+                  <TableCell>{format(new Date(campaign.scheduledDate), 'MMM d, yyyy')}</TableCell>
+                  <TableCell>
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                      {campaign.status}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      variant="link"
+                      size="sm"
+                      onClick={() => handleViewMessage(campaign)}
+                      className="text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+                    >
+                      <Eye className="h-4 w-4" />
+                      View Message
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
-      </div>
+      ) : (
+        /* Empty State */
+        <div className="bg-white rounded-lg border border-gray-200 p-12">
+          <div className="text-center">
+            <div className="mb-6">
+              <div className="relative inline-block">
+                <MessageSquare className="h-16 w-16 text-blue-500 mb-2" />
+                <Users className="h-12 w-12 text-purple-500 absolute -bottom-2 -right-2" />
+              </div>
+            </div>
+            <h3 className="text-xl font-medium text-gray-900 mb-4">
+              You haven't scheduled any group texts yet
+            </h3>
+            <Button 
+              variant="link" 
+              onClick={handleCreateCampaign}
+              className="text-blue-600 hover:text-blue-700 font-medium text-base"
+            >
+              CREATE A NEW TEXT NOW!
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
