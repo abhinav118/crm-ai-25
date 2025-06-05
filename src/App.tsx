@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -12,6 +13,7 @@ import CampaignsPage from "./pages/CampaignsPage";
 import CreateCampaignPage from "./pages/CreateCampaignPage";
 import AiCrm from "./pages/AiCrm";
 import ReportingPage from "./pages/ReportingPage";
+import Settings from "./pages/Settings";
 import AIChat from "./components/AIChat";
 
 // Configure QueryClient with better error handling
@@ -58,7 +60,7 @@ const App = () => {
               <Route path="/campaigns" element={<CampaignsPage />} />
               <Route path="/campaigns/create" element={<CreateCampaignPage />} />
               <Route path="/reporting" element={<ReportingPage />} />
-              <Route path="/settings" element={<Index />} />
+              <Route path="/settings/*" element={<Settings />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
