@@ -1,10 +1,9 @@
-
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Sidebar from "@/components/dashboard/Sidebar";
 import TopToolbar from "@/components/TopToolbar";
-import SMSCampaign from "@/components/campaigns/SMSCampaign";
-import EmailCampaign from "@/components/campaigns/EmailCampaign";
+import { SMSCampaign } from "@/components/campaigns/SMSCampaign";
+import { EmailCampaign } from "@/components/campaigns/EmailCampaign";
 
 const CreateCampaignPage: React.FC = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);

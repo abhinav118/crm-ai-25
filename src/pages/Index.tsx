@@ -38,7 +38,7 @@ const Index = ({ initialTab = "contacts" }: IndexProps) => {
             </TabsList>
             
             <TabsContent value="contacts" className="space-y-4">
-              <ContactsTable />
+              <ContactsTable contacts={[]} />
             </TabsContent>
             
             <TabsContent value="conversations" className="space-y-4">
@@ -46,7 +46,7 @@ const Index = ({ initialTab = "contacts" }: IndexProps) => {
             </TabsContent>
             
             <TabsContent value="bulk-actions" className="space-y-4">
-              <BulkActions />
+              <BulkActions selectedContacts={[]} />
             </TabsContent>
           </Tabs>
         </div>

@@ -1,11 +1,10 @@
-
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Sidebar from "@/components/dashboard/Sidebar";
 import TopToolbar from "@/components/TopToolbar";
-import SMSAnalytics from "@/components/analytics/SMSAnalytics";
-import ConversationsAnalytics from "@/components/analytics/ConversationsAnalytics";
-import LinksAnalytics from "@/components/analytics/LinksAnalytics";
+import { SMSAnalytics } from "@/components/analytics/SMSAnalytics";
+import { ConversationsAnalytics } from "@/components/analytics/ConversationsAnalytics";
+import { LinksAnalytics } from "@/components/analytics/LinksAnalytics";
 
 const ReportingPage: React.FC = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
