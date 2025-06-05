@@ -1,12 +1,24 @@
 
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { cn } from '@/lib/utils';
+import { 
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarTrigger,
+} from '@/components/ui/sidebar';
 import { 
   User, 
   CreditCard, 
   Phone
 } from 'lucide-react';
+import TopToolbar from '@/components/TopToolbar';
 
 const settingsNavItems = [
   { href: '/settings/plan-details', label: 'Plan Details', icon: CreditCard },
@@ -18,46 +30,52 @@ type SettingsLayoutProps = {
   children: React.ReactNode;
 };
 
-const SettingsLayout: React.FC<SettingsLayoutProps> = ({ children }) => {
+function AppSidebar() {
   const location = useLocation();
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="flex">
-        {/* Settings Sidebar */}
-        <div className="w-64 bg-white border-r border-gray-200 min-h-screen">
-          <div className="p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-6">Account</h2>
-            <nav className="space-y-1">
+    <Sidebar>
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel>Account</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
               {settingsNavItems.map((item) => {
                 const isActive = location.pathname === item.href;
                 const Icon = item.icon;
                 
                 return (
-                  <Link
-                    key={item.href}
-                    to={item.href}
-                    className={cn(
-                      "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors",
-                      isActive 
-                        ? "bg-blue-50 text-blue-700 border-r-2 border-blue-700" 
-                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                    )}
-                  >
-                    <Icon className="h-4 w-4" />
-                    {item.label}
-                  </Link>
+                  <SidebarMenuItem key={item.href}>
+                    <SidebarMenuButton asChild isActive={isActive}>
+                      <Link to={item.href}>
+                        <Icon className="h-4 w-4" />
+                        <span>{item.label}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
                 );
               })}
-            </nav>
-          </div>
-        </div>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+    </Sidebar>
+  );
+}
 
-        {/* Settings Content */}
-        <div className="flex-1">
-          {children}
+const SettingsLayout: React.FC<SettingsLayoutProps> = ({ children }) => {
+  return (
+    <div className="min-h-screen w-full bg-gray-50">
+      <TopToolbar pageTitle="Settings" />
+      <SidebarProvider>
+        <div className="flex w-full">
+          <AppSidebar />
+          <main className="flex-1 p-6">
+            <SidebarTrigger className="mb-4 md:hidden" />
+            {children}
+          </main>
         </div>
-      </div>
+      </SidebarProvider>
     </div>
   );
 };
