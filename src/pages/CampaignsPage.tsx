@@ -1,43 +1,44 @@
 
 import React, { useState } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import Sidebar from "@/components/dashboard/Sidebar";
-import TopToolbar from "@/components/TopToolbar";
-import ScheduledCampaignsView from "@/components/campaigns/ScheduledCampaignsView";
-import SentCampaignsView from "@/components/campaigns/SentCampaignsView";
-import UnderReviewCampaignsView from "@/components/campaigns/UnderReviewCampaignsView";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import TopToolbar from '@/components/TopToolbar';
+import Sidebar from '@/components/dashboard/Sidebar';
+import SentCampaignsView from '@/components/campaigns/SentCampaignsView';
+import ScheduledCampaignsView from '@/components/campaigns/ScheduledCampaignsView';
+import UnderReviewCampaignsView from '@/components/campaigns/UnderReviewCampaignsView';
+import CampaignCalendarView from '@/components/campaigns/CampaignCalendarView';
 
 const CampaignsPage: React.FC = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   return (
-    <div className="min-h-screen bg-gray-50 flex w-full">
-      <Sidebar 
-        collapsed={sidebarCollapsed} 
-        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-      />
-      
-      <div className={`flex-1 transition-all duration-300 ${sidebarCollapsed ? 'ml-[63px]' : 'ml-[234px]'}`}>
+    <div className="flex min-h-screen">
+      <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
+      <div className={`flex-1 transition-all duration-300 ${sidebarCollapsed ? 'ml-[70px]' : 'ml-[240px]'}`}>
         <TopToolbar pageTitle="Campaigns" />
-        
-        <div className="p-6">
-          <Tabs defaultValue="scheduled" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 mb-6">
-              <TabsTrigger value="scheduled">Scheduled</TabsTrigger>
+        <div className="p-8">
+          <Tabs defaultValue="sent" className="w-full">
+            <TabsList className="mb-6">
               <TabsTrigger value="sent">Sent</TabsTrigger>
+              <TabsTrigger value="scheduled">Scheduled</TabsTrigger>
               <TabsTrigger value="under-review">Under Review</TabsTrigger>
+              <TabsTrigger value="calendar">Calendar</TabsTrigger>
             </TabsList>
-            
-            <TabsContent value="scheduled">
-              <ScheduledCampaignsView />
-            </TabsContent>
-            
+
             <TabsContent value="sent">
               <SentCampaignsView />
             </TabsContent>
-            
+
+            <TabsContent value="scheduled">
+              <ScheduledCampaignsView />
+            </TabsContent>
+
             <TabsContent value="under-review">
               <UnderReviewCampaignsView />
+            </TabsContent>
+
+            <TabsContent value="calendar">
+              <CampaignCalendarView />
             </TabsContent>
           </Tabs>
         </div>
