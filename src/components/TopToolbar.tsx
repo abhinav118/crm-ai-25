@@ -46,7 +46,10 @@ const TopToolbar: React.FC<TopToolbarProps> = ({ pageTitle = "Dashboard" }) => {
             <div className="p-4 border-b bg-gray-50">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-sm font-medium text-gray-700">Textable Number</span>
-                <button className="text-xs text-blue-600 hover:text-blue-700 font-medium">
+                <button 
+                  className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                  onClick={() => navigate('/settings/numbers')}
+                >
                   Manage Numbers
                 </button>
               </div>

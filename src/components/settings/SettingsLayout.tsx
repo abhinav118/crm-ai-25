@@ -5,21 +5,13 @@ import { cn } from '@/lib/utils';
 import { 
   User, 
   CreditCard, 
-  Bell, 
-  Key, 
-  Users, 
-  Phone,
-  Receipt
+  Phone
 } from 'lucide-react';
 
 const settingsNavItems = [
   { href: '/settings/plan-details', label: 'Plan Details', icon: CreditCard },
-  { href: '/settings/billing', label: 'Billing', icon: Receipt },
-  { href: '/settings/notifications', label: 'Notifications', icon: Bell },
   { href: '/settings/profile', label: 'Profile', icon: User },
-  { href: '/settings/api', label: 'API', icon: Key },
-  { href: '/settings/teammates', label: 'Teammates', icon: Users },
-  { href: '/settings/textable-numbers', label: 'Textable Numbers', icon: Phone },
+  { href: '/settings/numbers', label: 'Textable Numbers', icon: Phone },
 ];
 
 type SettingsLayoutProps = {
