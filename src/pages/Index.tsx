@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from '@/components/dashboard/Sidebar';
-import TopBar from '@/components/dashboard/TopBar';
+import TopToolbar from '@/components/TopToolbar';
 import SearchBar from '@/components/dashboard/SearchBar';
 import ActionButtons from '@/components/dashboard/ActionButtons';
 import ContactsTable, { Contact } from '@/components/dashboard/ContactsTable';
@@ -583,10 +583,7 @@ const Index: React.FC<IndexProps> = ({ initialTab = 'all' }) => {
           sidebarCollapsed ? "ml-[70px]" : "ml-[240px]"
         }`}
       >
-        <TopBar 
-          sidebarCollapsed={sidebarCollapsed} 
-          onMenuClick={toggleSidebar} 
-        />
+        <TopToolbar pageTitle="Contacts" />
         
         <main className="p-4 sm:p-6">
           <div className="mb-6">
