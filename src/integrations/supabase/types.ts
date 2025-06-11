@@ -763,6 +763,7 @@ export type Database = {
           campaign_name: string
           created_at: string | null
           id: string
+          media_url: string | null
           message: string
           recipients: string[]
           repeat_days: string[] | null
@@ -776,6 +777,7 @@ export type Database = {
           campaign_name: string
           created_at?: string | null
           id?: string
+          media_url?: string | null
           message: string
           recipients: string[]
           repeat_days?: string[] | null
@@ -789,6 +791,7 @@ export type Database = {
           campaign_name?: string
           created_at?: string | null
           id?: string
+          media_url?: string | null
           message?: string
           recipients?: string[]
           repeat_days?: string[] | null

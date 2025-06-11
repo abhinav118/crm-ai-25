@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,7 +13,9 @@ import {
   ChevronLeft,
   CalendarIcon,
   Clock,
-  Info
+  Info,
+  X,
+  ImageIcon
 } from 'lucide-react';
 import { useNavigate, Link, useLocation, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -106,8 +107,11 @@ const CreateCampaignPage: React.FC = () => {
   const [aiPrompt, setAiPrompt] = useState('');
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [showPromptInput, setShowPromptInput] = useState(false);
-  const [attachedFiles, setAttachedFiles] = useState<Array<{name: string, url: string}>>([]);
   const [calendarInfo, setCalendarInfo] = useState<string | null>(null);
+  
+  // Image attachment states
+  const [attachedImage, setAttachedImage] = useState<{name: string, url: string, file: File} | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   
   // Schedule Later fields
   const [scheduleTime, setScheduleTime] = useState<Date>();
@@ -266,25 +270,78 @@ const CreateCampaignPage: React.FC = () => {
     fileInputRef.current?.click();
   };
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Create a preview URL for the file
-    const fileUrl = URL.createObjectURL(file);
-    const fileInfo = { name: file.name, url: fileUrl };
-    
-    setAttachedFiles(prev => [...prev, fileInfo]);
-    
-    // Insert file reference in message
-    const fileRef = `📎 ${file.name}`;
-    const newMessage = insertAtCursor(message, fileRef);
-    setMessage(newMessage);
-    
-    toast({
-      title: "File attached",
-      description: `${file.name} has been attached to your message`,
-    });
+    // Validate file type
+    if (!file.type.match(/^image\/(png|jpeg)$/)) {
+      toast({
+        title: "Invalid file type",
+        description: "Please select a PNG or JPEG image file",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validate file size (1MB = 1024 * 1024 bytes)
+    if (file.size > 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Image must be less than 1MB",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsUploadingImage(true);
+
+    try {
+      // Upload to Cloudinary
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('upload_preset', 'ml_default'); // Using default preset, can be configured
+
+      const cloudinaryResponse = await fetch(`https://api.cloudinary.com/v1_1/demo/image/upload`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!cloudinaryResponse.ok) {
+        throw new Error('Failed to upload image to Cloudinary');
+      }
+
+      const cloudinaryData = await cloudinaryResponse.json();
+      const mediaUrl = cloudinaryData.secure_url;
+
+      // Set attached image
+      setAttachedImage({
+        name: file.name,
+        url: mediaUrl,
+        file: file
+      });
+
+      toast({
+        title: "Image uploaded",
+        description: `${file.name} has been attached to your message`,
+      });
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      toast({
+        title: "Upload failed",
+        description: "Failed to upload image. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  const handleRemoveAttachment = () => {
+    setAttachedImage(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const handlePersonalizationTag = (tag: string) => {
@@ -407,7 +464,8 @@ const CreateCampaignPage: React.FC = () => {
         schedule_time: scheduleType === 'later' ? scheduleTime?.toISOString() : null,
         repeat_frequency: scheduleType === 'recurring' ? repeatFrequency : null,
         repeat_days: scheduleType === 'recurring' ? repeatDays : null,
-        status: scheduleType === 'now' ? 'pending' : 'scheduled'
+        status: scheduleType === 'now' ? 'pending' : 'scheduled',
+        media_url: attachedImage?.url || null
       };
 
       console.log('Saving campaign:', campaignData);
@@ -422,7 +480,7 @@ const CreateCampaignPage: React.FC = () => {
         throw campaignError;
       }
 
-      // If schedule type is 'now', send SMS immediately
+      // If schedule type is 'now', send SMS/MMS immediately
       if (scheduleType === 'now') {
         const smsPromises = recipients.map(async (recipient) => {
           // Skip segments for now, only send to phone numbers
@@ -431,14 +489,15 @@ const CreateCampaignPage: React.FC = () => {
               const { data, error } = await supabase.functions.invoke('send-via-telnyx', {
                 body: {
                   to: recipient.startsWith('+') ? recipient : `+1${recipient.replace(/\D/g, '')}`,
-                  message: message
+                  message: message,
+                  media_url: attachedImage?.url || null
                 }
               });
 
               if (error) throw error;
               return { recipient, success: true, data };
             } catch (error) {
-              console.error(`Failed to send SMS to ${recipient}:`, error);
+              console.error(`Failed to send ${attachedImage ? 'MMS' : 'SMS'} to ${recipient}:`, error);
               return { recipient, success: false, error: error.message };
             }
           }
@@ -464,7 +523,7 @@ const CreateCampaignPage: React.FC = () => {
         } else {
           toast({
             title: "Campaign sent successfully",
-            description: `${successCount} messages sent successfully`,
+            description: `${successCount} ${attachedImage ? 'MMS' : 'SMS'} messages sent successfully`,
           });
         }
       } else {
@@ -639,14 +698,19 @@ const CreateCampaignPage: React.FC = () => {
                       <TooltipTrigger asChild>
                         <button 
                           type="button"
-                          className="p-1 rounded hover:bg-gray-100"
+                          className={`p-1 rounded hover:bg-gray-100 ${isUploadingImage ? 'opacity-50 cursor-not-allowed' : ''}`}
                           onClick={handleFileAttach}
-                          aria-label="Attach file"
+                          disabled={isUploadingImage}
+                          aria-label="Attach image"
                         >
-                          <PaperclipIcon size={18} className="text-gray-500" />
+                          {isUploadingImage ? (
+                            <Loader2 size={18} className="text-gray-500 animate-spin" />
+                          ) : (
+                            <PaperclipIcon size={18} className="text-gray-500" />
+                          )}
                         </button>
                       </TooltipTrigger>
-                      <TooltipContent>Attach file</TooltipContent>
+                      <TooltipContent>Attach image (PNG/JPEG, max 1MB)</TooltipContent>
                     </Tooltip>
 
                     <div className="relative" ref={personalizationRef}>
@@ -711,7 +775,7 @@ const CreateCampaignPage: React.FC = () => {
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/*,.pdf,.doc,.docx"
+                    accept="image/png,image/jpeg"
                     className="hidden"
                     onChange={handleFileSelect}
                   />
@@ -770,22 +834,37 @@ const CreateCampaignPage: React.FC = () => {
                     maxLength={160}
                   />
                   
-                  {/* Attached Files Display */}
-                  {attachedFiles.length > 0 && (
-                    <div className="px-3 py-2 border-t bg-gray-50">
-                      <p className="text-xs text-gray-600 mb-1">Attached files:</p>
-                      {attachedFiles.map((file, index) => (
-                        <div key={index} className="flex items-center gap-2 text-xs">
-                          <PaperclipIcon size={12} className="text-gray-500" />
-                          <span>{file.name}</span>
+                  {/* Attached Image Display */}
+                  {attachedImage && (
+                    <div className="px-3 py-3 border-t bg-gray-50">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded border overflow-hidden bg-white">
+                            <img 
+                              src={attachedImage.url} 
+                              alt={attachedImage.name}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">{attachedImage.name}</p>
+                            <p className="text-xs text-gray-500">Image attached • Will send as MMS</p>
+                          </div>
                         </div>
-                      ))}
+                        <button
+                          type="button"
+                          onClick={handleRemoveAttachment}
+                          className="p-1 rounded hover:bg-gray-200 text-gray-500 hover:text-gray-700"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
                     </div>
                   )}
                   
                   <div className="px-3 py-2 text-xs text-gray-500 bg-gray-50 flex justify-between">
                     <span>{charCount} / 160 characters</span>
-                    <span>{getSmsSegments()} SMS segment{getSmsSegments() !== 1 ? 's' : ''}</span>
+                    <span>{attachedImage ? 'MMS' : `${getSmsSegments()} SMS segment${getSmsSegments() !== 1 ? 's' : ''}`}</span>
                   </div>
                 </div>
               </div>
@@ -954,16 +1033,25 @@ const CreateCampaignPage: React.FC = () => {
                       <div className="text-xs text-gray-500 text-center mb-2">
                         +1773-389-7839
                       </div>
-                      {message ? (
-                        <div className="bg-blue-500 text-white p-3 rounded-lg max-w-[85%] text-sm leading-relaxed">
-                          {message}
+                      {message || attachedImage ? (
+                        <div className="bg-blue-500 text-white p-3 rounded-lg max-w-[85%] text-sm leading-relaxed space-y-2">
+                          {attachedImage && (
+                            <div className="rounded overflow-hidden">
+                              <img 
+                                src={attachedImage.url} 
+                                alt="Attached"
+                                className="w-full h-auto max-h-32 object-cover"
+                              />
+                            </div>
+                          )}
+                          {message && <div>{message}</div>}
                         </div>
                       ) : (
                         <div className="flex items-center justify-center h-24 text-gray-400 text-xs">
                           Message preview will appear here
                         </div>
                       )}
-                      {message && (
+                      {(message || attachedImage) && (
                         <div className="text-xs text-gray-400 text-center mt-2">
                           STOP to end
                         </div>
@@ -981,3 +1069,5 @@ const CreateCampaignPage: React.FC = () => {
 };
 
 export default CreateCampaignPage;
+
+</edits_to_apply>
