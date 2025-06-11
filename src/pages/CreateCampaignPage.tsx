@@ -925,5 +925,3 @@ const CreateCampaignPage: React.FC = () => {
 };
 
 export default CreateCampaignPage;
-
-</edits_to_apply>
