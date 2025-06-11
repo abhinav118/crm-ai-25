@@ -297,27 +297,39 @@ const CreateCampaignPage: React.FC = () => {
     setIsUploadingImage(true);
 
     try {
-      // Upload to Cloudinary
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('upload_preset', 'ml_default'); // Using default preset, can be configured
-
-      const cloudinaryResponse = await fetch(`https://api.cloudinary.com/v1_1/demo/image/upload`, {
-        method: 'POST',
-        body: formData,
+      // Convert file to base64
+      const base64String = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          // Remove the data:image/xxx;base64, prefix
+          const base64 = result.split(',')[1];
+          resolve(base64);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
       });
 
-      if (!cloudinaryResponse.ok) {
-        throw new Error('Failed to upload image to Cloudinary');
+      console.log('Calling upload-to-cloudinary edge function...');
+      
+      // Call the Supabase Edge Function to upload to Cloudinary
+      const { data, error } = await supabase.functions.invoke('upload-to-cloudinary', {
+        body: { base64Image: base64String }
+      });
+
+      if (error) {
+        console.error('Supabase function error:', error);
+        throw new Error(error.message || 'Failed to upload image');
       }
 
-      const cloudinaryData = await cloudinaryResponse.json();
-      const mediaUrl = cloudinaryData.secure_url;
+      if (!data?.media_url) {
+        throw new Error('No media URL returned from upload');
+      }
 
       // Set attached image
       setAttachedImage({
         name: file.name,
-        url: mediaUrl,
+        url: data.media_url,
         file: file
       });
 
