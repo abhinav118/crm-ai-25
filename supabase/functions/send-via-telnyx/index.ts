@@ -14,7 +14,7 @@ serve(async (req) => {
 
   try {
     const TELNYX_API_KEY = Deno.env.get('TELNYX_API_KEY');
-    const TELNYX_FROM_NUMBER = Deno.env.get('TELNYX_FROM_NUMBER') || '+1773-389-7839';
+    const TELNYX_FROM_NUMBER = Deno.env.get('TELNYX_FROM_NUMBER') || '+17733897839';
 
     if (!TELNYX_API_KEY) {
       throw new Error('TELNYX_API_KEY not configured');
