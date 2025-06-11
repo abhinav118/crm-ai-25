@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,6 +30,7 @@ import Sidebar from '@/components/dashboard/Sidebar';
 import Picker from '@emoji-mart/react';
 import data from '@emoji-mart/data';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Checkbox } from '@/components/ui/checkbox';
 
 // Sample audience segments for the dropdown
 const sampleSegments = [
@@ -83,12 +85,18 @@ const AI_PROMPT_SUGGESTIONS = [
   "Write a customer satisfaction survey request"
 ];
 
+// Days of the week for recurring campaigns
+const DAYS_OF_WEEK = [
+  'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
+];
+
 const CreateCampaignPage: React.FC = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [toQuery, setToQuery] = useState('');
+  const [recipients, setRecipients] = useState<string[]>([]);
+  const [recipientInput, setRecipientInput] = useState('');
   const [campaignName, setCampaignName] = useState('');
   const [message, setMessage] = useState('');
-  const [scheduleOption, setScheduleOption] = useState('send_now');
+  const [scheduleType, setScheduleType] = useState<'now' | 'later' | 'recurring'>('now');
   const [isLoading, setIsLoading] = useState(false);
   const [charCount, setCharCount] = useState(0);
   const [wordCount, setWordCount] = useState(0);
@@ -102,20 +110,15 @@ const CreateCampaignPage: React.FC = () => {
   const [calendarInfo, setCalendarInfo] = useState<string | null>(null);
   
   // Schedule Later fields
-  const [scheduleDate, setScheduleDate] = useState<Date>();
-  const [scheduleTime, setScheduleTime] = useState('09:00');
+  const [scheduleTime, setScheduleTime] = useState<Date>();
   
   // Schedule Recurring fields
-  const [repeatType, setRepeatType] = useState('daily');
-  const [repeatInterval, setRepeatInterval] = useState(1);
-  const [recurringStartDate, setRecurringStartDate] = useState<Date>(new Date());
-  const [recurringTime, setRecurringTime] = useState('09:00');
-  const [endType, setEndType] = useState('never');
-  const [endAfterOccurrences, setEndAfterOccurrences] = useState(10);
-  const [endDate, setEndDate] = useState<Date>();
+  const [repeatFrequency, setRepeatFrequency] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
+  const [repeatDays, setRepeatDays] = useState<string[]>([]);
+  const [recurringStartTime, setRecurringStartTime] = useState<Date>(new Date());
   
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const toInputRef = useRef<HTMLInputElement>(null);
+  const recipientInputRef = useRef<HTMLInputElement>(null);
   const messageRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const personalizationRef = useRef<HTMLDivElement>(null);
@@ -134,7 +137,7 @@ const CreateCampaignPage: React.FC = () => {
 
   // Filter segments based on search query
   const filteredSegments = sampleSegments.filter(segment =>
-    segment.toLowerCase().includes(toQuery.toLowerCase())
+    segment.toLowerCase().includes(recipientInput.toLowerCase())
   );
 
   // Handle URL parameters and prefilled data
@@ -150,9 +153,8 @@ const CreateCampaignPage: React.FC = () => {
       const now = new Date();
       const targetDate = scheduleDate < now ? new Date(now.getTime() + 60 * 60 * 1000) : scheduleDate;
       
-      setScheduleOption('schedule_later');
-      setScheduleDate(new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate()));
-      setScheduleTime(targetDate.toTimeString().slice(0, 5));
+      setScheduleType('later');
+      setScheduleTime(targetDate);
       
       setCalendarInfo(`Scheduled from calendar for ${format(targetDate, 'MMMM d, yyyy')}`);
     }
@@ -163,13 +165,12 @@ const CreateCampaignPage: React.FC = () => {
       
       setCampaignName(campaign.name);
       setMessage(campaign.message);
-      setToQuery(campaign.to);
+      setRecipientInput(campaign.to);
       
       if (campaign.scheduleType === 'schedule_later') {
         const campaignDate = new Date(campaign.scheduledFor);
-        setScheduleOption('schedule_later');
-        setScheduleDate(new Date(campaignDate.getFullYear(), campaignDate.getMonth(), campaignDate.getDate()));
-        setScheduleTime(campaignDate.toTimeString().slice(0, 5));
+        setScheduleType('later');
+        setScheduleTime(campaignDate);
       }
       
       // Scroll to message area after a brief delay
@@ -221,16 +222,38 @@ const CreateCampaignPage: React.FC = () => {
     };
   }, []);
 
-  const handleToInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleRecipientInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    setToQuery(value);
+    setRecipientInput(value);
     setShowSegmentDropdown(value.length > 0);
   };
 
   const handleSegmentSelect = (segment: string) => {
-    setToQuery(segment);
+    setRecipientInput(segment);
     setShowSegmentDropdown(false);
-    toInputRef.current?.blur();
+    recipientInputRef.current?.blur();
+  };
+
+  const handleAddRecipient = () => {
+    if (recipientInput.trim()) {
+      // Check if it's a phone number or segment
+      if (recipientInput.match(/^\+?\d{10,15}$/)) {
+        // It's a phone number
+        if (!recipients.includes(recipientInput.trim())) {
+          setRecipients([...recipients, recipientInput.trim()]);
+        }
+      } else {
+        // It's a segment, add it as is
+        if (!recipients.includes(recipientInput.trim())) {
+          setRecipients([...recipients, recipientInput.trim()]);
+        }
+      }
+      setRecipientInput('');
+    }
+  };
+
+  const handleRemoveRecipient = (index: number) => {
+    setRecipients(recipients.filter((_, i) => i !== index));
   };
 
   const handleEmojiSelect = (emoji: any) => {
@@ -326,11 +349,11 @@ const CreateCampaignPage: React.FC = () => {
     }
   };
 
-  const handleSaveCampaign = async () => {
-    if (!toQuery.trim()) {
+  const handleSendCampaign = async () => {
+    if (recipients.length === 0) {
       toast({
-        title: "Recipient is required",
-        description: "Please select a recipient or audience segment",
+        title: "Recipients required",
+        description: "Please add at least one recipient or audience segment",
         variant: "destructive"
       });
       return;
@@ -354,27 +377,109 @@ const CreateCampaignPage: React.FC = () => {
       return;
     }
 
+    if (scheduleType === 'later' && !scheduleTime) {
+      toast({
+        title: "Schedule time required",
+        description: "Please select a time for scheduled delivery",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (scheduleType === 'recurring' && repeatDays.length === 0) {
+      toast({
+        title: "Repeat days required",
+        description: "Please select at least one day for recurring campaigns",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      console.log('Saving campaign:', { 
-        to: toQuery, 
-        campaignName, 
-        message, 
-        scheduleOption 
-      });
+      // Save campaign to database
+      const campaignData = {
+        campaign_name: campaignName,
+        message: message,
+        recipients: recipients,
+        schedule_type: scheduleType,
+        schedule_time: scheduleType === 'later' ? scheduleTime?.toISOString() : null,
+        repeat_frequency: scheduleType === 'recurring' ? repeatFrequency : null,
+        repeat_days: scheduleType === 'recurring' ? repeatDays : null,
+        status: scheduleType === 'now' ? 'pending' : 'scheduled'
+      };
+
+      console.log('Saving campaign:', campaignData);
       
-      toast({
-        title: "Campaign saved",
-        description: "Your campaign has been saved successfully",
-      });
+      const { data: campaign, error: campaignError } = await supabase
+        .from('telnyx_campaigns')
+        .insert(campaignData)
+        .select()
+        .single();
+
+      if (campaignError) {
+        throw campaignError;
+      }
+
+      // If schedule type is 'now', send SMS immediately
+      if (scheduleType === 'now') {
+        const smsPromises = recipients.map(async (recipient) => {
+          // Skip segments for now, only send to phone numbers
+          if (recipient.match(/^\+?\d{10,15}$/)) {
+            try {
+              const { data, error } = await supabase.functions.invoke('send-via-telnyx', {
+                body: {
+                  to: recipient.startsWith('+') ? recipient : `+1${recipient.replace(/\D/g, '')}`,
+                  message: message
+                }
+              });
+
+              if (error) throw error;
+              return { recipient, success: true, data };
+            } catch (error) {
+              console.error(`Failed to send SMS to ${recipient}:`, error);
+              return { recipient, success: false, error: error.message };
+            }
+          }
+          return { recipient, success: true, skipped: true };
+        });
+
+        const results = await Promise.all(smsPromises);
+        const successCount = results.filter(r => r.success && !r.skipped).length;
+        const failCount = results.filter(r => !r.success).length;
+
+        // Update campaign status
+        await supabase
+          .from('telnyx_campaigns')
+          .update({ status: failCount > 0 ? 'failed' : 'sent' })
+          .eq('id', campaign.id);
+
+        if (failCount > 0) {
+          toast({
+            title: "Campaign partially sent",
+            description: `${successCount} messages sent, ${failCount} failed`,
+            variant: "destructive"
+          });
+        } else {
+          toast({
+            title: "Campaign sent successfully",
+            description: `${successCount} messages sent successfully`,
+          });
+        }
+      } else {
+        toast({
+          title: "Campaign scheduled",
+          description: "Your campaign has been scheduled successfully",
+        });
+      }
 
       navigate('/campaigns');
     } catch (error) {
-      console.error("Error saving campaign:", error);
+      console.error("Error saving/sending campaign:", error);
       toast({
         title: "Error",
-        description: "An error occurred while saving the campaign",
+        description: "An error occurred while processing the campaign",
         variant: "destructive"
       });
     } finally {
@@ -384,24 +489,12 @@ const CreateCampaignPage: React.FC = () => {
 
   const getSmsSegments = () => Math.ceil(charCount / 160);
 
-  const getRecurringSummary = () => {
-    if (scheduleOption !== 'schedule_recurring' || !recurringStartDate) return null;
-    
-    const intervalText = repeatInterval === 1 ? 
-      repeatType.slice(0, -2) : // Remove 'ly' ending
-      `${repeatInterval} ${repeatType === 'daily' ? 'days' : repeatType === 'weekly' ? 'weeks' : 'months'}`;
-    
-    const startText = format(recurringStartDate, 'MMMM d, yyyy');
-    const timeText = recurringTime;
-    
-    let endText = '';
-    if (endType === 'after') {
-      endText = ` for ${endAfterOccurrences} occurrences`;
-    } else if (endType === 'on' && endDate) {
-      endText = ` until ${format(endDate, 'MMMM d, yyyy')}`;
-    }
-    
-    return `Your message will be sent every ${intervalText} at ${timeText} starting ${startText}${endText}.`;
+  const handleDayToggle = (day: string) => {
+    setRepeatDays(prev => 
+      prev.includes(day) 
+        ? prev.filter(d => d !== day)
+        : [...prev, day]
+    );
   };
 
   const insertAtCursor = (text: string, insert: string) => {
@@ -449,23 +542,47 @@ const CreateCampaignPage: React.FC = () => {
                 </Alert>
               )}
               
-              {/* TO Field with Segment Dropdown */}
+              {/* Recipients Field */}
               <div className="space-y-2">
-                <Label htmlFor="to" className="text-sm font-medium">
-                  To <span className="text-red-500">*</span>
+                <Label htmlFor="recipients" className="text-sm font-medium">
+                  Recipients <span className="text-red-500">*</span>
                 </Label>
                 <div className="relative" ref={dropdownRef}>
-                  <Input 
-                    ref={toInputRef}
-                    id="to"
-                    placeholder="Enter numbers, contacts, or groups" 
-                    value={toQuery}
-                    onChange={handleToInputChange}
-                    onFocus={() => setShowSegmentDropdown(toQuery.length > 0)}
-                  />
+                  <div className="flex gap-2">
+                    <Input 
+                      ref={recipientInputRef}
+                      id="recipients"
+                      placeholder="Enter phone numbers (+1234567890) or segments" 
+                      value={recipientInput}
+                      onChange={handleRecipientInputChange}
+                      onFocus={() => setShowSegmentDropdown(recipientInput.length > 0)}
+                      onKeyPress={(e) => e.key === 'Enter' && handleAddRecipient()}
+                    />
+                    <Button type="button" onClick={handleAddRecipient} variant="outline">
+                      Add
+                    </Button>
+                  </div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Message contacts and replies are only visible to you
+                    Enter phone numbers or select audience segments
                   </p>
+                  
+                  {/* Recipients List */}
+                  {recipients.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {recipients.map((recipient, index) => (
+                        <div key={index} className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm flex items-center gap-1">
+                          {recipient}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveRecipient(index)}
+                            className="text-blue-600 hover:text-blue-800"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   
                   {showSegmentDropdown && filteredSegments.length > 0 && (
                     <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-md shadow-lg z-50 max-h-48 overflow-y-auto">
@@ -490,7 +607,7 @@ const CreateCampaignPage: React.FC = () => {
                 </Label>
                 <Input 
                   id="campaign-name"
-                  placeholder="e.g., Angel Flight Marketing Service" 
+                  placeholder="e.g., Flash Sale Campaign" 
                   value={campaignName}
                   onChange={(e) => setCampaignName(e.target.value)}
                 />
@@ -650,6 +767,7 @@ const CreateCampaignPage: React.FC = () => {
                     className="border-0 focus-visible:ring-0 resize-none min-h-[120px]"
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
+                    maxLength={160}
                   />
                   
                   {/* Attached Files Display */}
@@ -675,208 +793,146 @@ const CreateCampaignPage: React.FC = () => {
               {/* Schedule Options */}
               <div className="space-y-3">
                 <Label className="text-sm font-medium">Schedule</Label>
-                <RadioGroup value={scheduleOption} onValueChange={setScheduleOption}>
+                <RadioGroup value={scheduleType} onValueChange={(value) => setScheduleType(value as 'now' | 'later' | 'recurring')}>
                   <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="send_now" id="send_now" />
+                    <RadioGroupItem value="now" id="send_now" />
                     <Label htmlFor="send_now" className="text-sm">Send Now</Label>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="schedule_later" id="schedule_later" />
+                    <RadioGroupItem value="later" id="schedule_later" />
                     <Label htmlFor="schedule_later" className="text-sm">Schedule for Later</Label>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="schedule_recurring" id="schedule_recurring" />
+                    <RadioGroupItem value="recurring" id="schedule_recurring" />
                     <Label htmlFor="schedule_recurring" className="text-sm">Schedule Recurring</Label>
                   </div>
                 </RadioGroup>
 
                 {/* Schedule for Later */}
-                {scheduleOption === 'schedule_later' && (
+                {scheduleType === 'later' && (
                   <div className="mt-4 space-y-4 p-4 border rounded-lg bg-gray-50">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label className="text-sm font-medium mb-2 block">Date</Label>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant="outline"
-                              className={cn(
-                                "w-full justify-start text-left font-normal",
-                                !scheduleDate && "text-muted-foreground"
-                              )}
-                            >
-                              <CalendarIcon className="mr-2 h-4 w-4" />
-                              {scheduleDate ? format(scheduleDate, "PPP") : <span>Pick a date</span>}
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0">
-                            <Calendar
-                              mode="single"
-                              selected={scheduleDate}
-                              onSelect={setScheduleDate}
-                              initialFocus
-                              className="pointer-events-auto"
-                            />
-                          </PopoverContent>
-                        </Popover>
-                      </div>
-                      <div>
-                        <Label className="text-sm font-medium mb-2 block">Time</Label>
-                        <div className="flex items-center">
-                          <Clock className="mr-2 h-4 w-4 text-gray-500" />
-                          <Input
-                            type="time"
-                            value={scheduleTime}
-                            onChange={(e) => setScheduleTime(e.target.value)}
+                    <div>
+                      <Label className="text-sm font-medium mb-2 block">Date & Time</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "w-full justify-start text-left font-normal",
+                              !scheduleTime && "text-muted-foreground"
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {scheduleTime ? format(scheduleTime, "PPP p") : <span>Pick a date and time</span>}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                          <Calendar
+                            mode="single"
+                            selected={scheduleTime}
+                            onSelect={setScheduleTime}
+                            initialFocus
+                            className="pointer-events-auto"
                           />
-                        </div>
-                      </div>
+                          <div className="p-3 border-t">
+                            <Input
+                              type="datetime-local"
+                              value={scheduleTime ? format(scheduleTime, "yyyy-MM-dd'T'HH:mm") : ''}
+                              onChange={(e) => setScheduleTime(new Date(e.target.value))}
+                            />
+                          </div>
+                        </PopoverContent>
+                      </Popover>
                     </div>
                   </div>
                 )}
 
                 {/* Schedule Recurring */}
-                {scheduleOption === 'schedule_recurring' && (
+                {scheduleType === 'recurring' && (
                   <div className="mt-4 space-y-4 p-4 border rounded-lg bg-gray-50">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label className="text-sm font-medium mb-2 block">Repeats</Label>
-                        <Select value={repeatType} onValueChange={setRepeatType}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="daily">Daily</SelectItem>
-                            <SelectItem value="weekly">Weekly</SelectItem>
-                            <SelectItem value="monthly">Monthly</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label className="text-sm font-medium mb-2 block">Every</Label>
-                        <Input
-                          type="number"
-                          min="1"
-                          value={repeatInterval}
-                          onChange={(e) => setRepeatInterval(parseInt(e.target.value) || 1)}
-                          placeholder="1"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label className="text-sm font-medium mb-2 block">Start Date</Label>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant="outline"
-                              className="w-full justify-start text-left font-normal"
-                            >
-                              <CalendarIcon className="mr-2 h-4 w-4" />
-                              {format(recurringStartDate, "PPP")}
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0">
-                            <Calendar
-                              mode="single"
-                              selected={recurringStartDate}
-                              onSelect={(date) => setRecurringStartDate(date || new Date())}
-                              initialFocus
-                              className="pointer-events-auto"
-                            />
-                          </PopoverContent>
-                        </Popover>
-                      </div>
-                      <div>
-                        <Label className="text-sm font-medium mb-2 block">Time</Label>
-                        <div className="flex items-center">
-                          <Clock className="mr-2 h-4 w-4 text-gray-500" />
-                          <Input
-                            type="time"
-                            value={recurringTime}
-                            onChange={(e) => setRecurringTime(e.target.value)}
-                          />
-                        </div>
-                      </div>
-                    </div>
-
                     <div>
-                      <Label className="text-sm font-medium mb-2 block">Ends</Label>
-                      <RadioGroup value={endType} onValueChange={setEndType}>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="never" id="never" />
-                          <Label htmlFor="never" className="text-sm">Never</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="after" id="after" />
-                          <Label htmlFor="after" className="text-sm">After</Label>
-                          {endType === 'after' && (
-                            <Input
-                              type="number"
-                              min="1"
-                              value={endAfterOccurrences}
-                              onChange={(e) => setEndAfterOccurrences(parseInt(e.target.value) || 1)}
-                              className="w-20 ml-2"
-                            />
-                          )}
-                          {endType === 'after' && <span className="text-sm">occurrences</span>}
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="on" id="on_date" />
-                          <Label htmlFor="on_date" className="text-sm">On</Label>
-                          {endType === 'on' && (
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <Button
-                                  variant="outline"
-                                  className="ml-2 justify-start text-left font-normal"
-                                  size="sm"
-                                >
-                                  <CalendarIcon className="mr-2 h-4 w-4" />
-                                  {endDate ? format(endDate, "PPP") : <span>Pick date</span>}
-                                </Button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0">
-                                <Calendar
-                                  mode="single"
-                                  selected={endDate}
-                                  onSelect={setEndDate}
-                                  initialFocus
-                                  className="pointer-events-auto"
-                                />
-                              </PopoverContent>
-                            </Popover>
-                          )}
-                        </div>
-                      </RadioGroup>
+                      <Label className="text-sm font-medium mb-2 block">Repeat Frequency</Label>
+                      <Select value={repeatFrequency} onValueChange={(value) => setRepeatFrequency(value as 'daily' | 'weekly' | 'monthly')}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="daily">Daily</SelectItem>
+                          <SelectItem value="weekly">Weekly</SelectItem>
+                          <SelectItem value="monthly">Monthly</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
 
-                    {/* Recurring Summary */}
-                    {getRecurringSummary() && (
-                      <div className="bg-blue-50 p-3 rounded border-l-4 border-blue-400">
-                        <p className="text-sm text-blue-800">
-                          <strong>Summary:</strong> {getRecurringSummary()}
-                        </p>
+                    {repeatFrequency === 'weekly' && (
+                      <div>
+                        <Label className="text-sm font-medium mb-2 block">Repeat on Days</Label>
+                        <div className="flex flex-wrap gap-2">
+                          {DAYS_OF_WEEK.map((day) => (
+                            <div key={day} className="flex items-center space-x-2">
+                              <Checkbox
+                                id={day}
+                                checked={repeatDays.includes(day)}
+                                onCheckedChange={() => handleDayToggle(day)}
+                              />
+                              <Label htmlFor={day} className="text-sm">{day.slice(0, 3)}</Label>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
+
+                    <div>
+                      <Label className="text-sm font-medium mb-2 block">Start Date & Time</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className="w-full justify-start text-left font-normal"
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {format(recurringStartTime, "PPP p")}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                          <Calendar
+                            mode="single"
+                            selected={recurringStartTime}
+                            onSelect={(date) => setRecurringStartTime(date || new Date())}
+                            initialFocus
+                            className="pointer-events-auto"
+                          />
+                          <div className="p-3 border-t">
+                            <Input
+                              type="datetime-local"
+                              value={format(recurringStartTime, "yyyy-MM-dd'T'HH:mm")}
+                              onChange={(e) => setRecurringStartTime(new Date(e.target.value))}
+                            />
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    </div>
                   </div>
                 )}
               </div>
 
               {/* Send Campaign Button */}
               <Button 
-                onClick={handleSaveCampaign} 
+                onClick={handleSendCampaign} 
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3" 
                 disabled={isLoading}
               >
                 {isLoading ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    <span>Sending Campaign...</span>
+                    <span>
+                      {scheduleType === 'now' ? 'Sending Campaign...' : 'Saving Campaign...'}
+                    </span>
                   </>
                 ) : (
-                  <span>Send Campaign</span>
+                  <span>
+                    {scheduleType === 'now' ? 'Send Campaign' : 'Schedule Campaign'}
+                  </span>
                 )}
               </Button>
             </div>
@@ -896,7 +952,7 @@ const CreateCampaignPage: React.FC = () => {
                     </div>
                     <div className="flex-1 p-3 overflow-y-auto">
                       <div className="text-xs text-gray-500 text-center mb-2">
-                        (952) 248-4727
+                        +1773-389-7839
                       </div>
                       {message ? (
                         <div className="bg-blue-500 text-white p-3 rounded-lg max-w-[85%] text-sm leading-relaxed">

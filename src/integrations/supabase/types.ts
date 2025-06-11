@@ -758,6 +758,48 @@ export type Database = {
         }
         Relationships: []
       }
+      telnyx_campaigns: {
+        Row: {
+          campaign_name: string
+          created_at: string | null
+          id: string
+          message: string
+          recipients: string[]
+          repeat_days: string[] | null
+          repeat_frequency: string | null
+          schedule_time: string | null
+          schedule_type: string
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          campaign_name: string
+          created_at?: string | null
+          id?: string
+          message: string
+          recipients: string[]
+          repeat_days?: string[] | null
+          repeat_frequency?: string | null
+          schedule_time?: string | null
+          schedule_type: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          campaign_name?: string
+          created_at?: string | null
+          id?: string
+          message?: string
+          recipients?: string[]
+          repeat_days?: string[] | null
+          repeat_frequency?: string | null
+          schedule_time?: string | null
+          schedule_type?: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       trending_recipes: {
         Row: {
           calories: number | null
