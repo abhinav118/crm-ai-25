@@ -2,7 +2,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const openAIApiKey = Deno.env.get('AFMS_OPENAI_API_KEY');
+const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -17,7 +17,7 @@ serve(async (req) => {
 
   try {
     if (!openAIApiKey) {
-      throw new Error('AFMS_OPENAI_API_KEY not configured');
+      throw new Error('OPENAI_API_KEY not configured');
     }
 
     const { prompt } = await req.json();
