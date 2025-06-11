@@ -99,6 +99,39 @@ export type Database = {
         }
         Relationships: []
       }
+      chat_logs: {
+        Row: {
+          goals_reference: string[] | null
+          id: string
+          message: string
+          response: string
+          session_id: string | null
+          timestamp: string
+          voice_response_duration: number | null
+          voice_response_used: boolean | null
+        }
+        Insert: {
+          goals_reference?: string[] | null
+          id?: string
+          message: string
+          response: string
+          session_id?: string | null
+          timestamp?: string
+          voice_response_duration?: number | null
+          voice_response_used?: boolean | null
+        }
+        Update: {
+          goals_reference?: string[] | null
+          id?: string
+          message?: string
+          response?: string
+          session_id?: string | null
+          timestamp?: string
+          voice_response_duration?: number | null
+          voice_response_used?: boolean | null
+        }
+        Relationships: []
+      }
       contact_logs: {
         Row: {
           action: string
@@ -165,6 +198,48 @@ export type Database = {
           status?: string | null
           tags?: string[] | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      favorite_recipes: {
+        Row: {
+          calories: number | null
+          created_at: string
+          id: string
+          image_url: string | null
+          macros: Json | null
+          recipe_id: string
+          recipe_ingredients: string | null
+          recipe_instructions: string | null
+          recipe_title: string
+          session_id: string
+          slug: string | null
+        }
+        Insert: {
+          calories?: number | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          macros?: Json | null
+          recipe_id: string
+          recipe_ingredients?: string | null
+          recipe_instructions?: string | null
+          recipe_title: string
+          session_id: string
+          slug?: string | null
+        }
+        Update: {
+          calories?: number | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          macros?: Json | null
+          recipe_id?: string
+          recipe_ingredients?: string | null
+          recipe_instructions?: string | null
+          recipe_title?: string
+          session_id?: string
+          slug?: string | null
         }
         Relationships: []
       }
@@ -268,10 +343,14 @@ export type Database = {
           id: string
           ingredient_name: string
           meal_plan_id: string | null
+          meal_title: string | null
           owned: boolean
           quantity: string | null
           recipe_id: string | null
+          session_id: string | null
           source: string
+          source_id: string | null
+          source_type: string | null
           updated_at: string
           user_id: string
         }
@@ -281,10 +360,14 @@ export type Database = {
           id?: string
           ingredient_name: string
           meal_plan_id?: string | null
+          meal_title?: string | null
           owned?: boolean
           quantity?: string | null
           recipe_id?: string | null
+          session_id?: string | null
           source?: string
+          source_id?: string | null
+          source_type?: string | null
           updated_at?: string
           user_id: string
         }
@@ -294,10 +377,14 @@ export type Database = {
           id?: string
           ingredient_name?: string
           meal_plan_id?: string | null
+          meal_title?: string | null
           owned?: boolean
           quantity?: string | null
           recipe_id?: string | null
+          session_id?: string | null
           source?: string
+          source_id?: string | null
+          source_type?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -380,6 +467,267 @@ export type Database = {
         }
         Relationships: []
       }
+      privacy_chat_sessions: {
+        Row: {
+          created_at: string | null
+          id: string
+          messages: Json | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          messages?: Json | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          messages?: Json | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      privacy_users: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          email: string | null
+          google_user_id: string | null
+          id: string
+          last_scan_date: string | null
+          name: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email?: string | null
+          google_user_id?: string | null
+          id?: string
+          last_scan_date?: string | null
+          name?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email?: string | null
+          google_user_id?: string | null
+          id?: string
+          last_scan_date?: string | null
+          name?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      recipes: {
+        Row: {
+          calories: number | null
+          cost_per_serving: string | null
+          created_at: string | null
+          description: string | null
+          difficulty: string | null
+          id: string
+          image_url: string | null
+          ingredients: string | null
+          instructions: string | null
+          macros: Json | null
+          slug: string
+          time_minutes: number | null
+          title: string
+        }
+        Insert: {
+          calories?: number | null
+          cost_per_serving?: string | null
+          created_at?: string | null
+          description?: string | null
+          difficulty?: string | null
+          id?: string
+          image_url?: string | null
+          ingredients?: string | null
+          instructions?: string | null
+          macros?: Json | null
+          slug: string
+          time_minutes?: number | null
+          title: string
+        }
+        Update: {
+          calories?: number | null
+          cost_per_serving?: string | null
+          created_at?: string | null
+          description?: string | null
+          difficulty?: string | null
+          id?: string
+          image_url?: string | null
+          ingredients?: string | null
+          instructions?: string | null
+          macros?: Json | null
+          slug?: string
+          time_minutes?: number | null
+          title?: string
+        }
+        Relationships: []
+      }
+      reservations: {
+        Row: {
+          created_at: string
+          customer_name: string
+          email: string
+          id: string
+          party_size: number
+          phone: string | null
+          reservation_date: string
+          reservation_time: string
+          special_requests: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          customer_name: string
+          email: string
+          id?: string
+          party_size: number
+          phone?: string | null
+          reservation_date: string
+          reservation_time: string
+          special_requests?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          customer_name?: string
+          email?: string
+          id?: string
+          party_size?: number
+          phone?: string | null
+          reservation_date?: string
+          reservation_time?: string
+          special_requests?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      saved_sessions: {
+        Row: {
+          created_at: string
+          data: Json | null
+          id: string
+          title: string
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          title: string
+          type: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          title?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      scan_summaries: {
+        Row: {
+          created_at: string | null
+          high_permission_apps: number | null
+          id: string
+          inactive_apps: number | null
+          risky_apps: number | null
+          scan_date: string | null
+          total_apps: number | null
+          unknown_publisher_apps: number | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          high_permission_apps?: number | null
+          id?: string
+          inactive_apps?: number | null
+          risky_apps?: number | null
+          scan_date?: string | null
+          total_apps?: number | null
+          unknown_publisher_apps?: number | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          high_permission_apps?: number | null
+          id?: string
+          inactive_apps?: number | null
+          risky_apps?: number | null
+          scan_date?: string | null
+          total_apps?: number | null
+          unknown_publisher_apps?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      scanned_apps: {
+        Row: {
+          app_id: string
+          app_name: string
+          category: Database["public"]["Enums"]["app_category"] | null
+          created_at: string | null
+          id: string
+          last_used: string | null
+          permissions: Json | null
+          publisher: string | null
+          risk_level: Database["public"]["Enums"]["app_risk_level"] | null
+          risk_reasons: string[] | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          app_id: string
+          app_name: string
+          category?: Database["public"]["Enums"]["app_category"] | null
+          created_at?: string | null
+          id?: string
+          last_used?: string | null
+          permissions?: Json | null
+          publisher?: string | null
+          risk_level?: Database["public"]["Enums"]["app_risk_level"] | null
+          risk_reasons?: string[] | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          app_id?: string
+          app_name?: string
+          category?: Database["public"]["Enums"]["app_category"] | null
+          created_at?: string | null
+          id?: string
+          last_used?: string | null
+          permissions?: Json | null
+          publisher?: string | null
+          risk_level?: Database["public"]["Enums"]["app_risk_level"] | null
+          risk_reasons?: string[] | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       sms_analytics: {
         Row: {
           clicked_by: string[] | null
@@ -407,6 +755,60 @@ export type Database = {
           id?: string
           last_clicked?: string | null
           link?: string | null
+        }
+        Relationships: []
+      }
+      trending_recipes: {
+        Row: {
+          calories: number | null
+          created_at: string
+          difficulty: string | null
+          id: string
+          image_url: string | null
+          ingredients: string | null
+          instructions: string | null
+          macros: Json | null
+          region: string
+          slug: string
+          source_url: string | null
+          time_minutes: number | null
+          title: string
+          trend_type: string
+          updated_at: string
+        }
+        Insert: {
+          calories?: number | null
+          created_at?: string
+          difficulty?: string | null
+          id?: string
+          image_url?: string | null
+          ingredients?: string | null
+          instructions?: string | null
+          macros?: Json | null
+          region?: string
+          slug: string
+          source_url?: string | null
+          time_minutes?: number | null
+          title: string
+          trend_type: string
+          updated_at?: string
+        }
+        Update: {
+          calories?: number | null
+          created_at?: string
+          difficulty?: string | null
+          id?: string
+          image_url?: string | null
+          ingredients?: string | null
+          instructions?: string | null
+          macros?: Json | null
+          region?: string
+          slug?: string
+          source_url?: string | null
+          time_minutes?: number | null
+          title?: string
+          trend_type?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -464,6 +866,42 @@ export type Database = {
         }
         Relationships: []
       }
+      user_profiles: {
+        Row: {
+          created_at: string | null
+          experience_level: string | null
+          goals: string[] | null
+          id: string
+          onboarding_completed: boolean | null
+          preferences: Json
+          preferred_communication_style: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          experience_level?: string | null
+          goals?: string[] | null
+          id?: string
+          onboarding_completed?: boolean | null
+          preferences?: Json
+          preferred_communication_style?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          experience_level?: string | null
+          goals?: string[] | null
+          id?: string
+          onboarding_completed?: boolean | null
+          preferences?: Json
+          preferred_communication_style?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -479,7 +917,12 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      app_category:
+        | "inactive"
+        | "high_permission"
+        | "unknown_publisher"
+        | "trusted"
+      app_risk_level: "low" | "medium" | "high" | "critical"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -594,6 +1037,14 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_category: [
+        "inactive",
+        "high_permission",
+        "unknown_publisher",
+        "trusted",
+      ],
+      app_risk_level: ["low", "medium", "high", "critical"],
+    },
   },
 } as const
