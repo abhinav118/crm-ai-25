@@ -73,13 +73,14 @@ const sampleCampaignData = {
   }
 };
 
+// Updated AI prompt suggestions for better SMS generation
 const AI_PROMPT_SUGGESTIONS = [
-  "Create a friendly welcome message",
-  "Write a professional follow-up",
-  "Generate a sales promotion announcement",
-  "Craft a birthday greeting with discount offer",
-  "Write a shipping confirmation message",
-  "Create a customer satisfaction survey request"
+  "Create a friendly welcome message for new customers",
+  "Write a flash sale announcement with urgency",
+  "Generate a birthday greeting with discount offer",
+  "Craft a professional follow-up message",
+  "Create a holiday special promotion",
+  "Write a customer satisfaction survey request"
 ];
 
 const CreateCampaignPage: React.FC = () => {
@@ -282,27 +283,42 @@ const CreateCampaignPage: React.FC = () => {
     setIsGeneratingAI(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('generate-sms', {
+      console.log('Calling create-ai-sms-text with prompt:', aiPrompt);
+      
+      const { data, error } = await supabase.functions.invoke('create-ai-sms-text', {
         body: { prompt: aiPrompt }
       });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase function error:', error);
+        throw error;
+      }
       
-      if (data) {
-        setMessage(data);
+      if (data?.message) {
+        setMessage(data.message);
         setShowPromptInput(false);
         setAiPrompt('');
         
         toast({
           title: "Message generated",
-          description: "AI-generated message has been created",
+          description: "AI-generated SMS message has been created",
         });
+
+        // Auto-scroll to message preview after generation
+        setTimeout(() => {
+          messageRef.current?.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'center' 
+          });
+        }, 100);
+      } else {
+        throw new Error('No message returned from AI');
       }
     } catch (error) {
       console.error("Error generating message:", error);
       toast({
-        title: "Generation failed",
-        description: "Failed to generate message",
+        title: "Couldn't generate SMS",
+        description: "Try again with a different prompt",
         variant: "destructive"
       });
     } finally {
@@ -909,3 +925,5 @@ const CreateCampaignPage: React.FC = () => {
 };
 
 export default CreateCampaignPage;
+
+</edits_to_apply>
