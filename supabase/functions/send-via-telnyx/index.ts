@@ -1,4 +1,3 @@
-
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -32,67 +31,67 @@ serve(async (req) => {
     }
 
     const payload: SendTelnyxPayload = await req.json();
-    const { to, message, media_url, schedule_type = 'now', schedule_time } = payload;
+    const { to, message, media_url, schedule_type , schedule_time } = payload;
 
     if (!to || !message) {
       throw new Error('Missing required parameters: to and message');
     }
 
-    // Handle scheduled campaigns
-    if (schedule_type === 'later') {
-      if (!schedule_time) {
-        throw new Error('Missing schedule_time for scheduled campaign');
-      }
+    // // Handle scheduled campaigns
+    // if (schedule_type === 'later') {
+    //   if (!schedule_time) {
+    //     throw new Error('Missing schedule_time for scheduled campaign');
+    //   }
 
-      const scheduledAt = new Date(schedule_time);
-      const now = new Date();
+    //   const scheduledAt = new Date(schedule_time);
+    //   const now = new Date();
 
-      if (scheduledAt <= now) {
-        throw new Error('Schedule time must be in the future');
-      }
+    //   if (scheduledAt <= now) {
+    //     throw new Error('Schedule time must be in the future');
+    //   }
 
-      // Create Supabase client for database operations
-      const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    //   // Create Supabase client for database operations
+    //   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-      // Convert to array if single recipient
-      const recipients = Array.isArray(to) ? to : [to];
+    //   // Convert to array if single recipient
+    //   const recipients = Array.isArray(to) ? to : [to];
 
-      // Create scheduled jobs for each recipient
-      const scheduledJobs = recipients.map(recipient => ({
-        type: 'send_sms',
-        payload: {
-          to: recipient,
-          message,
-          media_url,
-          from: TELNYX_FROM_NUMBER
-        },
-        scheduled_at: scheduledAt.toISOString()
-      }));
+    //   // Create scheduled jobs for each recipient
+    //   const scheduledJobs = recipients.map(recipient => ({
+    //     type: 'send_sms',
+    //     payload: {
+    //       to: recipient,
+    //       message,
+    //       media_url,
+    //       from: TELNYX_FROM_NUMBER
+    //     },
+    //     scheduled_at: scheduledAt.toISOString()
+    //   }));
 
-      const { error: insertError } = await supabase
-        .from('scheduled_jobs')
-        .insert(scheduledJobs);
+    //   const { error: insertError } = await supabase
+    //     .from('scheduled_jobs')
+    //     .insert(scheduledJobs);
 
-      if (insertError) {
-        console.error('Error scheduling jobs:', insertError);
-        throw new Error(`Failed to schedule messages: ${insertError.message}`);
-      }
+    //   if (insertError) {
+    //     console.error('Error scheduling jobs:', insertError);
+    //     throw new Error(`Failed to schedule messages: ${insertError.message}`);
+    //   }
 
-      console.log(`Scheduled ${recipients.length} messages for ${scheduledAt.toISOString()}`);
+    //   console.log(`Scheduled ${recipients.length} messages for ${scheduledAt.toISOString()}`);
 
-      return new Response(
-        JSON.stringify({
-          success: true,
-          status: 'scheduled',
-          scheduled_count: recipients.length,
-          scheduled_for: scheduledAt.toISOString(),
-          message: `${recipients.length} ${media_url ? 'MMS' : 'SMS'} message(s) scheduled for delivery`
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
-    }
+    //   return new Response(
+    //     JSON.stringify({
+    //       success: true,
+    //       status: 'scheduled',
+    //       scheduled_count: recipients.length,
+    //       scheduled_for: scheduledAt.toISOString(),
+    //       message: `${recipients.length} ${media_url ? 'MMS' : 'SMS'} message(s) scheduled for delivery`
+    //     }),
+    //     {
+    //       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    //     }
+    //   );
+    // }
 
     // Handle immediate sending (existing logic)
     const recipients = Array.isArray(to) ? to : [to];
@@ -114,6 +113,11 @@ serve(async (req) => {
           telnyxPayload.media_urls = [media_url];
         }
 
+        // Add scheduled time if provided
+        if (schedule_type === 'later' && schedule_time) {
+          telnyxPayload.send_at = new Date(schedule_time);
+        }
+        console.log("telnyxPayload",telnyxPayload);
         // Send SMS/MMS via Telnyx API
         const response = await fetch('https://api.telnyx.com/v2/messages', {
           method: 'POST',
