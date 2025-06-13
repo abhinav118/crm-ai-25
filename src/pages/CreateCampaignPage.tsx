@@ -226,6 +226,33 @@ const CreateCampaignPage: React.FC = () => {
     };
   }, []);
 
+  // Validation function for schedule time
+  const isValidScheduleTime = (selectedTime: Date | undefined): boolean => {
+    if (!selectedTime) return false;
+    
+    const now = new Date();
+    const minimumTime = new Date(now.getTime() + 5 * 60 * 1000); // 5 minutes from now
+    
+    return selectedTime > minimumTime;
+  };
+
+  // Check if form is valid for submission
+  const isFormValid = (): boolean => {
+    if (recipients.length === 0) return false;
+    if (!campaignName.trim()) return false;
+    if (!message.trim()) return false;
+    
+    if (scheduleType === 'later') {
+      return isValidScheduleTime(scheduleTime);
+    }
+    
+    if (scheduleType === 'recurring' && repeatDays.length === 0) {
+      return false;
+    }
+    
+    return true;
+  };
+
   const handleRecipientInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setRecipientInput(value);
@@ -419,55 +446,45 @@ const CreateCampaignPage: React.FC = () => {
   };
 
   const handleSendCampaign = async () => {
-    if (recipients.length === 0) {
-      toast({
-        title: "Recipients required",
-        description: "Please add at least one recipient or audience segment",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!campaignName.trim()) {
-      toast({
-        title: "Campaign name is required",
-        description: "Please enter a campaign name",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!message.trim()) {
-      toast({
-        title: "Message is required",
-        description: "Please enter a message body",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (scheduleType === 'later' && !scheduleTime) {
-      toast({
-        title: "Schedule time required",
-        description: "Please select a time for scheduled delivery",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (scheduleType === 'recurring' && repeatDays.length === 0) {
-      toast({
-        title: "Repeat days required",
-        description: "Please select at least one day for recurring campaigns",
-        variant: "destructive"
-      });
+    if (!isFormValid()) {
+      if (recipients.length === 0) {
+        toast({
+          title: "Recipients required",
+          description: "Please add at least one recipient or audience segment",
+          variant: "destructive"
+        });
+      } else if (!campaignName.trim()) {
+        toast({
+          title: "Campaign name is required",
+          description: "Please enter a campaign name",
+          variant: "destructive"
+        });
+      } else if (!message.trim()) {
+        toast({
+          title: "Message is required",
+          description: "Please enter a message body",
+          variant: "destructive"
+        });
+      } else if (scheduleType === 'later' && !isValidScheduleTime(scheduleTime)) {
+        toast({
+          title: "Invalid schedule time",
+          description: "Please select a time at least 5 minutes in the future",
+          variant: "destructive"
+        });
+      } else if (scheduleType === 'recurring' && repeatDays.length === 0) {
+        toast({
+          title: "Repeat days required",
+          description: "Please select at least one day for recurring campaigns",
+          variant: "destructive"
+        });
+      }
       return;
     }
 
     setIsLoading(true);
 
     try {
-      // Save campaign to database
+      // Save campaign to database first
       const campaignData = {
         campaign_name: campaignName,
         message: message,
@@ -476,7 +493,7 @@ const CreateCampaignPage: React.FC = () => {
         schedule_time: scheduleType === 'later' ? scheduleTime?.toISOString() : null,
         repeat_frequency: scheduleType === 'recurring' ? repeatFrequency : null,
         repeat_days: scheduleType === 'recurring' ? repeatDays : null,
-        status: scheduleType === 'now' ? 'pending' : 'scheduled',
+        status: 'pending',
         media_url: attachedImage?.url || null
       };
 
@@ -492,65 +509,81 @@ const CreateCampaignPage: React.FC = () => {
         throw campaignError;
       }
 
-      // If schedule type is 'now', send SMS/MMS immediately
-      if (scheduleType === 'now') {
-        const smsPromises = recipients.map(async (recipient) => {
-          // Skip segments for now, only send to phone numbers
-          if (recipient.match(/^\+?\d{10,15}$/)) {
-            try {
-              const { data, error } = await supabase.functions.invoke('send-via-telnyx', {
-                body: {
-                  to: recipient.startsWith('+') ? recipient : `+1${recipient.replace(/\D/g, '')}`,
-                  message: message,
-                  media_url: attachedImage?.url || null
-                }
-              });
+      // Filter to only phone numbers for actual SMS sending
+      const phoneRecipients = recipients.filter(recipient => 
+        recipient.match(/^\+?\d{10,15}$/)
+      );
 
-              if (error) throw error;
-              return { recipient, success: true, data };
-            } catch (error) {
-              console.error(`Failed to send ${attachedImage ? 'MMS' : 'SMS'} to ${recipient}:`, error);
-              return { recipient, success: false, error: error.message };
-            }
-          }
-          return { recipient, success: true, skipped: true };
-        });
-
-        const results = await Promise.all(smsPromises);
-        const successCount = results.filter(r => r.success && !r.skipped).length;
-        const failCount = results.filter(r => !r.success).length;
-
-        // Update campaign status
+      if (phoneRecipients.length === 0) {
+        // If no phone numbers, just save as scheduled
         await supabase
           .from('telnyx_campaigns')
-          .update({ status: failCount > 0 ? 'failed' : 'sent' })
+          .update({ status: 'scheduled' })
           .eq('id', campaign.id);
 
-        if (failCount > 0) {
-          toast({
-            title: "Campaign partially sent",
-            description: `${successCount} messages sent, ${failCount} failed`,
-            variant: "destructive"
-          });
-        } else {
-          toast({
-            title: "Campaign sent successfully",
-            description: `${successCount} ${attachedImage ? 'MMS' : 'SMS'} messages sent successfully`,
-          });
-        }
+        toast({
+          title: "Campaign saved",
+          description: "Campaign saved successfully (no phone numbers to send to)",
+        });
+        navigate('/campaigns');
+        return;
+      }
+
+      // Prepare payload for Telnyx edge function
+      const telnyxPayload = {
+        to: phoneRecipients,
+        from: "+17733897839", // Default Telnyx number
+        text: message,
+        schedule_type: scheduleType === 'later' ? 'later' : 'now',
+        ...(scheduleType === 'later' && scheduleTime && {
+          schedule_time: scheduleTime.toISOString()
+        }),
+        ...(attachedImage && { media_url: attachedImage.url })
+      };
+
+      console.log('Sending to Telnyx with payload:', telnyxPayload);
+
+      // Send to Telnyx via edge function
+      const { data: telnyxResponse, error: telnyxError } = await supabase.functions.invoke('send-via-telnyx', {
+        body: telnyxPayload
+      });
+
+      if (telnyxError) {
+        console.error('Telnyx edge function error:', telnyxError);
+        throw new Error(telnyxError.message || 'Failed to process with Telnyx');
+      }
+
+      if (!telnyxResponse?.success) {
+        throw new Error(telnyxResponse?.error || 'Telnyx delivery failed');
+      }
+
+      // Update campaign status based on schedule type
+      const finalStatus = scheduleType === 'later' ? 'scheduled' : 'sent';
+      await supabase
+        .from('telnyx_campaigns')
+        .update({ status: finalStatus })
+        .eq('id', campaign.id);
+
+      // Show appropriate success message
+      if (scheduleType === 'later') {
+        const scheduledTime = format(scheduleTime!, 'MMMM d \'at\' h:mm a');
+        toast({
+          title: "Campaign scheduled successfully",
+          description: `Campaign scheduled for ${scheduledTime}`,
+        });
       } else {
         toast({
-          title: "Campaign scheduled",
-          description: "Your campaign has been scheduled successfully",
+          title: "Campaign sent successfully",
+          description: `${phoneRecipients.length} ${attachedImage ? 'MMS' : 'SMS'} message${phoneRecipients.length > 1 ? 's' : ''} sent successfully`,
         });
       }
 
       navigate('/campaigns');
     } catch (error) {
-      console.error("Error saving/sending campaign:", error);
+      console.error("Error processing campaign:", error);
       toast({
         title: "Error",
-        description: "An error occurred while processing the campaign",
+        description: error instanceof Error ? error.message : "An error occurred while processing the campaign",
         variant: "destructive"
       });
     } finally {
@@ -903,7 +936,7 @@ const CreateCampaignPage: React.FC = () => {
                 {scheduleType === 'later' && (
                   <div className="mt-4 space-y-4 p-4 border rounded-lg bg-gray-50">
                     <div>
-                      <Label className="text-sm font-medium mb-2 block">Date & Time</Label>
+                      <Label className="text-sm font-medium mb-2 block">Date & Time <span className="text-red-500">*</span></Label>
                       <Popover>
                         <PopoverTrigger asChild>
                           <Button
@@ -934,6 +967,11 @@ const CreateCampaignPage: React.FC = () => {
                           </div>
                         </PopoverContent>
                       </Popover>
+                      {scheduleType === 'later' && scheduleTime && !isValidScheduleTime(scheduleTime) && (
+                        <p className="text-sm text-red-500 mt-1">
+                          Schedule time must be at least 5 minutes in the future
+                        </p>
+                      )}
                     </div>
                   </div>
                 )}
@@ -1011,13 +1049,13 @@ const CreateCampaignPage: React.FC = () => {
               <Button 
                 onClick={handleSendCampaign} 
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3" 
-                disabled={isLoading}
+                disabled={isLoading || !isFormValid()}
               >
                 {isLoading ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
                     <span>
-                      {scheduleType === 'now' ? 'Sending Campaign...' : 'Saving Campaign...'}
+                      {scheduleType === 'now' ? 'Sending Campaign...' : 'Scheduling Campaign...'}
                     </span>
                   </>
                 ) : (
