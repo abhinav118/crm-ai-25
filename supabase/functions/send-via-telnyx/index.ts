@@ -20,66 +20,102 @@ serve(async (req) => {
       throw new Error('TELNYX_API_KEY not configured');
     }
 
-    const { to, message, media_url } = await req.json();
+    const payload = await req.json();
+    const { to, from, text, subject, schedule_type, schedule_time, media_url } = payload;
 
-    if (!to || !message) {
-      throw new Error('Missing required parameters: to and message');
+    // Validate required fields
+    if (!to || !text) {
+      throw new Error('Missing required parameters: to and text');
     }
 
-    console.log(`Sending ${media_url ? 'MMS' : 'SMS'} via Telnyx to ${to}: ${message}`);
+    // Validate scheduled delivery parameters
+    if (schedule_type === 'later') {
+      if (!schedule_time) {
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'Missing schedule_time for scheduled message' 
+          }), 
+          { 
+            status: 400, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+    }
+
+    console.log(`Sending ${schedule_type === 'later' ? 'scheduled' : 'immediate'} ${media_url ? 'MMS' : 'SMS'} via Telnyx to ${Array.isArray(to) ? to.join(', ') : to}: ${text}`);
+    if (schedule_type === 'later') {
+      console.log(`Scheduled for: ${schedule_time}`);
+    }
     if (media_url) {
       console.log(`Media URL: ${media_url}`);
     }
 
-    // Build payload based on whether media is attached
-    const payload: any = {
-      from: TELNYX_FROM_NUMBER,
-      to: to,
-      text: message,
+    // Build Telnyx payload
+    const telnyxPayload: Record<string, any> = {
+      from: from || TELNYX_FROM_NUMBER,
+      to: Array.isArray(to) ? to : [to],
+      text: text,
     };
 
-    // Add media_urls for MMS if media_url is provided
-    if (media_url) {
-      payload.media_urls = [media_url];
+    // Add optional fields
+    if (schedule_type === 'later' && schedule_time) {
+      telnyxPayload.send_at = schedule_time;
     }
 
-    // Send SMS/MMS via Telnyx API
+    if (subject) {
+      telnyxPayload.subject = subject;
+    }
+
+    if (media_url) {
+      telnyxPayload.media_urls = [media_url];
+    }
+
+    console.log('Telnyx payload:', JSON.stringify(telnyxPayload, null, 2));
+
+    // Send to Telnyx API
     const response = await fetch('https://api.telnyx.com/v2/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${TELNYX_API_KEY}`,
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(telnyxPayload),
     });
 
     const responseData = await response.json();
 
     if (!response.ok) {
       console.error('Telnyx API error:', responseData);
-      throw new Error(`Telnyx API error: ${responseData.message || 'Unknown error'}`);
+      throw new Error(`Telnyx API error: ${responseData.errors?.[0]?.detail || responseData.message || 'Unknown error'}`);
     }
 
-    console.log(`${media_url ? 'MMS' : 'SMS'} sent successfully via Telnyx:`, responseData.data?.id);
+    const messageType = media_url ? 'MMS' : 'SMS';
+    const deliveryType = schedule_type === 'later' ? 'scheduled' : 'sent';
+    
+    console.log(`${messageType} ${deliveryType} successfully via Telnyx:`, responseData.data?.id);
 
     return new Response(
       JSON.stringify({
         success: true,
         data: responseData.data,
-        message: `${media_url ? 'MMS' : 'SMS'} sent successfully via Telnyx`
+        message: `${messageType} ${deliveryType} successfully via Telnyx`,
+        schedule_type: schedule_type,
+        recipients: Array.isArray(to) ? to : [to]
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     );
   } catch (error) {
-    console.error(`Error sending ${error.message.includes('media') ? 'MMS' : 'SMS'} via Telnyx:`, error.message);
+    console.error(`Error with Telnyx delivery:`, error.message);
     
     return new Response(
       JSON.stringify({
         success: false,
         error: error.message,
-        message: `Failed to send ${error.message.includes('media') ? 'MMS' : 'SMS'} via Telnyx`
+        message: `Failed to process message via Telnyx`
       }),
       {
         status: 400,
