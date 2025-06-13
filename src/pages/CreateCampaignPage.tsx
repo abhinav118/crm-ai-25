@@ -81,7 +81,7 @@ const CreateCampaignPage: React.FC = () => {
       setCampaignName(campaignToEdit.campaign_name || '');
       setMessage(campaignToEdit.message || '');
       setRecipients(campaignToEdit.recipients || []);
-      setScheduleType(campaignToEdit.schedule_type || 'now');
+      setScheduleType((campaignToEdit.schedule_type as 'now' | 'later') || 'now');
       
       if (campaignToEdit.schedule_time) {
         setScheduleDate(new Date(campaignToEdit.schedule_time));
@@ -318,6 +318,11 @@ const CreateCampaignPage: React.FC = () => {
     }
   };
 
+  // Handler for the Tabs component with proper type casting
+  const handleScheduleTypeChange = (value: string) => {
+    setScheduleType(value as 'now' | 'later');
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-4xl mx-auto p-6">
@@ -427,7 +432,7 @@ const CreateCampaignPage: React.FC = () => {
             {/* Schedule Type */}
             <div className="grid gap-2">
               <Label>Schedule</Label>
-              <Tabs defaultValue="now" onValueChange={setScheduleType}>
+              <Tabs value={scheduleType} onValueChange={handleScheduleTypeChange}>
                 <TabsList>
                   <TabsTrigger value="now">Send Now</TabsTrigger>
                   <TabsTrigger value="later">Schedule for Later</TabsTrigger>
