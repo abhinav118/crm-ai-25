@@ -5,59 +5,39 @@ import { Input } from '@/components/ui/input';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CalendarIcon, Search, MessageSquare, Users, Eye, Plus, Edit, Trash2 } from 'lucide-react';
+import { CalendarIcon, Search, MessageSquare, Users, Eye, Plus } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { DateRange } from 'react-day-picker';
 import { useNavigate } from 'react-router-dom';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+
+// Sample scheduled campaign data for demonstration
+const sampleCampaigns = [
+  {
+    id: '1',
+    name: 'Flash Sale Alert',
+    message: 'Hey {{first_name}}! ⚡ Flash sale happening now - 30% off everything until midnight. Don\'t miss out! Use code FLASH30 🛍️',
+    recipients: 320,
+    scheduledDate: '2024-01-18',
+    status: 'scheduled'
+  },
+  {
+    id: '2', 
+    name: 'Weekly Newsletter',
+    message: 'Hi {{first_name}}, here\'s what\'s new this week at our restaurant! Check out our new seasonal menu items. 🍂',
+    recipients: 150,
+    scheduledDate: '2024-01-20',
+    status: 'scheduled'
+  }
+];
 
 const ScheduledCampaignsView: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [recipientsFilter, setRecipientsFilter] = useState('all');
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [campaignToDelete, setCampaignToDelete] = useState<any>(null);
   
   const navigate = useNavigate();
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-
-  // Fetch scheduled campaigns
-  const { data: scheduledCampaigns = [], isLoading } = useQuery({
-    queryKey: ['scheduled-campaigns'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('telnyx_campaigns')
-        .select('*')
-        .eq('schedule_type', 'later')
-        .not('schedule_time', 'is', null)
-        .eq('status', 'scheduled')
-        .order('schedule_time', { ascending: true });
-
-      if (error) {
-        console.error('Error fetching scheduled campaigns:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load scheduled campaigns",
-          variant: "destructive",
-        });
-        return [];
-      }
-      return data || [];
-    }
-  });
 
   const handleClearFilters = () => {
     setSearchQuery('');
@@ -69,68 +49,24 @@ const ScheduledCampaignsView: React.FC = () => {
     navigate('/campaigns/create');
   };
 
-  const handleEditCampaign = (campaign: any) => {
-    navigate(`/campaigns/create?editCampaignId=${campaign.id}`);
-  };
-
-  const handleDeleteClick = (campaign: any) => {
-    setCampaignToDelete(campaign);
-    setDeleteDialogOpen(true);
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!campaignToDelete) return;
-
-    try {
-      // Delete from telnyx_campaigns
-      const { error: campaignError } = await supabase
-        .from('telnyx_campaigns')
-        .delete()
-        .eq('id', campaignToDelete.id);
-
-      if (campaignError) throw campaignError;
-
-      // Delete related scheduled_jobs if they exist
-      const { error: jobError } = await supabase
-        .from('scheduled_jobs')
-        .delete()
-        .eq('type', 'send_sms')
-        .contains('payload', { campaign_id: campaignToDelete.id });
-
-      if (jobError) {
-        console.warn('No related scheduled jobs found or error deleting:', jobError);
+  const handleViewMessage = (campaign: typeof sampleCampaigns[0]) => {
+    navigate('/campaigns/create', {
+      state: {
+        prefilledMessage: campaign.message,
+        campaignName: campaign.name
       }
-
-      // Refresh the campaigns list
-      queryClient.invalidateQueries({ queryKey: ['scheduled-campaigns'] });
-
-      toast({
-        title: "Success",
-        description: "Campaign deleted successfully",
-      });
-
-      setDeleteDialogOpen(false);
-      setCampaignToDelete(null);
-    } catch (error) {
-      console.error('Error deleting campaign:', error);
-      toast({
-        title: "Error",
-        description: "Failed to delete campaign. Please try again",
-        variant: "destructive",
-      });
-    }
+    });
   };
 
   // Filter campaigns based on search query and recipients
-  const filteredCampaigns = scheduledCampaigns.filter(campaign => {
-    const matchesSearch = campaign.campaign_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         campaign.message?.toLowerCase().includes(searchQuery.toLowerCase());
+  const filteredCampaigns = sampleCampaigns.filter(campaign => {
+    const matchesSearch = campaign.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         campaign.message.toLowerCase().includes(searchQuery.toLowerCase());
     
-    const recipientCount = campaign.recipients?.length || 0;
     const matchesRecipients = recipientsFilter === 'all' || 
-                             (recipientsFilter === 'customers' && recipientCount > 100) ||
-                             (recipientsFilter === 'prospects' && recipientCount <= 100) ||
-                             (recipientsFilter === 'vip' && recipientCount > 200);
+                             (recipientsFilter === 'customers' && campaign.recipients > 100) ||
+                             (recipientsFilter === 'prospects' && campaign.recipients <= 100) ||
+                             (recipientsFilter === 'vip' && campaign.recipients > 200);
     
     return matchesSearch && matchesRecipients;
   });
@@ -242,9 +178,8 @@ const ScheduledCampaignsView: React.FC = () => {
             <TableHeader>
               <TableRow>
                 <TableHead>Campaign Name</TableHead>
-                <TableHead>Message Preview</TableHead>
                 <TableHead>Recipients</TableHead>
-                <TableHead>Scheduled Date & Time</TableHead>
+                <TableHead>Scheduled Date</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
@@ -252,43 +187,24 @@ const ScheduledCampaignsView: React.FC = () => {
             <TableBody>
               {filteredCampaigns.map((campaign) => (
                 <TableRow key={campaign.id}>
-                  <TableCell className="font-medium">{campaign.campaign_name}</TableCell>
-                  <TableCell className="max-w-xs">
-                    <span className="truncate block">
-                      {campaign.message?.substring(0, 40)}
-                      {campaign.message && campaign.message.length > 40 ? '...' : ''}
-                    </span>
-                  </TableCell>
-                  <TableCell>{campaign.recipients?.length || 0}</TableCell>
-                  <TableCell>
-                    {campaign.schedule_time ? format(new Date(campaign.schedule_time), 'MMM d, yyyy h:mm a') : 'Not set'}
-                  </TableCell>
+                  <TableCell className="font-medium">{campaign.name}</TableCell>
+                  <TableCell>{campaign.recipients}</TableCell>
+                  <TableCell>{format(new Date(campaign.scheduledDate), 'MMM d, yyyy')}</TableCell>
                   <TableCell>
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                      Scheduled
+                      {campaign.status}
                     </span>
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEditCampaign(campaign)}
-                        className="text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
-                      >
-                        <Edit className="h-4 w-4" />
-                        Edit
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDeleteClick(campaign)}
-                        className="text-red-600 hover:text-red-700 font-medium flex items-center gap-1"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        Delete
-                      </Button>
-                    </div>
+                    <Button
+                      variant="link"
+                      size="sm"
+                      onClick={() => handleViewMessage(campaign)}
+                      className="text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+                    >
+                      <Eye className="h-4 w-4" />
+                      View Message
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -306,40 +222,18 @@ const ScheduledCampaignsView: React.FC = () => {
               </div>
             </div>
             <h3 className="text-xl font-medium text-gray-900 mb-4">
-              {isLoading ? 'Loading scheduled campaigns...' : 'You haven\'t scheduled any group texts yet'}
+              You haven't scheduled any group texts yet
             </h3>
-            {!isLoading && (
-              <Button 
-                variant="link" 
-                onClick={handleCreateCampaign}
-                className="text-blue-600 hover:text-blue-700 font-medium text-base"
-              >
-                CREATE A NEW TEXT NOW!
-              </Button>
-            )}
+            <Button 
+              variant="link" 
+              onClick={handleCreateCampaign}
+              className="text-blue-600 hover:text-blue-700 font-medium text-base"
+            >
+              CREATE A NEW TEXT NOW!
+            </Button>
           </div>
         </div>
       )}
-
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Are you sure you want to delete this scheduled campaign?</DialogTitle>
-            <DialogDescription>
-              This action will cancel the message before it's sent. This cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={handleDeleteConfirm}>
-              Confirm Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

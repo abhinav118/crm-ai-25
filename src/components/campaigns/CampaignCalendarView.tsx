@@ -3,9 +3,34 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, Settings, Eye } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { format } from 'date-fns';
+
+// Sample scheduled campaigns data
+const scheduledCampaigns = [
+  {
+    id: '1',
+    title: 'June Flash Deal',
+    message: '🔥 Don\'t miss our Flash Deal! Get 50% off everything until midnight. Use code FLASH50 🛍️',
+    scheduledFor: '2025-06-14T08:00',
+    recipientGroup: 'VIP Customers',
+    recipients: 320
+  },
+  {
+    id: '2',
+    title: 'Summer Sale Blast',
+    message: 'Hey {{first_name}}! ☀️ Summer sale is here - Up to 70% off on summer collection. Limited time offer!',
+    scheduledFor: '2025-06-18T10:30',
+    recipientGroup: 'All Contacts',
+    recipients: 450
+  },
+  {
+    id: '3',
+    title: 'Father\'s Day Special',
+    message: 'Celebrate Dad with our special Father\'s Day menu! 👨‍👩‍👧‍👦 Book your table now for June 15th.',
+    scheduledFor: '2025-06-15T09:00',
+    recipientGroup: 'Family Diners',
+    recipients: 180
+  }
+];
 
 // U.S. Holidays data
 const holidays = [
@@ -26,25 +51,6 @@ const holidays = [
 const CampaignCalendarView: React.FC = () => {
   const [currentDate, setCurrentDate] = useState(new Date(2025, 5)); // June 2025
   const navigate = useNavigate();
-
-  // Fetch scheduled campaigns
-  const { data: scheduledCampaigns = [] } = useQuery({
-    queryKey: ['scheduled-campaigns'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('telnyx_campaigns')
-        .select('*')
-        .eq('schedule_type', 'later')
-        .not('schedule_time', 'is', null)
-        .eq('status', 'scheduled');
-
-      if (error) {
-        console.error('Error fetching scheduled campaigns:', error);
-        return [];
-      }
-      return data || [];
-    }
-  });
 
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -76,7 +82,7 @@ const CampaignCalendarView: React.FC = () => {
   };
 
   const handleViewCampaign = (campaignId: string) => {
-    navigate(`/campaigns/create?editCampaignId=${campaignId}`);
+    navigate(`/campaigns/create?fromCampaignId=${campaignId}`);
   };
 
   const getDaysInMonth = () => {
@@ -109,8 +115,7 @@ const CampaignCalendarView: React.FC = () => {
 
   const getCampaignsForDate = (date: Date) => {
     return scheduledCampaigns.filter(campaign => {
-      if (!campaign.schedule_time) return false;
-      const campaignDate = new Date(campaign.schedule_time);
+      const campaignDate = new Date(campaign.scheduledFor);
       return (
         campaignDate.getDate() === date.getDate() &&
         campaignDate.getMonth() === date.getMonth() &&
@@ -206,10 +211,13 @@ const CampaignCalendarView: React.FC = () => {
                       onClick={(e) => e.stopPropagation()}
                     >
                       <div className="font-medium truncate mb-1">
-                        {campaign.campaign_name}
+                        {campaign.title}
                       </div>
                       <div className="text-xs mb-1">
-                        {campaign.schedule_time ? format(new Date(campaign.schedule_time), 'h:mm a') : ''}
+                        {new Date(campaign.scheduledFor).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
                       </div>
                       <div className="text-xs text-blue-500 flex items-center gap-1 mt-1">
                         <Eye className="h-3 w-3" />
@@ -220,7 +228,7 @@ const CampaignCalendarView: React.FC = () => {
                             handleViewCampaign(campaign.id);
                           }}
                         >
-                          View Campaign
+                          View
                         </button>
                       </div>
                     </div>
