@@ -492,62 +492,80 @@ const CreateCampaignPage: React.FC = () => {
         throw campaignError;
       }
 
-      // If schedule type is 'now', send SMS/MMS immediately
-      if (scheduleType === 'now') {
-        const smsPromises = recipients.map(async (recipient) => {
-          // Skip segments for now, only send to phone numbers
-          if (recipient.match(/^\+?\d{10,15}$/)) {
-            try {
-              const { data, error } = await supabase.functions.invoke('send-via-telnyx', {
-                body: {
-                  to: recipient.startsWith('+') ? recipient : `+1${recipient.replace(/\D/g, '')}`,
-                  message: message,
-                  media_url: attachedImage?.url || null
-                }
-              });
+      // Send SMS/MMS via updated send-via-telnyx function
+      const phoneRecipients = recipients.filter(recipient => 
+        recipient.match(/^\+?\d{10,15}$/)
+      ).map(recipient => 
+        recipient.startsWith('+') ? recipient : `+1${recipient.replace(/\D/g, '')}`
+      );
 
-              if (error) throw error;
-              return { recipient, success: true, data };
-            } catch (error) {
-              console.error(`Failed to send ${attachedImage ? 'MMS' : 'SMS'} to ${recipient}:`, error);
-              return { recipient, success: false, error: error.message };
+      if (phoneRecipients.length > 0) {
+        try {
+          const { data, error } = await supabase.functions.invoke('send-via-telnyx', {
+            body: {
+              to: phoneRecipients,
+              message: message,
+              media_url: attachedImage?.url || null,
+              schedule_type: scheduleType,
+              schedule_time: scheduleType === 'later' ? scheduleTime?.toISOString() : undefined
             }
-          }
-          return { recipient, success: true, skipped: true };
-        });
-
-        const results = await Promise.all(smsPromises);
-        const successCount = results.filter(r => r.success && !r.skipped).length;
-        const failCount = results.filter(r => !r.success).length;
-
-        // Update campaign status
-        await supabase
-          .from('telnyx_campaigns')
-          .update({ status: failCount > 0 ? 'failed' : 'sent' })
-          .eq('id', campaign.id);
-
-        if (failCount > 0) {
-          toast({
-            title: "Campaign partially sent",
-            description: `${successCount} messages sent, ${failCount} failed`,
-            variant: "destructive"
           });
-        } else {
+
+          if (error) throw error;
+
+          // Update campaign status based on response
+          let finalStatus = 'sent';
+          if (scheduleType === 'later') {
+            finalStatus = 'scheduled';
+          } else if (data?.failed_count > 0) {
+            finalStatus = 'failed';
+          }
+
+          await supabase
+            .from('telnyx_campaigns')
+            .update({ status: finalStatus })
+            .eq('id', campaign.id);
+
+          if (scheduleType === 'later') {
+            toast({
+              title: "Campaign scheduled",
+              description: `${phoneRecipients.length} ${attachedImage ? 'MMS' : 'SMS'} message(s) scheduled for ${format(scheduleTime!, 'PPP p')}`,
+            });
+          } else if (data?.failed_count > 0) {
+            toast({
+              title: "Campaign partially sent",
+              description: `${data.sent_count} sent, ${data.failed_count} failed`,
+              variant: "destructive"
+            });
+          } else {
+            toast({
+              title: "Campaign sent successfully",
+              description: `${data.sent_count} ${attachedImage ? 'MMS' : 'SMS'} message(s) sent successfully`,
+            });
+          }
+        } catch (error) {
+          console.error("Error sending campaign:", error);
+          await supabase
+            .from('telnyx_campaigns')
+            .update({ status: 'failed' })
+            .eq('id', campaign.id);
+
           toast({
-            title: "Campaign sent successfully",
-            description: `${successCount} ${attachedImage ? 'MMS' : 'SMS'} messages sent successfully`,
+            title: "Error sending campaign",
+            description: error.message || "An error occurred while sending the campaign",
+            variant: "destructive"
           });
         }
       } else {
         toast({
-          title: "Campaign scheduled",
-          description: "Your campaign has been scheduled successfully",
+          title: "Campaign saved",
+          description: "Campaign saved but no valid phone numbers found to send to",
         });
       }
 
       navigate('/campaigns');
     } catch (error) {
-      console.error("Error saving/sending campaign:", error);
+      console.error("Error saving campaign:", error);
       toast({
         title: "Error",
         description: "An error occurred while processing the campaign",
