@@ -214,6 +214,7 @@ export type Database = {
           recipe_title: string
           session_id: string
           slug: string | null
+          source: string | null
         }
         Insert: {
           calories?: number | null
@@ -227,6 +228,7 @@ export type Database = {
           recipe_title: string
           session_id: string
           slug?: string | null
+          source?: string | null
         }
         Update: {
           calories?: number | null
@@ -240,6 +242,7 @@ export type Database = {
           recipe_title?: string
           session_id?: string
           slug?: string | null
+          source?: string | null
         }
         Relationships: []
       }
@@ -575,6 +578,63 @@ export type Database = {
         }
         Relationships: []
       }
+      recommend_recipes: {
+        Row: {
+          calories: number | null
+          carbs: string | null
+          cost: string | null
+          created_at: string
+          difficulty: string | null
+          fat: string | null
+          id: string
+          image_url: string | null
+          ingredients: Json | null
+          instructions: Json | null
+          protein: string | null
+          session_id: string
+          slug: string
+          time: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          calories?: number | null
+          carbs?: string | null
+          cost?: string | null
+          created_at?: string
+          difficulty?: string | null
+          fat?: string | null
+          id?: string
+          image_url?: string | null
+          ingredients?: Json | null
+          instructions?: Json | null
+          protein?: string | null
+          session_id: string
+          slug: string
+          time?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          calories?: number | null
+          carbs?: string | null
+          cost?: string | null
+          created_at?: string
+          difficulty?: string | null
+          fat?: string | null
+          id?: string
+          image_url?: string | null
+          ingredients?: Json | null
+          instructions?: Json | null
+          protein?: string | null
+          session_id?: string
+          slug?: string
+          time?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       reservations: {
         Row: {
           created_at: string
@@ -725,6 +785,39 @@ export type Database = {
           risk_reasons?: string[] | null
           updated_at?: string | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      scheduled_jobs: {
+        Row: {
+          created_at: string | null
+          error_message: string | null
+          id: string
+          payload: Json
+          scheduled_at: string
+          status: string | null
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          payload: Json
+          scheduled_at: string
+          status?: string | null
+          type: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          payload?: Json
+          scheduled_at?: string
+          status?: string | null
+          type?: string
+          updated_at?: string | null
         }
         Relationships: []
       }

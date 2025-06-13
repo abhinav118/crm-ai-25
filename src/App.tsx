@@ -49,9 +49,9 @@ const App = () => {
   }, []);
 
   return (
-    <BrowserRouter>
-      <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <BrowserRouter>
           <div className="min-h-screen w-full">
             <Routes>
               <Route path="/" element={<Index />} />
@@ -68,9 +68,9 @@ const App = () => {
           <Toaster />
           <Sonner />
           <AIChat />
-        </TooltipProvider>
-      </QueryClientProvider>
-    </BrowserRouter>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
   );
 };
 
