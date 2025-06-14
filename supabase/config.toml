@@ -1,1 +1,5 @@
+
 project_id = "nzsflibcvrisxjlzuxjn"
+
+[functions.update-campaign-status]
+verify_jwt = false
