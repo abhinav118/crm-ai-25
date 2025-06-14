@@ -1,4 +1,3 @@
-
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -70,6 +69,24 @@ export function useSentTelnyxCampaigns() {
   });
 }
 
+// Query single campaign by id
+export function useTelnyxCampaignById(id: string | null) {
+  return useQuery({
+    queryKey: ['telnyx_campaigns', 'by_id', id],
+    queryFn: async () => {
+      if (!id) return null;
+      const { data, error } = await supabase
+        .from('telnyx_campaigns')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle();
+      if (error) throw error;
+      return data as TelnyxCampaign | null;
+    },
+    enabled: !!id,
+  });
+}
+
 // Mutation for deleting a campaign
 export function useDeleteTelnyxCampaign() {
   const queryClient = useQueryClient();
@@ -86,4 +103,3 @@ export function useDeleteTelnyxCampaign() {
     }
   });
 }
-

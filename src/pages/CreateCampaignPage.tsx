@@ -32,6 +32,7 @@ import Picker from '@emoji-mart/react';
 import data from '@emoji-mart/data';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
+import { useTelnyxCampaignById } from '@/hooks/useTelnyxCampaigns';
 
 // Sample audience segments for the dropdown
 const sampleSegments = [
@@ -130,7 +131,10 @@ const CreateCampaignPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
+  const campaignId = searchParams.get('id');
   const { toast } = useToast();
+
+  const { data: telnyxPrefillCampaign, isLoading: isLoadingPrefillCampaign, error: prefillError } = useTelnyxCampaignById(campaignId);
 
   // Personalization tags with display names and corresponding template tags
   const personalizationOptions = [
@@ -146,6 +150,44 @@ const CreateCampaignPage: React.FC = () => {
 
   // Handle URL parameters and prefilled data
   useEffect(() => {
+    // If coming from calendar link with campaign id param
+    if (campaignId && telnyxPrefillCampaign) {
+      setCampaignName(telnyxPrefillCampaign.campaign_name ?? '');
+      setMessage(telnyxPrefillCampaign.message ?? '');
+      setRecipients(Array.isArray(telnyxPrefillCampaign.recipients) ? telnyxPrefillCampaign.recipients : []);
+      setRecipientInput('');
+      if (telnyxPrefillCampaign.schedule_type === 'later' && telnyxPrefillCampaign.schedule_time) {
+        setScheduleType('later');
+        setScheduleTime(new Date(telnyxPrefillCampaign.schedule_time));
+        setCalendarInfo(
+          `Scheduled for ${format(new Date(telnyxPrefillCampaign.schedule_time), 'MMMM d, yyyy')}`
+        );
+      } else {
+        setScheduleType('now');
+        setScheduleTime(undefined);
+        setCalendarInfo(null);
+      }
+      // Prefill attached image if media_url exists
+      if (telnyxPrefillCampaign.media_url) {
+        setAttachedImage({
+          name: 'Attached', // Can't get filename from URL, so generic label
+          url: telnyxPrefillCampaign.media_url,
+          file: undefined as any // File is not available, but we need url for preview
+        });
+      } else {
+        setAttachedImage(null);
+      }
+      // scroll to message as before
+      setTimeout(() => {
+        messageRef.current?.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'center' 
+        });
+        messageRef.current?.focus();
+      }, 100);
+      return; // Do not process other sample data, etc.
+    }
+
     const scheduleFor = searchParams.get('scheduleFor');
     const fromCampaignId = searchParams.get('fromCampaignId');
 
@@ -188,7 +230,7 @@ const CreateCampaignPage: React.FC = () => {
     }
 
     // Handle prefilled message from navigation state (existing functionality)
-    if (location.state?.prefilledMessage && !fromCampaignId) {
+    if (location.state?.prefilledMessage && !fromCampaignId && !campaignId) {
       setMessage(location.state.prefilledMessage);
       if (location.state?.campaignName) {
         setCampaignName(`${location.state.campaignName} - Copy`);
@@ -203,7 +245,7 @@ const CreateCampaignPage: React.FC = () => {
         messageRef.current?.focus();
       }, 100);
     }
-  }, [searchParams, location.state]);
+  }, [campaignId, telnyxPrefillCampaign, location.state, searchParams]);
 
   useEffect(() => {
     setCharCount(message.length);
@@ -618,6 +660,24 @@ const CreateCampaignPage: React.FC = () => {
     
     return newText;
   };
+
+  // Loading skeleton for prefilling (optional, show basic loading if fetching real campaign)
+  if (isLoadingPrefillCampaign && campaignId) {
+    return (
+      <div className="flex items-center justify-center min-h-[30vh]">
+        <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+        <span className="ml-4 text-gray-600">Loading campaign details...</span>
+      </div>
+    );
+  }
+  if (prefillError && campaignId) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[30vh]">
+        <div className="text-red-600 text-lg mb-3">Failed to load campaign data.</div>
+        <div className="text-gray-500">{String(prefillError)}</div>
+      </div>
+    );
+  }
 
   return (
     <TooltipProvider>
