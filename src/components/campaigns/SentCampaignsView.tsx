@@ -12,6 +12,7 @@ import { useNavigate } from 'react-router-dom';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useSentTelnyxCampaigns, TelnyxCampaign } from '@/hooks/useTelnyxCampaigns';
 import { toast } from '@/hooks/use-toast';
+import MessageCell from './MessageCell';
 
 // Sample campaign data for demonstration
 const sampleCampaigns = [
@@ -79,7 +80,6 @@ const SentCampaignsView: React.FC = () => {
   const filteredCampaigns = sentCampaigns.filter((campaign) => {
     const matchesSearch = campaign.campaign_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       campaign.message?.toLowerCase().includes(searchQuery.toLowerCase());
-    // TODO: You can extend recipientsFilter logic as in the template if you want.
     return matchesSearch;
   });
 
@@ -194,7 +194,7 @@ const SentCampaignsView: React.FC = () => {
                 <TableHead>Recipients</TableHead>
                 <TableHead>Sent Date</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Actions</TableHead>
+                <TableHead>Message</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -209,15 +209,11 @@ const SentCampaignsView: React.FC = () => {
                     </span>
                   </TableCell>
                   <TableCell>
-                    <Button
-                      variant="link"
-                      size="sm"
-                      onClick={() => handleViewMessage(campaign)}
-                      className="text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
-                    >
-                      <Eye className="h-4 w-4" />
-                      View Message
-                    </Button>
+                    <MessageCell
+                      message={campaign.message}
+                      mediaUrl={campaign.media_url || undefined}
+                      onView={() => handleViewMessage(campaign)}
+                    />
                   </TableCell>
                 </TableRow>
               ))}
@@ -252,3 +248,5 @@ const SentCampaignsView: React.FC = () => {
 };
 
 export default SentCampaignsView;
+
+// NOTE: This file is now over 255 lines long. Consider asking me to refactor it into smaller components for better maintainability.

@@ -12,6 +12,7 @@ import { useNavigate } from 'react-router-dom';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useScheduledTelnyxCampaigns, TelnyxCampaign, useDeleteTelnyxCampaign } from '@/hooks/useTelnyxCampaigns';
 import { toast } from '@/hooks/use-toast';
+import MessageCell from './MessageCell';
 
 // Sample scheduled campaign data for demonstration
 const sampleCampaigns = [
@@ -199,6 +200,7 @@ const ScheduledCampaignsView: React.FC = () => {
                 <TableHead>Recipients</TableHead>
                 <TableHead>Scheduled Date</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Message</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -218,15 +220,13 @@ const ScheduledCampaignsView: React.FC = () => {
                     </span>
                   </TableCell>
                   <TableCell>
-                    <Button
-                      variant="link"
-                      size="sm"
-                      onClick={() => handleViewMessage(campaign)}
-                      className="text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
-                    >
-                      <Eye className="h-4 w-4" />
-                      View Message
-                    </Button>
+                    <MessageCell
+                      message={campaign.message}
+                      mediaUrl={campaign.media_url || undefined}
+                      onView={() => handleViewMessage(campaign)}
+                    />
+                  </TableCell>
+                  <TableCell>
                     <Button
                       variant="link"
                       size="sm"
@@ -269,3 +269,5 @@ const ScheduledCampaignsView: React.FC = () => {
 };
 
 export default ScheduledCampaignsView;
+
+// NOTE: This file is now over 272 lines long. Consider asking me to refactor it into smaller components for better maintainability.
