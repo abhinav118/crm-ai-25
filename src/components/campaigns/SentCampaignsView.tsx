@@ -10,6 +10,8 @@ import { cn } from '@/lib/utils';
 import { DateRange } from 'react-day-picker';
 import { useNavigate } from 'react-router-dom';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useSentTelnyxCampaigns, TelnyxCampaign } from '@/hooks/useTelnyxCampaigns';
+import { toast } from '@/hooks/use-toast';
 
 // Sample campaign data for demonstration
 const sampleCampaigns = [
@@ -49,6 +51,8 @@ const SentCampaignsView: React.FC = () => {
   
   const navigate = useNavigate();
 
+  const { data: sentCampaigns = [], isLoading, error } = useSentTelnyxCampaigns();
+
   const handleClearFilters = () => {
     setSearchQuery('');
     setDateRange(undefined);
@@ -59,26 +63,24 @@ const SentCampaignsView: React.FC = () => {
     navigate('/campaigns/create');
   };
 
-  const handleViewMessage = (campaign: typeof sampleCampaigns[0]) => {
+  const handleViewMessage = (campaign: TelnyxCampaign) => {
     navigate('/campaigns/create', {
       state: {
+        ...campaign,
         prefilledMessage: campaign.message,
-        campaignName: campaign.name + ' - Copy'
+        campaignName: campaign.campaign_name,
+        recipients: campaign.recipients,
+        mediaUrl: campaign.media_url,
       }
     });
   };
 
-  // Filter campaigns based on search query and recipients
-  const filteredCampaigns = sampleCampaigns.filter(campaign => {
-    const matchesSearch = campaign.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         campaign.message.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesRecipients = recipientsFilter === 'all' || 
-                             (recipientsFilter === 'customers' && campaign.recipients > 100) ||
-                             (recipientsFilter === 'prospects' && campaign.recipients <= 100) ||
-                             (recipientsFilter === 'vip' && campaign.recipients > 200);
-    
-    return matchesSearch && matchesRecipients;
+  // Filtering logic (search + recipients)
+  const filteredCampaigns = sentCampaigns.filter((campaign) => {
+    const matchesSearch = campaign.campaign_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      campaign.message?.toLowerCase().includes(searchQuery.toLowerCase());
+    // TODO: You can extend recipientsFilter logic as in the template if you want.
+    return matchesSearch;
   });
 
   return (
@@ -178,6 +180,10 @@ const SentCampaignsView: React.FC = () => {
         </div>
       </div>
 
+      {/* Data loading/error states */}
+      {isLoading && <div className="p-8 text-center">Loading...</div>}
+      {error && <div className="p-8 text-center text-red-600">Failed to load campaigns.</div>}
+
       {/* Campaigns Table */}
       {filteredCampaigns.length > 0 ? (
         <div className="bg-white rounded-lg border border-gray-200">
@@ -187,7 +193,6 @@ const SentCampaignsView: React.FC = () => {
                 <TableHead>Campaign Name</TableHead>
                 <TableHead>Recipients</TableHead>
                 <TableHead>Sent Date</TableHead>
-                <TableHead>Delivery Rate</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
@@ -195,10 +200,9 @@ const SentCampaignsView: React.FC = () => {
             <TableBody>
               {filteredCampaigns.map((campaign) => (
                 <TableRow key={campaign.id}>
-                  <TableCell className="font-medium">{campaign.name}</TableCell>
-                  <TableCell>{campaign.recipients}</TableCell>
-                  <TableCell>{format(new Date(campaign.sent), 'MMM d, yyyy')}</TableCell>
-                  <TableCell>{campaign.deliveryRate}%</TableCell>
+                  <TableCell className="font-medium">{campaign.campaign_name}</TableCell>
+                  <TableCell>{campaign.recipients?.length || 0}</TableCell>
+                  <TableCell>{campaign.created_at ? format(new Date(campaign.created_at), 'MMM d, yyyy, h:mm a') : ''}</TableCell>
                   <TableCell>
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                       {campaign.status}

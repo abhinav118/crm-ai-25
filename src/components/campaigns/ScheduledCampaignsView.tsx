@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +10,8 @@ import { cn } from '@/lib/utils';
 import { DateRange } from 'react-day-picker';
 import { useNavigate } from 'react-router-dom';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useScheduledTelnyxCampaigns, TelnyxCampaign, useDeleteTelnyxCampaign } from '@/hooks/useTelnyxCampaigns';
+import { toast } from '@/hooks/use-toast';
 
 // Sample scheduled campaign data for demonstration
 const sampleCampaigns = [
@@ -39,6 +40,9 @@ const ScheduledCampaignsView: React.FC = () => {
   
   const navigate = useNavigate();
 
+  const { data: scheduledCampaigns = [], isLoading, error } = useScheduledTelnyxCampaigns();
+  const deleteCampaign = useDeleteTelnyxCampaign();
+
   const handleClearFilters = () => {
     setSearchQuery('');
     setDateRange(undefined);
@@ -49,26 +53,36 @@ const ScheduledCampaignsView: React.FC = () => {
     navigate('/campaigns/create');
   };
 
-  const handleViewMessage = (campaign: typeof sampleCampaigns[0]) => {
+  const handleViewMessage = (campaign: TelnyxCampaign) => {
     navigate('/campaigns/create', {
       state: {
+        ...campaign,
         prefilledMessage: campaign.message,
-        campaignName: campaign.name
+        campaignName: campaign.campaign_name,
+        recipients: campaign.recipients,
+        mediaUrl: campaign.media_url,
       }
     });
   };
 
+  const handleDelete = (id: string) => {
+    if (window.confirm('Are you sure you want to delete this scheduled campaign?')) {
+      deleteCampaign.mutate(id, {
+        onSuccess: () => {
+          toast({ title: 'Campaign deleted', description: 'The campaign was deleted successfully.' });
+        },
+        onError: () => {
+          toast({ title: 'Error', description: 'Failed to delete campaign.' });
+        }
+      });
+    }
+  };
+
   // Filter campaigns based on search query and recipients
-  const filteredCampaigns = sampleCampaigns.filter(campaign => {
-    const matchesSearch = campaign.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         campaign.message.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesRecipients = recipientsFilter === 'all' || 
-                             (recipientsFilter === 'customers' && campaign.recipients > 100) ||
-                             (recipientsFilter === 'prospects' && campaign.recipients <= 100) ||
-                             (recipientsFilter === 'vip' && campaign.recipients > 200);
-    
-    return matchesSearch && matchesRecipients;
+  const filteredCampaigns = scheduledCampaigns.filter((campaign) => {
+    const matchesSearch = campaign.campaign_name?.toLowerCase().includes(searchQuery.toLowerCase())
+      || campaign.message?.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesSearch;
   });
 
   return (
@@ -171,6 +185,10 @@ const ScheduledCampaignsView: React.FC = () => {
         </div>
       </div>
 
+      {/* Data loading/error states */}
+      {isLoading && <div className="p-8 text-center">Loading...</div>}
+      {error && <div className="p-8 text-center text-red-600">Failed to load campaigns.</div>}
+
       {/* Campaigns Table */}
       {filteredCampaigns.length > 0 ? (
         <div className="bg-white rounded-lg border border-gray-200">
@@ -187,9 +205,13 @@ const ScheduledCampaignsView: React.FC = () => {
             <TableBody>
               {filteredCampaigns.map((campaign) => (
                 <TableRow key={campaign.id}>
-                  <TableCell className="font-medium">{campaign.name}</TableCell>
-                  <TableCell>{campaign.recipients}</TableCell>
-                  <TableCell>{format(new Date(campaign.scheduledDate), 'MMM d, yyyy')}</TableCell>
+                  <TableCell className="font-medium">{campaign.campaign_name}</TableCell>
+                  <TableCell>{campaign.recipients?.length || 0}</TableCell>
+                  <TableCell>
+                    {campaign.schedule_time
+                      ? format(new Date(campaign.schedule_time), 'MMM d, yyyy, h:mm a')
+                      : ''}
+                  </TableCell>
                   <TableCell>
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                       {campaign.status}
@@ -204,6 +226,14 @@ const ScheduledCampaignsView: React.FC = () => {
                     >
                       <Eye className="h-4 w-4" />
                       View Message
+                    </Button>
+                    <Button
+                      variant="link"
+                      size="sm"
+                      className="text-red-500 hover:text-red-600 ml-2"
+                      onClick={() => handleDelete(campaign.id)}
+                    >
+                      Delete
                     </Button>
                   </TableCell>
                 </TableRow>

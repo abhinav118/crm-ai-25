@@ -1,8 +1,9 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, Settings, Eye } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAllTelnyxCampaigns, TelnyxCampaign } from '@/hooks/useTelnyxCampaigns';
+import { format } from 'date-fns';
 
 // Sample scheduled campaigns data
 const scheduledCampaigns = [
@@ -49,14 +50,14 @@ const holidays = [
 ];
 
 const CampaignCalendarView: React.FC = () => {
-  const [currentDate, setCurrentDate] = useState(new Date(2025, 5)); // June 2025
+  const [currentDate, setCurrentDate] = useState(new Date()); // Default: this month
   const navigate = useNavigate();
+  const { data: allCampaigns = [], isLoading } = useAllTelnyxCampaigns();
 
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
-
   const dayNames = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
   const navigateMonth = (direction: 'prev' | 'next') => {
@@ -76,15 +77,15 @@ const CampaignCalendarView: React.FC = () => {
   };
 
   const handleDayClick = (date: Date) => {
-    // Navigate to create campaign with pre-filled schedule date
-    const formatted = date.toISOString();
-    navigate(`/campaigns/create?scheduleFor=${formatted}`);
+    // Prefill for schedule
+    navigate(`/campaigns/create?scheduleFor=${date.toISOString()}`);
   };
 
-  const handleViewCampaign = (campaignId: string) => {
-    navigate(`/campaigns/create?fromCampaignId=${campaignId}`);
+  const handleViewCampaign = (campaign: TelnyxCampaign) => {
+    navigate(`/campaigns/create?id=${campaign.id}`);
   };
 
+  // Build calendar
   const getDaysInMonth = () => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
@@ -92,40 +93,37 @@ const CampaignCalendarView: React.FC = () => {
     const lastDay = new Date(year, month + 1, 0);
     const startDate = new Date(firstDay);
     startDate.setDate(startDate.getDate() - firstDay.getDay());
-    
     const days = [];
     const currentDateIterator = new Date(startDate);
-    
     for (let i = 0; i < 42; i++) {
       days.push(new Date(currentDateIterator));
       currentDateIterator.setDate(currentDateIterator.getDate() + 1);
     }
-    
     return days;
   };
 
-  const isCurrentMonth = (date: Date) => {
-    return date.getMonth() === currentDate.getMonth();
-  };
+  const isCurrentMonth = (date: Date) => date.getMonth() === currentDate.getMonth();
+  const isToday = (date: Date) => date.toDateString() === new Date().toDateString();
 
-  const isToday = (date: Date) => {
-    const today = new Date();
-    return date.toDateString() === today.toDateString();
-  };
+  // Group campaigns per day
+  const campaignsByDate = allCampaigns.reduce((acc, campaign) => {
+    const raw = (campaign.schedule_time || campaign.created_at);
+    if (!raw) return acc;
+    const d = new Date(raw);
+    const ds = `${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`;
+    if (!acc[ds]) acc[ds] = [];
+    acc[ds].push({ ...campaign, timeT: d });
+    return acc;
+  }, {} as Record<string, Array<TelnyxCampaign & { timeT: Date }>>);
 
   const getCampaignsForDate = (date: Date) => {
-    return scheduledCampaigns.filter(campaign => {
-      const campaignDate = new Date(campaign.scheduledFor);
-      return (
-        campaignDate.getDate() === date.getDate() &&
-        campaignDate.getMonth() === date.getMonth() &&
-        campaignDate.getFullYear() === date.getFullYear()
-      );
-    });
+    const key = `${date.getFullYear()}-${(date.getMonth()+1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
+    const campaigns = (campaignsByDate[key] || []).slice().sort((a, b) => a.timeT.getTime() - b.timeT.getTime());
+    return campaigns;
   };
 
   const getHolidaysForDate = (date: Date) => {
-    const dateString = date.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+    const dateString = date.toISOString().split('T')[0];
     return holidays.filter(holiday => holiday.date === dateString);
   };
 
@@ -169,14 +167,13 @@ const CampaignCalendarView: React.FC = () => {
               {day}
             </div>
           ))}
-          
           {/* Calendar Days */}
           {days.map((day, index) => {
             const campaigns = getCampaignsForDate(day);
             const dayHolidays = getHolidaysForDate(day);
             const isCurrentMonthDay = isCurrentMonth(day);
             const isTodayDay = isToday(day);
-            
+
             return (
               <div 
                 key={index} 
@@ -190,46 +187,41 @@ const CampaignCalendarView: React.FC = () => {
                 }`}>
                   {day.getDate()}
                 </div>
-                
                 {/* U.S. Holidays */}
                 {dayHolidays.map((holiday) => (
                   <div 
                     key={holiday.name}
                     className="bg-red-500 text-white text-xs rounded-md px-2 py-0.5 mb-1 w-full"
-                    onClick={(e) => e.stopPropagation()}
+                    onClick={e => e.stopPropagation()}
                   >
                     {holiday.name}
                   </div>
                 ))}
-                
-                {/* Scheduled Campaigns */}
+                {/* Campaigns for day, stacked by time */}
                 <div className="space-y-1">
                   {campaigns.map((campaign) => (
                     <div 
                       key={campaign.id}
-                      className="bg-blue-100 text-blue-800 rounded-md px-2 py-1 text-sm shadow-sm"
-                      onClick={(e) => e.stopPropagation()}
+                      className={`rounded-md px-2 py-1 text-xs cursor-pointer shadow-sm truncate flex flex-col
+                        ${
+                          campaign.status === 'sent'
+                            ? 'bg-green-100 text-green-800'
+                            : campaign.status === 'scheduled'
+                            ? 'bg-blue-100 text-blue-800'
+                            : campaign.status === 'failed'
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-gray-100 text-gray-800'
+                        }
+                      `}
+                      title={campaign.campaign_name}
+                      onClick={e => {
+                        e.stopPropagation();
+                        handleViewCampaign(campaign);
+                      }}
                     >
-                      <div className="font-medium truncate mb-1">
-                        {campaign.title}
-                      </div>
-                      <div className="text-xs mb-1">
-                        {new Date(campaign.scheduledFor).toLocaleTimeString([], {
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </div>
-                      <div className="text-xs text-blue-500 flex items-center gap-1 mt-1">
-                        <Eye className="h-3 w-3" />
-                        <button
-                          className="hover:underline"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleViewCampaign(campaign.id);
-                          }}
-                        >
-                          View
-                        </button>
+                      <div className="font-medium truncate">{campaign.campaign_name}</div>
+                      <div className="text-[10px] mb-1">
+                        {format(campaign.timeT, 'h:mm a')}
                       </div>
                     </div>
                   ))}
@@ -238,6 +230,7 @@ const CampaignCalendarView: React.FC = () => {
             );
           })}
         </div>
+        {isLoading && <div className="p-6 text-center">Loading calendar data…</div>}
       </div>
     </div>
   );
