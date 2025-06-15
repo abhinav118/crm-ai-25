@@ -1,3 +1,4 @@
+
 import React, { useState, createContext, useContext } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -20,7 +21,7 @@ interface DateRangeContextType {
   setDateRange: (range: DateRange | undefined) => void;
 }
 
-const DateRangeContext = createContext<DateRangeContextType | undefined>(undefined);
+export const DateRangeContext = createContext<DateRangeContextType | undefined>(undefined);
 
 export const useDateRange = () => {
   const context = useContext(DateRangeContext);
