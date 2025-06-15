@@ -8,7 +8,7 @@ import { format, subDays } from "date-fns";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts";
 import { MetricsCard } from "@/components/analytics/MetricsCard";
-import { useDateRange } from "./ReportingPage";
+import { useDateRange as ImportedUseDateRange } from "./ReportingPage";
 
 interface MessageMetrics {
   total_sent: number;
@@ -26,10 +26,10 @@ interface MessageMetrics {
   }>;
 }
 
-const MessagesOverview = () => {
+const MessagesOverviewComponent = () => {
   console.log('MessagesOverview component rendering');
   
-  const { dateRange } = useDateRange();
+  const { dateRange } = ImportedUseDateRange();
   const [metrics, setMetrics] = useState<MessageMetrics>({
     total_sent: 0,
     delivered_count: 0,
@@ -270,6 +270,47 @@ const MessagesOverview = () => {
         </CardContent>
       </Card>
     </div>
+  );
+};
+
+let didWarnAboutMissingProvider = false;
+const MessagesOverview = (props: any) => {
+  // Try to access the context, otherwise provide a default one (for direct renders)
+  let contextOk = true;
+  try {
+    ImportedUseDateRange();
+  } catch (err: any) {
+    contextOk = false;
+    if (!didWarnAboutMissingProvider) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        "MessagesOverview: DateRangeProvider missing, using emergency fallback context. This is intended for direct testing only."
+      );
+      didWarnAboutMissingProvider = true;
+    }
+  }
+  if (contextOk) {
+    // Assume we're under correct Provider, render normally
+    return <MessagesOverviewComponent {...props} />;
+  }
+
+  // Fallback: Provide a dummy date range context
+  const today = new Date();
+  const fallbackDateRange = {
+    from: subDays(today, 7),
+    to: today,
+  };
+  const fallbackContext = {
+    dateRange: fallbackDateRange,
+    setDateRange: () => {},
+  };
+  // Dynamically import ReportingPage and get the Provider/context
+  const { DateRangeContext } = require("./ReportingPage"); // commonjs style for brevity
+
+  return (
+    <DateRangeContext.Provider value={fallbackContext}>
+      <MessagesOverviewComponent {...props} />
+    </DateRangeContext.Provider>
   );
 };
 
