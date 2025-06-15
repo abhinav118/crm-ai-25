@@ -121,29 +121,24 @@ const ReportingPage = () => {
       <div className="flex min-h-screen bg-gray-50">
         <Sidebar collapsed={sidebarCollapsed} onToggle={handleSidebarToggle} />
 
-        {/* Responsive: add overflow-x-auto and min-w-0 for container */}
         <div className="flex-1 ml-0 sm:ml-[234px] min-w-0">
           <TopToolbar pageTitle="Reporting" />
           <div className="space-y-6 p-2 xs:p-3 sm:p-6">
             <div className="flex flex-col gap-2">
-              {/* Tab Selectors with Date Range Controls */}
-              {/* Add overflow-x-auto to TabsList wrapper */}
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                   <div className="w-full overflow-x-auto">
-                    <TabsList className="grid min-w-[360px] xs:min-w-[420px] w-fit sm:w-auto grid-cols-2 xs:grid-cols-4">
-                      <TabsTrigger value="messages" className="text-xs xs:text-sm">Messages Overview</TabsTrigger>
-                      <TabsTrigger value="delivery" className="text-xs xs:text-sm">Delivery Reports</TabsTrigger>
-                      <TabsTrigger value="campaign" className="text-xs xs:text-sm">Campaign Performance</TabsTrigger>
-                      <TabsTrigger value="contacts" className="text-xs xs:text-sm">Contacts Overview</TabsTrigger>
+                    <TabsList className="flex gap-2 min-w-[360px] xs:min-w-[420px] w-fit sm:w-auto px-1">
+                      <TabsTrigger value="messages" className="text-xs xs:text-sm md:text-base px-3 py-2 whitespace-nowrap">Messages Overview</TabsTrigger>
+                      <TabsTrigger value="delivery" className="text-xs xs:text-sm md:text-base px-3 py-2 whitespace-nowrap">Delivery Reports</TabsTrigger>
+                      <TabsTrigger value="campaign" className="text-xs xs:text-sm md:text-base px-3 py-2 whitespace-nowrap">Campaign Performance</TabsTrigger>
+                      <TabsTrigger value="contacts" className="text-xs xs:text-sm md:text-base px-3 py-2 whitespace-nowrap">Contacts Overview</TabsTrigger>
                     </TabsList>
                   </div>
-
-                  {/* Date Range controls and export, better stacking on mobile */}
                   <div className="flex flex-col gap-2 xs:flex-row xs:items-center xs:gap-3 w-full xs:w-auto">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="w-full xs:w-[180px]">
+                        <Button variant="outline" className="w-full xs:w-[180px] min-w-[140px]">
                           {getSelectedRangeLabel()} <CalendarIcon className="ml-2 h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
@@ -154,8 +149,6 @@ const ReportingPage = () => {
                         <DropdownMenuItem onClick={() => handleRangeSelect("custom")}>Custom Range</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
-
-                    {/* Conditionally show Export button - hide on Messages Overview */}
                     {activeTab !== "messages" && (
                       <Button className="bg-[#6366F1] hover:bg-[#5855EB] text-white px-4 py-2 h-10 font-medium w-full xs:w-auto whitespace-nowrap">
                         <Download className="mr-2 h-4 w-4" />
@@ -164,8 +157,6 @@ const ReportingPage = () => {
                     )}
                   </div>
                 </div>
-
-                {/* Custom Date Range Picker */}
                 {showCustomRange && (
                   <div className="flex justify-end mb-4">
                     <Popover>
@@ -206,8 +197,6 @@ const ReportingPage = () => {
                     </Popover>
                   </div>
                 )}
-
-                {/* Tab Contents - render as before */}
                 <TabsContent value="messages" className="space-y-6">
                   <div className="mb-6">
                     <h2 className="text-2xl font-bold text-gray-900">{getTabTitle("messages")}</h2>
@@ -215,7 +204,6 @@ const ReportingPage = () => {
                   </div>
                   <MessagesOverview />
                 </TabsContent>
-                
                 <TabsContent value="delivery" className="space-y-6">
                   <div className="mb-6">
                     <h2 className="text-2xl font-bold text-gray-900">{getTabTitle("delivery")}</h2>
@@ -223,7 +211,6 @@ const ReportingPage = () => {
                   </div>
                   <DeliveryReports />
                 </TabsContent>
-                
                 <TabsContent value="campaign" className="space-y-6">
                   <div className="mb-6">
                     <h2 className="text-2xl font-bold text-gray-900">{getTabTitle("campaign")}</h2>
@@ -231,7 +218,6 @@ const ReportingPage = () => {
                   </div>
                   <CampaignPerformance />
                 </TabsContent>
-                
                 <TabsContent value="contacts" className="space-y-6">
                   <div className="mb-6">
                     <h2 className="text-2xl font-bold text-gray-900">{getTabTitle("contacts")}</h2>

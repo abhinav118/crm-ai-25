@@ -4,7 +4,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { TrendingUp, MessageSquare, CheckCircle, XCircle, Clock } from "lucide-react";
-import { useDateRange } from './ReportingPage';
+import { useDateRange as ImportedUseDateRange } from "./ReportingPage";
+import { subDays } from "date-fns";
 
 // Sample data
 const deliveryStats = [
@@ -45,8 +46,8 @@ const chartConfig = {
   pending: { label: "Pending", color: "#eab308" }
 };
 
-const DeliveryReports = () => {
-  const { dateRange } = useDateRange();
+const DeliveryReportsComponent = () => {
+  const { dateRange } = ImportedUseDateRange();
 
   const getStatusBadge = (status: string) => {
     const styles = {
@@ -60,10 +61,10 @@ const DeliveryReports = () => {
   return (
     <div className="space-y-6">
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 xs:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         {deliveryStats.map((stat) => (
           <Card key={stat.label}>
-            <CardContent className="p-4 sm:p-6">
+            <CardContent className="p-3 sm:p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-muted-foreground">{stat.label}</p>
@@ -145,7 +146,7 @@ const DeliveryReports = () => {
         </Card>
       </div>
 
-      {/* Recent Deliveries Table */}
+      {/* Recent Deliveries Table - ensure it scrolls on mobile */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Recent Deliveries</CardTitle>
@@ -183,6 +184,38 @@ const DeliveryReports = () => {
         </CardContent>
       </Card>
     </div>
+  );
+};
+
+// Same fallback context trick as MessagesOverview
+let didWarnAboutMissingProvider = false;
+const DeliveryReports = (props: any) => {
+  let contextOk = true;
+  try {
+    ImportedUseDateRange();
+  } catch (err) {
+    contextOk = false;
+    if (!didWarnAboutMissingProvider) {
+      console.warn("DeliveryReports: DateRangeProvider missing, using emergency fallback context. This is for direct testing only.");
+      didWarnAboutMissingProvider = true;
+    }
+  }
+  if (contextOk) return <DeliveryReportsComponent {...props} />;
+
+  const today = new Date();
+  const fallbackDateRange = {
+    from: subDays(today, 7),
+    to: today,
+  };
+  const fallbackContext = {
+    dateRange: fallbackDateRange,
+    setDateRange: () => {},
+  };
+  const { DateRangeContext } = require("./ReportingPage");
+  return (
+    <DateRangeContext.Provider value={fallbackContext}>
+      <DeliveryReportsComponent {...props} />
+    </DateRangeContext.Provider>
   );
 };
 

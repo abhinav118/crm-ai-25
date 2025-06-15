@@ -4,7 +4,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Users, UserPlus, TrendingDown, Activity } from "lucide-react";
-import { useDateRange } from './ReportingPage';
+import { useDateRange as ImportedUseDateRange } from "./ReportingPage";
+import { subDays } from "date-fns";
 
 // Sample data
 const contactStats = [
@@ -79,8 +80,8 @@ const chartConfig = {
   new: { label: "New Contacts", color: "#a855f7" }
 };
 
-const ContactsOverview = () => {
-  const { dateRange } = useDateRange();
+const ContactsOverviewComponent = () => {
+  const { dateRange } = ImportedUseDateRange();
 
   const getGrowthBadge = (growth: string) => {
     const isPositive = growth.startsWith('+');
@@ -92,10 +93,10 @@ const ContactsOverview = () => {
   return (
     <div className="space-y-6">
       {/* Contact Stats */}
-      <div className="grid grid-cols-2 xs:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {contactStats.map((stat) => (
           <Card key={stat.label}>
-            <CardContent className="p-4 sm:p-6">
+            <CardContent className="p-3 sm:p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-muted-foreground">{stat.label}</p>
@@ -108,8 +109,7 @@ const ContactsOverview = () => {
           </Card>
         ))}
       </div>
-
-      {/* Contact Growth Trends and Contact Segments Side by Side */}
+      {/* Charts side by side on desktop, stacked on mobile */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Contact Growth Chart */}
         <Card>
@@ -200,7 +200,7 @@ const ContactsOverview = () => {
         </Card>
       </div>
 
-      {/* Segment Performance Table */}
+      {/* Table: make sure it scrolls on mobile */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Segment Performance</CardTitle>
@@ -240,6 +240,37 @@ const ContactsOverview = () => {
         </CardContent>
       </Card>
     </div>
+  );
+};
+
+let didWarnAboutMissingProvider = false;
+const ContactsOverview = (props: any) => {
+  let contextOk = true;
+  try {
+    ImportedUseDateRange();
+  } catch (err) {
+    contextOk = false;
+    if (!didWarnAboutMissingProvider) {
+      console.warn("ContactsOverview: DateRangeProvider missing, using emergency fallback context. This is for direct testing only.");
+      didWarnAboutMissingProvider = true;
+    }
+  }
+  if (contextOk) return <ContactsOverviewComponent {...props} />;
+
+  const today = new Date();
+  const fallbackDateRange = {
+    from: subDays(today, 7),
+    to: today,
+  };
+  const fallbackContext = {
+    dateRange: fallbackDateRange,
+    setDateRange: () => {},
+  };
+  const { DateRangeContext } = require("./ReportingPage");
+  return (
+    <DateRangeContext.Provider value={fallbackContext}>
+      <ContactsOverviewComponent {...props} />
+    </DateRangeContext.Provider>
   );
 };
 

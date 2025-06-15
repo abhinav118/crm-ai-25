@@ -4,7 +4,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
 import { Target, DollarSign, MousePointer, Eye, TrendingUp } from "lucide-react";
-import { useDateRange } from './ReportingPage';
+import { useDateRange as ImportedUseDateRange } from './ReportingPage';
+import { subDays } from "date-fns";
 
 // Sample data
 const performanceMetrics = [
@@ -84,16 +85,16 @@ const chartConfig = {
   converted: { label: "Converted", color: "#f97316" }
 };
 
-const CampaignPerformance = () => {
-  const { dateRange } = useDateRange();
+const CampaignPerformanceComponent = () => {
+  const { dateRange } = ImportedUseDateRange();
 
   return (
     <div className="space-y-6">
-      {/* Performance Metrics */}
-      <div className="grid grid-cols-2 xs:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      {/* Metrics cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {performanceMetrics.map((metric) => (
           <Card key={metric.label}>
-            <CardContent className="p-4 sm:p-6">
+            <CardContent className="p-3 sm:p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-muted-foreground">{metric.label}</p>
@@ -106,7 +107,7 @@ const CampaignPerformance = () => {
           </Card>
         ))}
       </div>
-
+      {/* Chart and Table should be fully responsive, with overflow-x-auto */}
       {/* Campaign Trends Chart */}
       <Card>
         <CardHeader>
@@ -203,6 +204,37 @@ const CampaignPerformance = () => {
         </CardContent>
       </Card>
     </div>
+  );
+};
+
+let didWarnAboutMissingProvider = false;
+const CampaignPerformance = (props: any) => {
+  let contextOk = true;
+  try {
+    ImportedUseDateRange();
+  } catch (err) {
+    contextOk = false;
+    if (!didWarnAboutMissingProvider) {
+      console.warn("CampaignPerformance: DateRangeProvider missing, using emergency fallback context. This is for direct testing only.");
+      didWarnAboutMissingProvider = true;
+    }
+  }
+  if (contextOk) return <CampaignPerformanceComponent {...props} />;
+
+  const today = new Date();
+  const fallbackDateRange = {
+    from: subDays(today, 7),
+    to: today,
+  };
+  const fallbackContext = {
+    dateRange: fallbackDateRange,
+    setDateRange: () => {},
+  };
+  const { DateRangeContext } = require("./ReportingPage");
+  return (
+    <DateRangeContext.Provider value={fallbackContext}>
+      <CampaignPerformanceComponent {...props} />
+    </DateRangeContext.Provider>
   );
 };
 
