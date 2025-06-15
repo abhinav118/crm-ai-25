@@ -8,7 +8,7 @@ import { format, subDays } from "date-fns";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts";
 import { MetricsCard } from "@/components/analytics/MetricsCard";
-import { useDateRange as ImportedUseDateRange } from "./ReportingPage";
+import { useDateRange as ImportedUseDateRange, DateRangeContext } from "./ReportingPage";
 
 interface MessageMetrics {
   total_sent: number;
@@ -304,8 +304,6 @@ const MessagesOverview = (props: any) => {
     dateRange: fallbackDateRange,
     setDateRange: () => {},
   };
-  // Dynamically import ReportingPage and get the Provider/context
-  const { DateRangeContext } = require("./ReportingPage"); // commonjs style for brevity
 
   return (
     <DateRangeContext.Provider value={fallbackContext}>
