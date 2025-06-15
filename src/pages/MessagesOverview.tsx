@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -186,7 +185,8 @@ const MessagesOverview = () => {
   return (
     <div className="space-y-6">
       {/* Metrics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Responsive columns: 1 on xs, 2 on sm, 4 on lg */}
+      <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-4">
         {metricCards.map((metric, index) => {
           console.log(`Rendering metric card ${index}:`, metric);
           return (
@@ -235,7 +235,8 @@ const MessagesOverview = () => {
             
             <TabsContent value={activeChartTab} className="space-y-4">
               {metrics.time_series.length > 0 ? (
-                <ChartContainer config={chartConfig} className="h-[400px]">
+                // Responsive chart height, taller on desktop
+                <ChartContainer config={chartConfig} className="h-[240px] sm:h-[320px] md:h-[400px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={metrics.time_series}>
                       <CartesianGrid strokeDasharray="3 3" />
@@ -257,7 +258,7 @@ const MessagesOverview = () => {
                   </ResponsiveContainer>
                 </ChartContainer>
               ) : (
-                <div className="flex items-center justify-center h-[400px] text-muted-foreground">
+                <div className="flex items-center justify-center h-[180px] sm:h-[320px] text-muted-foreground">
                   <div className="text-center">
                     <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
                     <p>No data available for the selected date range</p>

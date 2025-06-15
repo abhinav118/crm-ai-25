@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -93,7 +92,7 @@ const ContactsOverview = () => {
   return (
     <div className="space-y-6">
       {/* Contact Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 xs:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {contactStats.map((stat) => (
           <Card key={stat.label}>
             <CardContent className="p-4 sm:p-6">
@@ -119,7 +118,7 @@ const ContactsOverview = () => {
             <CardDescription>Monthly contact acquisition and activity trends</CardDescription>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={chartConfig} className="h-[250px] sm:h-[300px]">
+            <ChartContainer config={chartConfig} className="h-[200px] xs:h-[240px] sm:h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={contactGrowthData} margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
                   <CartesianGrid strokeDasharray="3 3" />
@@ -163,7 +162,7 @@ const ContactsOverview = () => {
             <CardDescription>Distribution by customer type and engagement level</CardDescription>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={chartConfig} className="h-[250px] sm:h-[300px]">
+            <ChartContainer config={chartConfig} className="h-[200px] xs:h-[240px] sm:h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie

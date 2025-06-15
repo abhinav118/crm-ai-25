@@ -90,7 +90,7 @@ const CampaignPerformance = () => {
   return (
     <div className="space-y-6">
       {/* Performance Metrics */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 xs:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {performanceMetrics.map((metric) => (
           <Card key={metric.label}>
             <CardContent className="p-4 sm:p-6">
@@ -117,7 +117,7 @@ const CampaignPerformance = () => {
           <CardDescription>Weekly campaign performance metrics over time</CardDescription>
         </CardHeader>
         <CardContent>
-          <ChartContainer config={chartConfig} className="h-[300px] sm:h-[400px]">
+          <ChartContainer config={chartConfig} className="h-[200px] xs:h-[240px] sm:h-[400px]">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={campaignTrendsData} margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
                 <CartesianGrid strokeDasharray="3 3" />

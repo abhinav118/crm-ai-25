@@ -60,7 +60,7 @@ const DeliveryReports = () => {
   return (
     <div className="space-y-6">
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 xs:grid-cols-4 gap-3 sm:gap-4">
         {deliveryStats.map((stat) => (
           <Card key={stat.label}>
             <CardContent className="p-4 sm:p-6">
@@ -87,7 +87,7 @@ const DeliveryReports = () => {
             <CardDescription>Daily message delivery performance</CardDescription>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={chartConfig} className="h-[250px] sm:h-[300px]">
+            <ChartContainer config={chartConfig} className="h-[200px] xs:h-[240px] sm:h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={deliveryTrendsData} margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
                   <CartesianGrid strokeDasharray="3 3" />
@@ -110,7 +110,7 @@ const DeliveryReports = () => {
             <CardDescription>Current month delivery distribution</CardDescription>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={chartConfig} className="h-[250px] sm:h-[300px]">
+            <ChartContainer config={chartConfig} className="h-[200px] xs:h-[240px] sm:h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
