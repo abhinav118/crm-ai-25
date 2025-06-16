@@ -1,104 +1,26 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Info, MessageSquare, TrendingUp, TrendingDown } from "lucide-react";
-import { format, subDays } from "date-fns";
+import { format } from "date-fns";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts";
 import { MetricsCard } from "@/components/analytics/MetricsCard";
 import { useDateRange as ImportedUseDateRange, DateRangeContext } from "./ReportingPage";
-
-interface MessageMetrics {
-  total_sent: number;
-  delivered_count: number;
-  bounced_count: number;
-  not_sent_count: number;
-  clicked_count: number;
-  replied_count: number;
-  opt_out_count: number;
-  time_series: Array<{
-    date: string;
-    delivered: number;
-    bounced: number;
-    not_sent: number;
-  }>;
-}
+import { useMessageMetrics } from "@/hooks/useMessageMetrics";
+import { subDays } from "date-fns";
 
 const MessagesOverviewComponent = () => {
   console.log('MessagesOverview component rendering');
   
   const { dateRange } = ImportedUseDateRange();
-  const [metrics, setMetrics] = useState<MessageMetrics>({
-    total_sent: 0,
-    delivered_count: 0,
-    bounced_count: 0,
-    not_sent_count: 0,
-    clicked_count: 0,
-    replied_count: 0,
-    opt_out_count: 0,
-    time_series: []
-  });
-  const [isLoading, setIsLoading] = useState(false);
   const [activeChartTab, setActiveChartTab] = useState("delivered");
-
-  // Mock data for demonstration
-  const generateMockData = (): MessageMetrics => {
-    console.log('Generating mock data');
-    const mockTimeSeries = [];
-    const startDate = dateRange?.from || subDays(new Date(), 7);
-    const endDate = dateRange?.to || new Date();
-    
-    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-      mockTimeSeries.push({
-        date: format(d, 'yyyy-MM-dd'),
-        delivered: Math.floor(Math.random() * 20) + 5,
-        bounced: Math.floor(Math.random() * 5),
-        not_sent: Math.floor(Math.random() * 3),
-      });
-    }
-
-    const mockData = {
-      total_sent: 120,
-      delivered_count: 95,
-      bounced_count: 10,
-      not_sent_count: 15,
-      clicked_count: 8,
-      replied_count: 6,
-      opt_out_count: 2,
-      time_series: mockTimeSeries
-    };
-    
-    console.log('Mock data generated:', mockData);
-    return mockData;
-  };
-
-  useEffect(() => {
-    console.log('useEffect triggered for fetching metrics');
-    const fetchMetrics = async () => {
-      setIsLoading(true);
-      try {
-        console.log('Starting to fetch metrics');
-        // In a real implementation, this would be an API call
-        // const response = await fetch(`/api/reporting/messages-overview?start=${format(dateRange.from, 'yyyy-MM-dd')}&end=${format(dateRange.to, 'yyyy-MM-dd')}`);
-        // const data = await response.json();
-        
-        // Using mock data for now
-        await new Promise(resolve => setTimeout(resolve, 500)); // Simulate API delay
-        const mockData = generateMockData();
-        console.log('Setting metrics with mock data');
-        setMetrics(mockData);
-      } catch (error) {
-        console.error('Error fetching metrics:', error);
-      } finally {
-        console.log('Finished fetching metrics');
-        setIsLoading(false);
-      }
-    };
-
-    fetchMetrics();
-  }, [dateRange]);
+  
+  // Use real data instead of mock data
+  const { data: metrics, isLoading, error } = useMessageMetrics(dateRange);
 
   const calculatePercentage = (value: number, total: number) => {
     if (total === 0) return 0;
@@ -109,7 +31,7 @@ const MessagesOverviewComponent = () => {
   const metricCards = [
     {
       title: "Messages Sent",
-      value: metrics.total_sent.toString(),
+      value: metrics?.total_sent?.toString() || "0",
       percentage: 100,
       icon: <MessageSquare size={20} />,
       color: "blue" as const,
@@ -117,48 +39,48 @@ const MessagesOverviewComponent = () => {
     },
     {
       title: "Delivered",
-      value: metrics.delivered_count.toString(),
-      percentage: calculatePercentage(metrics.delivered_count, metrics.total_sent),
+      value: metrics?.delivered_count?.toString() || "0",
+      percentage: calculatePercentage(metrics?.delivered_count || 0, metrics?.total_sent || 0),
       icon: <TrendingUp size={20} />,
       color: "green" as const,
       tooltip: "Messages successfully delivered to recipients"
     },
     {
       title: "Bounced",
-      value: metrics.bounced_count.toString(),
-      percentage: calculatePercentage(metrics.bounced_count, metrics.total_sent),
+      value: metrics?.bounced_count?.toString() || "0",
+      percentage: calculatePercentage(metrics?.bounced_count || 0, metrics?.total_sent || 0),
       icon: <TrendingDown size={20} />,
       color: "orange" as const,
       tooltip: "Messages that failed to deliver due to invalid numbers or carrier issues"
     },
     {
       title: "Not Sent",
-      value: metrics.not_sent_count.toString(),
-      percentage: calculatePercentage(metrics.not_sent_count, metrics.total_sent),
+      value: metrics?.not_sent_count?.toString() || "0",
+      percentage: calculatePercentage(metrics?.not_sent_count || 0, metrics?.total_sent || 0),
       icon: <MessageSquare size={20} />,
       color: "purple" as const,
       tooltip: "Messages that were not sent due to system or user restrictions"
     },
     {
       title: "Clicked",
-      value: metrics.clicked_count.toString(),
-      percentage: calculatePercentage(metrics.clicked_count, metrics.delivered_count),
+      value: metrics?.clicked_count?.toString() || "0",
+      percentage: calculatePercentage(metrics?.clicked_count || 0, metrics?.delivered_count || 0),
       icon: <TrendingUp size={20} />,
       color: "blue" as const,
       tooltip: "Number of links clicked in delivered messages"
     },
     {
       title: "Replied",
-      value: metrics.replied_count.toString(),
-      percentage: calculatePercentage(metrics.replied_count, metrics.delivered_count),
+      value: metrics?.replied_count?.toString() || "0",
+      percentage: calculatePercentage(metrics?.replied_count || 0, metrics?.delivered_count || 0),
       icon: <MessageSquare size={20} />,
       color: "green" as const,
       tooltip: "Number of recipients who replied to messages"
     },
     {
       title: "Opted Out",
-      value: metrics.opt_out_count.toString(),
-      percentage: calculatePercentage(metrics.opt_out_count, metrics.delivered_count),
+      value: metrics?.opt_out_count?.toString() || "0",
+      percentage: calculatePercentage(metrics?.opt_out_count || 0, metrics?.delivered_count || 0),
       icon: <TrendingDown size={20} />,
       color: "orange" as const,
       tooltip: "Recipients who opted out from receiving future messages"
@@ -182,6 +104,21 @@ const MessagesOverviewComponent = () => {
 
   console.log('About to render MessagesOverview component');
 
+  if (error) {
+    console.error('Error loading message metrics:', error);
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-center text-red-600">
+              <p>Error loading message metrics. Please try again.</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Metrics Cards */}
@@ -196,13 +133,13 @@ const MessagesOverviewComponent = () => {
                   <div className="relative">
                     <MetricsCard
                       title={metric.title}
-                      value={metric.value}
+                      value={isLoading ? "..." : metric.value}
                       icon={metric.icon}
                       color={metric.color}
                     />
                     <div className="absolute top-2 right-2">
                       <Badge variant="secondary" className="text-xs">
-                        {metric.percentage}%
+                        {isLoading ? "..." : `${metric.percentage}%`}
                       </Badge>
                     </div>
                     <Info className="absolute top-2 right-12 h-4 w-4 text-muted-foreground" />
@@ -234,7 +171,11 @@ const MessagesOverviewComponent = () => {
             </TabsList>
             
             <TabsContent value={activeChartTab} className="space-y-4">
-              {metrics.time_series.length > 0 ? (
+              {isLoading ? (
+                <div className="flex items-center justify-center h-[240px] sm:h-[320px] md:h-[400px] text-muted-foreground">
+                  <p>Loading message data...</p>
+                </div>
+              ) : metrics?.time_series && metrics.time_series.length > 0 ? (
                 // Responsive chart height, taller on desktop
                 <ChartContainer config={chartConfig} className="h-[240px] sm:h-[320px] md:h-[400px]">
                   <ResponsiveContainer width="100%" height="100%">
