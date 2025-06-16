@@ -11,7 +11,6 @@ import { cn } from "@/lib/utils";
 import TopToolbar from '@/components/TopToolbar';
 import Sidebar from '@/components/dashboard/Sidebar';
 import DeliveryReports from './DeliveryReports';
-import CampaignPerformance from './CampaignPerformance';
 import ContactsOverview from './ContactsOverview';
 import MessagesOverview from './MessagesOverview';
 import { DateRange } from "react-day-picker";
@@ -93,8 +92,6 @@ const ReportingPage = () => {
         return "Comprehensive view of messaging activity and performance";
       case "delivery":
         return "Detailed delivery status and success rates for your campaigns";
-      case "campaign":
-        return "Analyze campaign effectiveness and engagement metrics";
       case "contacts":
         return "Monitor contact growth, segmentation, and engagement trends";
       default:
@@ -108,8 +105,6 @@ const ReportingPage = () => {
         return "Messages Overview";
       case "delivery":
         return "Delivery Reports";
-      case "campaign":
-        return "Campaign Performance";
       case "contacts":
         return "Contacts Overview";
       default:
@@ -129,10 +124,9 @@ const ReportingPage = () => {
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                   <div className="w-full overflow-x-auto">
-                    <TabsList className="flex gap-2 min-w-[360px] xs:min-w-[420px] w-fit sm:w-auto px-1">
+                    <TabsList className="flex gap-2 min-w-[280px] xs:min-w-[320px] w-fit sm:w-auto px-1">
                       <TabsTrigger value="messages" className="text-xs xs:text-sm md:text-base px-3 py-2 whitespace-nowrap">Messages Overview</TabsTrigger>
                       <TabsTrigger value="delivery" className="text-xs xs:text-sm md:text-base px-3 py-2 whitespace-nowrap">Delivery Reports</TabsTrigger>
-                      <TabsTrigger value="campaign" className="text-xs xs:text-sm md:text-base px-3 py-2 whitespace-nowrap">Campaign Performance</TabsTrigger>
                       <TabsTrigger value="contacts" className="text-xs xs:text-sm md:text-base px-3 py-2 whitespace-nowrap">Contacts Overview</TabsTrigger>
                     </TabsList>
                   </div>
@@ -211,13 +205,6 @@ const ReportingPage = () => {
                     <p className="text-gray-600 mt-1">{getTabDescription("delivery")}</p>
                   </div>
                   <DeliveryReports />
-                </TabsContent>
-                <TabsContent value="campaign" className="space-y-6">
-                  <div className="mb-6">
-                    <h2 className="text-2xl font-bold text-gray-900">{getTabTitle("campaign")}</h2>
-                    <p className="text-gray-600 mt-1">{getTabDescription("campaign")}</p>
-                  </div>
-                  <CampaignPerformance />
                 </TabsContent>
                 <TabsContent value="contacts" className="space-y-6">
                   <div className="mb-6">
