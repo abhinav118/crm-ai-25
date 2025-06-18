@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,20 +17,12 @@ import {
   Phone,
   Database
 } from 'lucide-react';
-
-interface Column {
-  header?: string;
-  name: string;
-  selected: boolean;
-  mappedTo: string;
-  updateEmptyValues?: boolean;
-  sampleValues?: string[];
-}
+import { CsvColumn } from './types';
 
 interface VerifyStageProps {
-  columns: Column[];
+  columns: CsvColumn[];
   data: any[];
-  selectedColumns: Column[];
+  selectedColumns: CsvColumn[];
   onComplete: () => void;
   onBack: () => void;
   setImportResult: (result: any) => void;

@@ -2,7 +2,8 @@
 export type ImportStage = 'upload' | 'map' | 'verify' | 'import';
 
 export interface CsvColumn {
-  header: string;
+  header?: string;
+  name: string;
   selected: boolean;
   mappedTo: string | null;
   updateEmptyValues?: boolean;
