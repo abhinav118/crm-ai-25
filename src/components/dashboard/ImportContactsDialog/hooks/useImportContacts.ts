@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -38,8 +39,20 @@ export const isValidPhoneFormat = (phone: string): boolean => {
   return cleaned.length === 10 || (cleaned.length === 11 && cleaned.startsWith('1'));
 };
 
+// Define proper types for validation results
+interface ValidationResult {
+  isValid: boolean;
+  errors: string[];
+  cleanedData?: Record<string, any>;
+}
+
+interface ValidatedContact extends Record<string, any> {
+  _validationErrors?: string[];
+  _isValid: boolean;
+}
+
 // Helper to validate and clean contact data
-const validateAndCleanContact = (row: Record<string, any>, index: number): { isValid: boolean; errors: string[]; cleanedData?: Record<string, any> } => {
+const validateAndCleanContact = (row: Record<string, any>, index: number): ValidationResult => {
   const errors: string[] = [];
   const cleanedData: Record<string, any> = { ...row };
   
@@ -268,7 +281,7 @@ export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) =
     setStage('map');
   };
 
-  const prepareDataForImport = () => {
+  const prepareDataForImport = (): ValidatedContact[] => {
     // Get the mapping of CSV headers to database fields
     const headerToFieldMap = columns.reduce((map, column) => {
       if (column.selected && column.mappedTo) {
@@ -306,13 +319,13 @@ export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) =
           ...transformedRow,
           _validationErrors: validation.errors,
           _isValid: false
-        };
+        } as ValidatedContact;
       }
       
       return {
         ...validation.cleanedData,
         _isValid: true
-      };
+      } as ValidatedContact;
     });
   };
 
@@ -355,18 +368,25 @@ export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) =
       // Count validation errors
       stats.errors += invalidRows.length;
       invalidRows.forEach(row => {
-        if (row._validationErrors) {
+        // Type guard to check if validation errors exist
+        if ('_validationErrors' in row && row._validationErrors) {
           row._validationErrors.forEach((error: string) => {
             errorDetails.push({row, error});
           });
         }
       });
       
-      // Remove validation metadata from valid rows
+      // Remove validation metadata from valid rows and ensure required fields
       const cleanValidRows = validRows.map(row => {
         const { _isValid, _validationErrors, ...cleanRow } = row;
+        
+        // Ensure first_name is always present (required field)
+        if (!cleanRow.first_name) {
+          cleanRow.first_name = cleanRow.last_name || 'Unknown';
+        }
+        
         return cleanRow;
-      });
+      }).filter(row => row.first_name); // Extra safety check
       
       // Filter out duplicates by email and phone
       const uniqueEmailMap = new Map<string, boolean>();
@@ -374,8 +394,8 @@ export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) =
       const uniqueData: Record<string, any>[] = [];
       
       cleanValidRows.forEach(row => {
-        const email = (row.email || '').toLowerCase().trim();
-        const phone = (row.phone || '').trim();
+        const email = row.email ? String(row.email).toLowerCase().trim() : '';
+        const phone = row.phone ? String(row.phone).trim() : '';
         
         // Create a unique key based on email and phone
         let isDuplicate = false;
@@ -411,12 +431,12 @@ export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) =
       const emailValues = uniqueData
         .map(row => row.email)
         .filter(Boolean)
-        .map(val => val.toLowerCase().trim());
+        .map(val => String(val).toLowerCase().trim());
       
       const phoneValues = uniqueData
         .map(row => row.phone)
         .filter(Boolean)
-        .map(val => val.trim());
+        .map(val => String(val).trim());
       
       console.log(`Searching for ${emailValues.length} unique emails and ${phoneValues.length} unique phones`);
       
@@ -487,7 +507,7 @@ export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) =
             
             // Check by email
             if (row.email) {
-              const email = row.email.trim().toLowerCase();
+              const email = String(row.email).trim().toLowerCase();
               if (existingContacts[email]) {
                 isUpdate = true;
                 existingId = existingContacts[email].id;
@@ -496,7 +516,7 @@ export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) =
             
             // Check by phone if not already identified as an update
             if (!isUpdate && row.phone) {
-              const phone = row.phone.trim();
+              const phone = String(row.phone).trim();
               if (existingContacts[phone]) {
                 isUpdate = true;
                 existingId = existingContacts[phone].id;
@@ -532,10 +552,10 @@ export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) =
                 }
               }
             } else {
-              // Create new contact
+              // Create new contact - insert individual contact
               const { data: created, error } = await supabase
                 .from('contacts')
-                .insert([row])
+                .insert(row)
                 .select();
               
               if (error) {
