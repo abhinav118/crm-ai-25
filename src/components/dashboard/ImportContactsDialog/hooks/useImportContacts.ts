@@ -38,6 +38,143 @@ export const isValidPhoneFormat = (phone: string): boolean => {
   return cleaned.length === 10 || (cleaned.length === 11 && cleaned.startsWith('1'));
 };
 
+// Helper to validate and clean contact data
+const validateAndCleanContact = (row: Record<string, any>, index: number): { isValid: boolean; errors: string[]; cleanedData?: Record<string, any> } => {
+  const errors: string[] = [];
+  const cleanedData: Record<string, any> = { ...row };
+  
+  // Validate and clean first_name
+  if (cleanedData.first_name) {
+    if (typeof cleanedData.first_name !== 'string') {
+      cleanedData.first_name = String(cleanedData.first_name);
+    }
+    cleanedData.first_name = cleanedData.first_name.trim();
+    if (cleanedData.first_name.length > 100) {
+      errors.push(`First name exceeds 100 characters (row ${index + 1})`);
+    }
+  }
+  
+  // Validate and clean last_name
+  if (cleanedData.last_name) {
+    if (typeof cleanedData.last_name !== 'string') {
+      cleanedData.last_name = String(cleanedData.last_name);
+    }
+    cleanedData.last_name = cleanedData.last_name.trim();
+    if (cleanedData.last_name.length > 100) {
+      errors.push(`Last name exceeds 100 characters (row ${index + 1})`);
+    }
+  }
+  
+  // Check if we have at least first_name or last_name
+  if (!cleanedData.first_name && !cleanedData.last_name) {
+    errors.push(`Missing required name fields (row ${index + 1})`);
+  }
+  
+  // Validate and clean email
+  if (cleanedData.email) {
+    if (typeof cleanedData.email !== 'string') {
+      cleanedData.email = String(cleanedData.email);
+    }
+    cleanedData.email = cleanedData.email.trim().toLowerCase();
+    
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(cleanedData.email)) {
+      errors.push(`Invalid email format: ${cleanedData.email} (row ${index + 1})`);
+      cleanedData.email = null; // Set to null if invalid
+    } else if (cleanedData.email.length > 254) {
+      errors.push(`Email exceeds 254 characters (row ${index + 1})`);
+    }
+  }
+  
+  // Validate and clean phone
+  if (cleanedData.phone) {
+    if (typeof cleanedData.phone !== 'string') {
+      cleanedData.phone = String(cleanedData.phone);
+    }
+    const formattedPhone = formatPhoneNumber(cleanedData.phone);
+    if (isValidPhoneFormat(formattedPhone)) {
+      cleanedData.phone = formattedPhone;
+    } else {
+      errors.push(`Invalid phone format: ${cleanedData.phone} (row ${index + 1})`);
+      cleanedData.phone = null; // Set to null if invalid
+    }
+  }
+  
+  // Validate and clean company
+  if (cleanedData.company) {
+    if (typeof cleanedData.company !== 'string') {
+      cleanedData.company = String(cleanedData.company);
+    }
+    cleanedData.company = cleanedData.company.trim();
+    if (cleanedData.company.length > 200) {
+      errors.push(`Company name exceeds 200 characters (row ${index + 1})`);
+    }
+    if (cleanedData.company === '') {
+      cleanedData.company = null;
+    }
+  }
+  
+  // Validate status
+  if (cleanedData.status) {
+    const validStatuses = ['active', 'inactive'];
+    if (!validStatuses.includes(cleanedData.status)) {
+      cleanedData.status = 'active'; // Default to active
+    }
+  } else {
+    cleanedData.status = 'active';
+  }
+  
+  // Validate and clean tags
+  if (cleanedData.tags) {
+    if (!Array.isArray(cleanedData.tags)) {
+      if (typeof cleanedData.tags === 'string') {
+        try {
+          // Try to parse as JSON first
+          if (cleanedData.tags.startsWith('[') && cleanedData.tags.endsWith(']')) {
+            cleanedData.tags = JSON.parse(cleanedData.tags);
+          } else {
+            // Split by comma
+            cleanedData.tags = cleanedData.tags.split(',').map(tag => tag.trim()).filter(Boolean);
+          }
+        } catch {
+          cleanedData.tags = [];
+        }
+      } else {
+        cleanedData.tags = [];
+      }
+    }
+    
+    // Ensure all tags are strings and not too long
+    cleanedData.tags = cleanedData.tags
+      .map(tag => typeof tag === 'string' ? tag.trim() : String(tag).trim())
+      .filter(tag => tag.length > 0 && tag.length <= 50)
+      .slice(0, 10); // Limit to 10 tags max
+  } else {
+    cleanedData.tags = [];
+  }
+  
+  // Validate notes
+  if (cleanedData.notes) {
+    if (typeof cleanedData.notes !== 'string') {
+      cleanedData.notes = String(cleanedData.notes);
+    }
+    cleanedData.notes = cleanedData.notes.trim();
+    if (cleanedData.notes.length > 2000) {
+      cleanedData.notes = cleanedData.notes.substring(0, 2000); // Truncate if too long
+    }
+    if (cleanedData.notes === '') {
+      cleanedData.notes = null;
+    }
+  }
+  
+  return {
+    isValid: errors.length === 0,
+    errors,
+    cleanedData: errors.length === 0 ? cleanedData : undefined
+  };
+};
+
 export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) => {
   const [stage, setStage] = useState<ImportStage>('upload');
   const [file, setFile] = useState<File | null>(null);
@@ -142,24 +279,12 @@ export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) =
 
     console.log("Header to field map:", headerToFieldMap);
     
-    // Special case for first name + last name combination
-    const firstNameHeader = columns.find(col => 
-      col.selected && col.header.toLowerCase().includes('first') && col.header.toLowerCase().includes('name')
-    )?.header;
-    
-    const lastNameHeader = columns.find(col => 
-      col.selected && col.header.toLowerCase().includes('last') && col.header.toLowerCase().includes('name')
-    )?.header;
-    
-    // Find the phone column header
-    const phoneHeader = columns.find(col => col.selected && col.mappedTo === 'phone')?.header;
-    
     // Transform the data according to the mapping
-    return data.map(row => {
+    return data.map((row, index) => {
       const transformedRow: Record<string, any> = {
         // Default values
-        name: 'Imported Contact',
         status: 'active',
+        tags: [],
       };
       
       // Apply mappings from CSV to database fields
@@ -167,87 +292,27 @@ export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) =
         const fieldName = headerToFieldMap[header];
         const value = row[header];
         
-        // Special handling for combining first and last names
-        if (fieldName === 'name' && firstNameHeader && lastNameHeader) {
-          // If this is a first name column and we also have a last name column
-          if (header === firstNameHeader) {
-            const firstName = row[firstNameHeader] || '';
-            const lastName = row[lastNameHeader] || '';
-            
-            if (firstName || lastName) {
-              transformedRow.name = `${firstName} ${lastName}`.trim();
-            }
-          }
-        } 
-        // Special handling for phone numbers - format them consistently
-        else if (fieldName === 'phone' && value) {
-          const formattedPhone = formatPhoneNumber(value);
-          // Only use phone if it's valid or can be formatted properly
-          if (isValidPhoneFormat(formattedPhone)) {
-            transformedRow.phone = formattedPhone;
-          } else {
-            console.log(`Skipping invalid phone format: ${value} -> ${formattedPhone}`);
-            // We don't set phone here, so it will be excluded if invalid
-          }
-        }
-        // Special handling for tags - convert comma-separated string to array
-        else if (fieldName === 'tags' && value) {
-          try {
-            // First, check if the value already looks like a JSON array string
-            if (value.startsWith('[') && value.endsWith(']')) {
-              try {
-                transformedRow.tags = JSON.parse(value);
-              } catch (e) {
-                // If JSON parsing fails, fall back to splitting by comma
-                transformedRow.tags = value.split(',').map(tag => tag.trim()).filter(Boolean);
-              }
-            } else {
-              // Handle comma-separated string (which might be quoted like "tag1,tag2")
-              // Remove any outer quotes first
-              const cleanValue = value.replace(/^["'](.+)["']$/, '$1');
-              transformedRow.tags = cleanValue.split(',').map(tag => tag.trim()).filter(Boolean);
-            }
-            
-            console.log(`Parsed tags from "${value}" to:`, transformedRow.tags);
-          } catch (e) {
-            console.error(`Error parsing tags from "${value}":`, e);
-            // If all parsing fails, use an empty array to avoid database errors
-            transformedRow.tags = [];
-          }
-        }
-        else if (value !== undefined && value !== null && value !== '') {
-          // Normal field mapping for non-empty values
+        if (value !== undefined && value !== null && value !== '') {
           transformedRow[fieldName] = value;
-        } else if (columns.find(c => c.header === header)?.updateEmptyValues) {
-          // Handle columns marked for empty value replacement
-          if (fieldName === 'name') transformedRow.name = 'Imported Contact';
-          else if (fieldName === 'status') transformedRow.status = 'active';
-          else if (fieldName === 'tags') transformedRow.tags = [];
         }
       });
       
-      // Make sure name is always set
-      if (!transformedRow.name || transformedRow.name === '') {
-        transformedRow.name = 'Imported Contact';
-      }
-
-      // Ensure tags is always an array
-      if (transformedRow.tags && !Array.isArray(transformedRow.tags)) {
-        console.log(`Converting tags to array: ${transformedRow.tags}`);
-        if (typeof transformedRow.tags === 'string') {
-          transformedRow.tags = transformedRow.tags.split(',').map(tag => tag.trim()).filter(Boolean);
-        } else {
-          transformedRow.tags = [];
-        }
+      // Validate and clean the data
+      const validation = validateAndCleanContact(transformedRow, index);
+      
+      if (!validation.isValid) {
+        console.log(`Validation errors for row ${index + 1}:`, validation.errors);
+        return {
+          ...transformedRow,
+          _validationErrors: validation.errors,
+          _isValid: false
+        };
       }
       
-      // Set default empty array for tags if not present
-      if (!transformedRow.tags) {
-        transformedRow.tags = [];
-      }
-      
-      console.log("Transformed row:", transformedRow);
-      return transformedRow;
+      return {
+        ...validation.cleanedData,
+        _isValid: true
+      };
     });
   };
 
@@ -276,286 +341,187 @@ export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) =
       console.log("Starting import process...");
       console.log("Import batch:", { batchId, batchName });
       
-      // First, update existing contacts to standardize phone format
-      await standardizeExistingPhoneNumbers();
-      
-      // Get selected and mapped columns
-      const selectedColumns = columns.filter(col => col.selected && col.mappedTo);
-      console.log("Selected columns:", selectedColumns.map(c => `${c.header} -> ${c.mappedTo}`));
-      
-      // Check if we have any key fields to match existing contacts
-      const emailColumn = selectedColumns.find(col => col.mappedTo === 'email');
-      const phoneColumn = selectedColumns.find(col => col.mappedTo === 'phone');
-      
       // Transform all data according to the column mapping
       const transformedData = prepareDataForImport();
       stats.total = transformedData.length;
       console.log(`Transformed ${stats.total} rows of data`);
       
-      // Additional formatting and validation for phone numbers
-      const validatedData = transformedData.map(row => {
-        // If row has a phone, ensure it's properly formatted
-        if (row.phone) {
-          const formattedPhone = formatPhoneNumber(row.phone);
-          
-          // Check if the phone number format is valid
-          if (isValidPhoneFormat(formattedPhone)) {
-            row.phone = formattedPhone; // Use the formatted version
-          } else {
-            // Invalid phone format, mark for skipping
-            row.skipDueToInvalidPhone = true;
-            stats.skippedInvalidPhone++;
-            console.log(`Skipping row with invalid phone: ${row.phone}`);
-          }
+      // Separate valid and invalid rows
+      const validRows = transformedData.filter(row => row._isValid);
+      const invalidRows = transformedData.filter(row => !row._isValid);
+      
+      console.log(`${validRows.length} valid rows, ${invalidRows.length} invalid rows`);
+      
+      // Count validation errors
+      stats.errors += invalidRows.length;
+      invalidRows.forEach(row => {
+        if (row._validationErrors) {
+          row._validationErrors.forEach((error: string) => {
+            errorDetails.push({row, error});
+          });
         }
-        return row;
       });
       
-      // Filter out rows with invalid phone formats
-      const validRows = validatedData.filter(row => !row.skipDueToInvalidPhone);
-      console.log(`After phone validation: ${validRows.length} valid rows`);
+      // Remove validation metadata from valid rows
+      const cleanValidRows = validRows.map(row => {
+        const { _isValid, _validationErrors, ...cleanRow } = row;
+        return cleanRow;
+      });
       
       // Filter out duplicates by email and phone
-      const uniquePhoneMap = new Map<string, boolean>(); // Track unique phone numbers
-      const uniqueEmailMap = new Map<string, boolean>(); // Track unique emails
+      const uniqueEmailMap = new Map<string, boolean>();
+      const uniquePhoneMap = new Map<string, boolean>();
       const uniqueData: Record<string, any>[] = [];
       
-      validRows.forEach(row => {
+      cleanValidRows.forEach(row => {
         const email = (row.email || '').toLowerCase().trim();
         const phone = (row.phone || '').trim();
         
-        // Check if this phone number already exists
-        if (phone && uniquePhoneMap.has(phone)) {
-          stats.duplicates++;
-          console.log(`Duplicate phone: ${phone}`);
-          return;
-        }
+        // Create a unique key based on email and phone
+        let isDuplicate = false;
         
-        // Check if this email already exists
         if (email && uniqueEmailMap.has(email)) {
+          isDuplicate = true;
+        }
+        
+        if (phone && uniquePhoneMap.has(phone)) {
+          isDuplicate = true;
+        }
+        
+        if (isDuplicate) {
           stats.duplicates++;
-          console.log(`Duplicate email: ${email}`);
+          console.log(`Duplicate found: email=${email}, phone=${phone}`);
           return;
         }
         
-        // Add to unique data if passed all checks
-        if (phone) uniquePhoneMap.set(phone, true);
+        // Add to tracking maps
         if (email) uniqueEmailMap.set(email, true);
+        if (phone) uniquePhoneMap.set(phone, true);
+        
         uniqueData.push(row);
       });
       
       console.log(`Filtered out ${stats.duplicates} duplicate rows`);
-      console.log(`Skipped ${stats.skippedInvalidPhone} rows with invalid phone format`);
-      console.log(`Proceeding with ${uniqueData.length} unique rows`);
-      
-      // Validate the required fields are present
-      const validatedUniqueData = uniqueData.filter(row => {
-        // Name is required
-        if (!row.name || row.name.trim() === '') {
-          console.log(`Row missing required name field:`, row);
-          errorDetails.push({row, error: 'Missing required name field'});
-          stats.errors++;
-          return false;
-        }
-        return true;
-      });
-      
-      console.log(`After validation: ${validatedUniqueData.length} rows to process`);
+      console.log(`Proceeding with ${uniqueData.length} unique valid rows`);
       
       // Find existing contacts by email or phone to update instead of create
       let existingContacts: Record<string, any> = {};
       
-      if (emailColumn || phoneColumn) {
-        // Collect all unique email/phone values from the unique data
-        const emailValues = validatedUniqueData
-          .map(row => row.email)
-          .filter(Boolean)
-          .map(val => val.toLowerCase().trim());
-        
-        const phoneValues = validatedUniqueData
-          .map(row => row.phone)
-          .filter(Boolean)
-          .map(val => val.trim());
-        
-        console.log(`Searching for ${emailValues.length} unique emails and ${phoneValues.length} unique phones`);
-        
-        // Fetch existing contacts by email or phone
-        if (emailValues.length > 0) {
-          try {
-            const { data: emailContacts, error } = await supabase
-              .from('contacts')
-              .select('id, email')
-              .in('email', emailValues);
-            
-            if (error) {
-              console.error('Error looking up contacts by email:', error);
-              throw error;
-            }
-            
-            if (emailContacts) {
-              console.log(`Found ${emailContacts.length} existing contacts by email`);
-              emailContacts.forEach(contact => {
-                if (contact.email) {
-                  existingContacts[contact.email.toLowerCase()] = contact;
-                }
-              });
-            }
-          } catch (error) {
-            console.error('Error fetching contacts by email:', error);
-            // Continue with the import process even if this lookup fails
+      // Collect all unique email/phone values from the unique data
+      const emailValues = uniqueData
+        .map(row => row.email)
+        .filter(Boolean)
+        .map(val => val.toLowerCase().trim());
+      
+      const phoneValues = uniqueData
+        .map(row => row.phone)
+        .filter(Boolean)
+        .map(val => val.trim());
+      
+      console.log(`Searching for ${emailValues.length} unique emails and ${phoneValues.length} unique phones`);
+      
+      // Fetch existing contacts by email or phone
+      if (emailValues.length > 0) {
+        try {
+          const { data: emailContacts, error } = await supabase
+            .from('contacts')
+            .select('id, email')
+            .in('email', emailValues);
+          
+          if (error) {
+            console.error('Error looking up contacts by email:', error);
+            throw error;
           }
-        }
-        
-        if (phoneValues.length > 0) {
-          try {
-            const { data: phoneContacts, error } = await supabase
-              .from('contacts')
-              .select('id, phone')
-              .in('phone', phoneValues);
-            
-            if (error) {
-              console.error('Error looking up contacts by phone:', error);
-              throw error;
-            }
-            
-            if (phoneContacts) {
-              console.log(`Found ${phoneContacts.length} existing contacts by phone`);
-              phoneContacts.forEach(contact => {
-                if (contact.phone) {
-                  existingContacts[contact.phone] = contact;
-                }
-              });
-            }
-          } catch (error) {
-            console.error('Error fetching contacts by phone:', error);
-            // Continue with the import process even if this lookup fails
+          
+          if (emailContacts) {
+            console.log(`Found ${emailContacts.length} existing contacts by email`);
+            emailContacts.forEach(contact => {
+              if (contact.email) {
+                existingContacts[contact.email.toLowerCase()] = contact;
+              }
+            });
           }
+        } catch (error) {
+          console.error('Error fetching contacts by email:', error);
         }
       }
       
-      // Process contacts in batches
-      const batchSize = 10;
-      const totalRows = validatedUniqueData.length;
+      if (phoneValues.length > 0) {
+        try {
+          const { data: phoneContacts, error } = await supabase
+            .from('contacts')
+            .select('id, phone')
+            .in('phone', phoneValues);
+          
+          if (error) {
+            console.error('Error looking up contacts by phone:', error);
+            throw error;
+          }
+          
+          if (phoneContacts) {
+            console.log(`Found ${phoneContacts.length} existing contacts by phone`);
+            phoneContacts.forEach(contact => {
+              if (contact.phone) {
+                existingContacts[contact.phone] = contact;
+              }
+            });
+          }
+        } catch (error) {
+          console.error('Error fetching contacts by phone:', error);
+        }
+      }
+      
+      // Process contacts in smaller batches
+      const batchSize = 5; // Reduced batch size
+      const totalRows = uniqueData.length;
       
       for (let i = 0; i < totalRows; i += batchSize) {
-        const batch = validatedUniqueData.slice(i, i + batchSize);
-        const createBatch = [];
-        const updateBatch = [];
+        const batch = uniqueData.slice(i, i + batchSize);
         
-        // Process each row in the batch
+        // Process each contact individually to avoid batch failures
         for (const row of batch) {
-          // Check if this is a new contact or an update
-          let isUpdate = false;
-          let existingId = null;
-          
-          // Check by email
-          if (row.email) {
-            const email = row.email.trim().toLowerCase();
-            if (existingContacts[email]) {
-              isUpdate = true;
-              existingId = existingContacts[email].id;
-            }
-          }
-          
-          // Check by phone if not already identified as an update
-          if (!isUpdate && row.phone) {
-            const phone = row.phone.trim();
-            if (existingContacts[phone]) {
-              isUpdate = true;
-              existingId = existingContacts[phone].id;
-            }
-          }
-          
-          // Add to appropriate batch
-          if (isUpdate && existingId) {
-            updateBatch.push({
-              id: existingId,
-              ...row,
-            });
-          } else {
-            createBatch.push(row);
-          }
-        }
-        
-        // Process creates
-        if (createBatch.length > 0) {
-          console.log(`Creating ${createBatch.length} new contacts`);
           try {
-            const { data: created, error } = await supabase
-              .from('contacts')
-              .insert(createBatch)
-              .select();
+            // Check if this is a new contact or an update
+            let isUpdate = false;
+            let existingId = null;
             
-            if (error) {
-              console.error('Error creating contacts:', error);
-              // Check if this is a constraints violation error
-              if (error.code === '23505') { // Unique constraint violation
-                console.log('Constraint violation - likely duplicate key in database');
-              } else if (error.code === '23502') { // Not null violation
-                console.log('Not null constraint violation - missing required field');
-              }
-              
-              // Record details of the failed batch
-              createBatch.forEach(row => {
-                errorDetails.push({row, error: `Create error: ${error.message || 'Unknown error'}`});
-              });
-              
-              stats.errors += createBatch.length;
-            } else {
-              stats.created += created?.length || 0;
-              console.log(`Successfully created ${created?.length || 0} contacts`);
-              
-              // Log each created contact to contact_logs table
-              if (created && created.length > 0) {
-                for (const newContact of created) {
-                  try {
-                    await logContactOperation(
-                      newContact.id, 
-                      newContact,
-                      'Created', 
-                      'Contact created via CSV import',
-                      batchId,
-                      batchName
-                    );
-                  } catch (logError) {
-                    console.error('Error logging contact creation:', logError);
-                    // Continue even if logging fails
-                  }
-                }
+            // Check by email
+            if (row.email) {
+              const email = row.email.trim().toLowerCase();
+              if (existingContacts[email]) {
+                isUpdate = true;
+                existingId = existingContacts[email].id;
               }
             }
-          } catch (error) {
-            console.error('Exception during contact creation:', error);
-            stats.errors += createBatch.length;
-            createBatch.forEach(row => {
-              errorDetails.push({row, error: `Exception during create: ${(error as Error).message || 'Unknown exception'}`});
-            });
-          }
-        }
-        
-        // Process updates
-        if (updateBatch.length > 0) {
-          console.log(`Updating ${updateBatch.length} existing contacts`);
-          for (const contact of updateBatch) {
-            try {
-              const { id, ...updateData } = contact;
+            
+            // Check by phone if not already identified as an update
+            if (!isUpdate && row.phone) {
+              const phone = row.phone.trim();
+              if (existingContacts[phone]) {
+                isUpdate = true;
+                existingId = existingContacts[phone].id;
+              }
+            }
+            
+            if (isUpdate && existingId) {
+              // Update existing contact
               const { error } = await supabase
                 .from('contacts')
-                .update(updateData)
-                .eq('id', id);
+                .update(row)
+                .eq('id', existingId);
               
               if (error) {
-                console.error(`Error updating contact ${id}:`, error);
+                console.error(`Error updating contact ${existingId}:`, error);
                 stats.errors++;
-                errorDetails.push({row: contact, error: `Update error: ${error.message || 'Unknown error'}`});
+                errorDetails.push({row, error: `Update error: ${error.message}`});
               } else {
                 stats.updated++;
                 
                 // Log the updated contact
                 try {
                   await logContactOperation(
-                    id,
-                    { id, ...updateData },
+                    existingId,
+                    { id: existingId, ...row },
                     'Update',
                     'Contact updated via CSV import',
                     batchId,
@@ -563,14 +529,44 @@ export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) =
                   );
                 } catch (logError) {
                   console.error('Error logging contact update:', logError);
-                  // Continue even if logging fails
                 }
               }
-            } catch (error) {
-              console.error(`Exception updating contact:`, error);
-              stats.errors++;
-              errorDetails.push({row: contact, error: `Exception during update: ${(error as Error).message || 'Unknown exception'}`});
+            } else {
+              // Create new contact
+              const { data: created, error } = await supabase
+                .from('contacts')
+                .insert([row])
+                .select();
+              
+              if (error) {
+                console.error('Error creating contact:', error);
+                stats.errors++;
+                errorDetails.push({row, error: `Create error: ${error.message}`});
+              } else {
+                stats.created += created?.length || 0;
+                console.log(`Successfully created contact`);
+                
+                // Log the created contact
+                if (created && created.length > 0) {
+                  try {
+                    await logContactOperation(
+                      created[0].id,
+                      created[0],
+                      'Created',
+                      'Contact created via CSV import',
+                      batchId,
+                      batchName
+                    );
+                  } catch (logError) {
+                    console.error('Error logging contact creation:', logError);
+                  }
+                }
+              }
             }
+          } catch (error) {
+            console.error(`Exception processing contact:`, error);
+            stats.errors++;
+            errorDetails.push({row, error: `Exception: ${(error as Error).message}`});
           }
         }
         
@@ -582,15 +578,18 @@ export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) =
       // Import complete
       console.log("Import completed with stats:", stats);
       if (errorDetails.length > 0) {
-        console.log("Error details:", errorDetails);
+        console.log("Error details:", errorDetails.slice(0, 10)); // Log first 10 errors
       }
       
       setImportStats(stats);
       
       // Show success message
+      const successfulImports = stats.created + stats.updated;
+      const skippedTotal = stats.duplicates + stats.errors;
+      
       toast({
         title: stats.errors > 0 ? 'Import Completed with Errors' : 'Import Complete',
-        description: `Successfully imported ${stats.total - stats.errors - stats.duplicates - stats.skippedInvalidPhone} contacts (${stats.created} created, ${stats.updated} updated). ${stats.duplicates} duplicates and ${stats.skippedInvalidPhone} invalid phone numbers skipped. ${stats.errors > 0 ? `${stats.errors} rows had errors.` : ''}`,
+        description: `Successfully imported ${successfulImports} contacts (${stats.created} created, ${stats.updated} updated). ${skippedTotal > 0 ? `${skippedTotal} rows skipped due to errors or duplicates.` : ''}`,
         variant: stats.errors > 0 ? 'destructive' : 'default',
       });
       
@@ -626,7 +625,8 @@ export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) =
       // Create a properly structured contact_info JSON object
       const contactInfo = {
         id: contactId,
-        name: contactData.name || 'Unnamed Contact',
+        first_name: contactData.first_name || '',
+        last_name: contactData.last_name || '',
         email: contactData.email || null,
         phone: contactData.phone || null,
         status: contactData.status || 'active',
@@ -657,68 +657,6 @@ export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) =
     }
   };
 
-  // Function to standardize existing phone numbers in the database
-  const standardizeExistingPhoneNumbers = async () => {
-    try {
-      // Fetch all contacts with phone numbers
-      const { data: contacts, error } = await supabase
-        .from('contacts')
-        .select('id, phone')
-        .not('phone', 'is', null)
-        .order('id');
-      
-      if (error) {
-        console.error("Error fetching contacts for phone standardization:", error);
-        return;
-      }
-      
-      if (!contacts || contacts.length === 0) return;
-      
-      console.log(`Found ${contacts.length} contacts with phone numbers to standardize`);
-      
-      // Process in batches
-      const batchSize = 50;
-      let updatedCount = 0;
-      
-      for (let i = 0; i < contacts.length; i += batchSize) {
-        const batch = contacts.slice(i, Math.min(i + batchSize, contacts.length));
-        const updatePromises = batch.map(contact => {
-          const formattedPhone = formatPhoneNumber(contact.phone);
-          
-          // Only update if the format has changed
-          if (formattedPhone !== contact.phone) {
-            return supabase
-              .from('contacts')
-              .update({ phone: formattedPhone })
-              .eq('id', contact.id)
-              .then(({ error }) => {
-                if (error) {
-                  console.error(`Error updating phone for contact ${contact.id}:`, error);
-                  return false;
-                }
-                return true;
-              });
-          }
-          return Promise.resolve(false);
-        });
-        
-        const results = await Promise.all(updatePromises);
-        updatedCount += results.filter(Boolean).length;
-      }
-      
-      console.log(`Standardized ${updatedCount} contact phone numbers`);
-      
-      if (updatedCount > 0) {
-        toast({
-          title: 'Phone Numbers Standardized',
-          description: `${updatedCount} existing contacts had their phone numbers updated to the standard format.`,
-        });
-      }
-    } catch (error) {
-      console.error("Error standardizing phone numbers:", error);
-    }
-  };
-
   return {
     stage,
     setStage,
@@ -737,4 +675,3 @@ export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) =
     isValidPhoneFormat,
   };
 };
-
