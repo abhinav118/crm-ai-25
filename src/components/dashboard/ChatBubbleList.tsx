@@ -9,7 +9,7 @@ interface Message {
   id: string;
   content: string;
   sent_at: string;
-  direction: 'inbound' | 'outbound';
+  sender: string;
   contact_id: string;
 }
 
@@ -69,28 +69,31 @@ const ChatBubbleList: React.FC<ChatBubbleListProps> = ({
 
   return (
     <div className="flex-1 overflow-y-auto p-4 space-y-4">
-      {messages.map((message) => (
-        <ChatBubble
-          key={message.id}
-          variant={message.direction === 'outbound' ? 'sent' : 'received'}
-        >
-          {message.direction === 'received' && (
-            <ChatBubbleAvatar>
-              <AvatarFallback className="bg-gray-100 text-gray-600 text-xs">
-                {getInitials(contact)}
-              </AvatarFallback>
-            </ChatBubbleAvatar>
-          )}
-          <div className="flex flex-col space-y-1">
-            <ChatBubbleMessage variant={message.direction === 'outbound' ? 'sent' : 'received'}>
-              {message.content}
-            </ChatBubbleMessage>
-            <div className={`text-xs text-gray-500 ${message.direction === 'outbound' ? 'text-right' : 'text-left'}`}>
-              {formatMessageTime(message.sent_at)}
+      {messages.map((message) => {
+        const isOutbound = message.sender === 'user';
+        return (
+          <ChatBubble
+            key={message.id}
+            variant={isOutbound ? 'sent' : 'received'}
+          >
+            {!isOutbound && (
+              <ChatBubbleAvatar>
+                <AvatarFallback className="bg-gray-100 text-gray-600 text-xs">
+                  {getInitials(contact)}
+                </AvatarFallback>
+              </ChatBubbleAvatar>
+            )}
+            <div className="flex flex-col space-y-1">
+              <ChatBubbleMessage variant={isOutbound ? 'sent' : 'received'}>
+                {message.content}
+              </ChatBubbleMessage>
+              <div className={`text-xs text-gray-500 ${isOutbound ? 'text-right' : 'text-left'}`}>
+                {formatMessageTime(message.sent_at)}
+              </div>
             </div>
-          </div>
-        </ChatBubble>
-      ))}
+          </ChatBubble>
+        );
+      })}
     </div>
   );
 };

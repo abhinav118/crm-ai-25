@@ -14,7 +14,7 @@ type Message = {
   id: string;
   content: string;
   sent_at: string;
-  direction: 'inbound' | 'outbound';
+  sender: string;
   contact_id: string;
 };
 
@@ -88,7 +88,7 @@ const Conversations: React.FC<ConversationsProps> = ({ selectedContactId, onClos
       
       setContact(transformedContact);
       
-      // Fetch messages for this contact
+      // Fetch messages for this contact using the correct schema
       const { data: messagesData, error: messagesError } = await supabase
         .from('messages')
         .select('*')

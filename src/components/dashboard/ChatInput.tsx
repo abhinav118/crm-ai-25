@@ -40,14 +40,13 @@ const ChatInput: React.FC<ChatInputProps> = ({ contactId, contactPhone, onMessag
 
       if (error) throw error;
 
-      // Save message to database
+      // Save message to database using the correct schema
       const { error: dbError } = await supabase
         .from('messages')
         .insert({
           contact_id: contactId,
           content: message,
-          direction: 'outbound',
-          status: 'sent',
+          sender: 'user',
           sent_at: new Date().toISOString()
         });
 
