@@ -1,31 +1,37 @@
 
-import React, { useEffect, useState } from 'react';
-import { CsvColumn } from './types';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Info, AlertTriangle, Phone, CheckCircle2, FileText, Users } from 'lucide-react';
-import { formatPhoneNumber, isValidPhoneFormat, normalizePhoneNumber } from './hooks/useImportContacts';
+import React, { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
+import { 
+  CheckCircle, 
+  AlertCircle, 
+  Upload, 
+  Users, 
+  Tag,
+  Loader2,
+  Phone,
+  Database
+} from 'lucide-react';
+
+interface Column {
+  name: string;
+  selected: boolean;
+  mappedTo: string;
+}
 
 interface VerifyStageProps {
-  columns: CsvColumn[];
-  data: Record<string, string>[];
-  selectedColumns: CsvColumn[];
+  columns: Column[];
+  data: any[];
+  selectedColumns: Column[];
   onComplete: () => void;
   onBack: () => void;
-  setImportResult: (result: string) => void;
+  setImportResult: (result: any) => void;
   fileName?: string;
 }
 
@@ -38,393 +44,313 @@ const VerifyStage: React.FC<VerifyStageProps> = ({
   setImportResult,
   fileName
 }) => {
-  const mappedColumns = columns.filter(col => col.selected && col.mappedTo);
-  const [duplicateCount, setDuplicateCount] = useState(0);
-  const [invalidPhoneCount, setInvalidPhoneCount] = useState(0);
-  const [validPhoneCount, setValidPhoneCount] = useState(0);
-  const [phoneDuplicatesInFile, setPhoneDuplicatesInFile] = useState(0);
-  const [phoneDuplicatesInDb, setPhoneDuplicatesInDb] = useState(0);
-  const [isCheckingDuplicates, setIsCheckingDuplicates] = useState(false);
-  const [batchId] = useState<string>(crypto.randomUUID());
-  const [batchName] = useState<string>(fileName || `Imported contacts ${new Date().toLocaleString()}`);
+  const [segmentName, setSegmentName] = useState('');
   const [isImporting, setIsImporting] = useState(false);
-  
-  // Count unique values for matching
-  const countUniqueEmails = () => {
-    const emailColumn = columns.find(col => col.mappedTo === 'email');
-    if (!emailColumn) return 0;
-    
-    const uniqueEmails = new Set(
-      data
-        .map(row => row[emailColumn.header])
-        .filter(Boolean)
-        .map(email => email.trim().toLowerCase())
-    );
-    
-    return uniqueEmails.size;
-  };
-  
-  const countUniquePhones = () => {
-    const phoneColumn = columns.find(col => col.mappedTo === 'phone');
-    if (!phoneColumn) return 0;
-    
-    const uniquePhones = new Set(
-      data
-        .map(row => row[phoneColumn.header])
-        .filter(Boolean)
-        .map(phone => formatPhoneNumber(phone.trim())) // Use formatted phones for counting
-        .filter(phone => isValidPhoneFormat(phone)) // Only count valid phones
-    );
-    
-    return uniquePhones.size;
-  };
+  const [importProgress, setImportProgress] = useState(0);
 
-  // Count missing required values
-  const countMissingValues = () => {
-    // Check for first_name or last_name
-    const firstNameColumn = columns.find(col => col.mappedTo === 'first_name');
-    const lastNameColumn = columns.find(col => col.mappedTo === 'last_name');
-    
-    if (!firstNameColumn && !lastNameColumn) return data.length; // If no name columns, all are missing
-    
-    return data.filter(row => {
-      const firstName = firstNameColumn ? row[firstNameColumn.header] : '';
-      const lastName = lastNameColumn ? row[lastNameColumn.header] : '';
-      return !firstName && !lastName;
-    }).length;
-  };
-
-  // Enhanced phone duplicate detection
+  // Generate default segment name
   useEffect(() => {
-    const checkPhoneDuplicates = async () => {
-      setIsCheckingDuplicates(true);
-      
-      const phoneColumn = columns.find(col => col.mappedTo === 'phone');
-      
-      // Reset counters
-      let invalidPhones = 0;
-      let validPhones = 0;
-      let fileDuplicates = 0;
-      let dbDuplicates = 0;
-      
-      if (phoneColumn) {
-        // Check duplicates within the file
-        const phoneMap = new Map<string, number>();
-        
-        data.forEach(row => {
-          const phone = row[phoneColumn.header];
-          
-          if (phone) {
-            if (isValidPhoneFormat(phone)) {
-              validPhones++;
-              const normalizedPhone = normalizePhoneNumber(phone);
-              
-              if (phoneMap.has(normalizedPhone)) {
-                fileDuplicates++;
-              } else {
-                phoneMap.set(normalizedPhone, 1);
-              }
-            } else {
-              invalidPhones++;
-            }
-          }
-        });
-        
-        // Check against existing database
-        const uniquePhones = Array.from(phoneMap.keys());
-        
-        if (uniquePhones.length > 0) {
-          try {
-            const { data: existingContacts, error } = await supabase
-              .from('contacts')
-              .select('phone')
-              .not('phone', 'is', null);
-            
-            if (error) {
-              console.error('Error checking existing phones:', error);
-            } else if (existingContacts) {
-              const existingNormalizedPhones = new Set(
-                existingContacts
-                  .map(contact => contact.phone)
-                  .filter(phone => phone && isValidPhoneFormat(phone))
-                  .map(phone => normalizePhoneNumber(phone))
-              );
-              
-              uniquePhones.forEach(normalizedPhone => {
-                if (existingNormalizedPhones.has(normalizedPhone)) {
-                  dbDuplicates++;
-                }
-              });
-            }
-          } catch (error) {
-            console.error('Error checking database duplicates:', error);
-          }
-        }
-      }
-      
-      setInvalidPhoneCount(invalidPhones);
-      setValidPhoneCount(validPhones);
-      setPhoneDuplicatesInFile(fileDuplicates);
-      setPhoneDuplicatesInDb(dbDuplicates);
-      setDuplicateCount(fileDuplicates + dbDuplicates);
-      setIsCheckingDuplicates(false);
-    };
-    
-    checkPhoneDuplicates();
-  }, [columns, data]);
+    const now = new Date();
+    const date = now.toISOString().split('T')[0];
+    const time = now.toTimeString().split(' ')[0].replace(/:/g, '');
+    setSegmentName(`Contacts_list_${date}_${time}`);
+  }, []);
 
-  // Get formatted phone examples
-  const getPhoneExamples = () => {
-    const phoneColumn = columns.find(col => col.mappedTo === 'phone');
-    if (!phoneColumn) return [];
+  const validateSegmentName = (name: string) => {
+    return /^[a-zA-Z0-9\s]+$/.test(name);
+  };
+
+  const formatPhoneNumber = (phone: string) => {
+    if (!phone) return '';
     
-    // Find a few different phone formats in the data
-    const phoneFormats = new Map<string, string>();
+    // Remove all non-numeric characters
+    const cleaned = phone.replace(/[^0-9]/g, '');
     
-    data.forEach(row => {
-      const phone = row[phoneColumn.header];
-      if (phone && !isValidPhoneFormat(phone) && phoneFormats.size < 3) {
-        const formatted = formatPhoneNumber(phone);
-        if (formatted !== phone) {
-          phoneFormats.set(phone, formatted);
-        }
-      }
-    });
+    // Format 10-digit numbers
+    if (cleaned.length === 10) {
+      return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
+    }
+    // Handle numbers with country code 1
+    else if (cleaned.length === 11 && cleaned.startsWith('1')) {
+      return `(${cleaned.slice(1, 4)}) ${cleaned.slice(4, 7)}-${cleaned.slice(7)}`;
+    }
     
-    return Array.from(phoneFormats.entries());
+    return phone; // Return original if not a valid format
   };
 
   const handleImport = async () => {
+    if (!validateSegmentName(segmentName)) {
+      toast({
+        title: 'Invalid Segment Name',
+        description: 'Segment name can only contain letters, numbers, and spaces.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
     setIsImporting(true);
+    setImportProgress(0);
+
     try {
-      setImportResult("Import started");
+      const contactsToImport = data.map(row => {
+        const contact: any = {
+          segment_name: segmentName.trim(),
+          status: 'active',
+          tags: [],
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+
+        selectedColumns.forEach(column => {
+          if (column.mappedTo && row[column.name]) {
+            let value = row[column.name];
+            
+            // Special handling for phone numbers
+            if (column.mappedTo === 'phone') {
+              value = formatPhoneNumber(value);
+            }
+            
+            // Special handling for tags
+            if (column.mappedTo === 'tags') {
+              value = typeof value === 'string' ? value.split(',').map(tag => tag.trim()) : [];
+            }
+            
+            contact[column.mappedTo] = value;
+          }
+        });
+
+        return contact;
+      });
+
+      console.log('Importing contacts:', contactsToImport);
+
+      const batchSize = 100;
+      const totalBatches = Math.ceil(contactsToImport.length / batchSize);
+      let created = 0;
+      let errors = 0;
+      let duplicates = 0;
+      let phoneDuplicatesInFile = 0;
+      let phoneDuplicatesInDb = 0;
+      let skippedInvalidPhone = 0;
+
+      // Check for phone duplicates within the file
+      const phoneNumbers = contactsToImport
+        .map(contact => contact.phone)
+        .filter(phone => phone && phone.trim() !== '');
+      
+      const uniquePhones = new Set();
+      const duplicatePhones = new Set();
+      
+      phoneNumbers.forEach(phone => {
+        if (uniquePhones.has(phone)) {
+          duplicatePhones.add(phone);
+        } else {
+          uniquePhones.add(phone);
+        }
+      });
+      
+      phoneDuplicatesInFile = duplicatePhones.size;
+
+      // Remove file duplicates before processing
+      const seenPhones = new Set();
+      const deduplicatedContacts = contactsToImport.filter(contact => {
+        if (contact.phone && seenPhones.has(contact.phone)) {
+          return false;
+        }
+        if (contact.phone) seenPhones.add(contact.phone);
+        return true;
+      });
+
+      for (let i = 0; i < totalBatches; i++) {
+        const batch = deduplicatedContacts.slice(i * batchSize, (i + 1) * batchSize);
+        
+        try {
+          const { data: insertedData, error } = await supabase
+            .from('contacts')
+            .insert(batch)
+            .select();
+
+          if (error) {
+            console.error('Batch import error:', error);
+            
+            // Check if it's a phone duplicate error
+            if (error.message?.includes('phone') || error.code === '23505') {
+              phoneDuplicatesInDb += batch.length;
+            } else {
+              errors += batch.length;
+            }
+          } else {
+            created += insertedData?.length || 0;
+          }
+        } catch (batchError) {
+          console.error('Batch processing error:', batchError);
+          errors += batch.length;
+        }
+
+        setImportProgress(Math.round(((i + 1) / totalBatches) * 100));
+      }
+
+      const importStats = {
+        total: contactsToImport.length,
+        created,
+        errors,
+        duplicates,
+        phoneDuplicatesInFile,
+        phoneDuplicatesInDb,
+        skippedInvalidPhone
+      };
+
+      console.log('Import completed with stats:', importStats);
+
+      setImportResult(importStats);
       onComplete();
+
+      toast({
+        title: 'Import Completed',
+        description: `Successfully imported ${created} out of ${contactsToImport.length} contacts to segment "${segmentName}".`,
+      });
+
     } catch (error) {
-      console.error("Error starting import:", error);
-      setImportResult("Import failed");
+      console.error('Import error:', error);
+      toast({
+        title: 'Import Failed',
+        description: 'An error occurred during import. Please try again.',
+        variant: 'destructive'
+      });
     } finally {
       setIsImporting(false);
     }
   };
 
-  const contactsToImport = data.length - duplicateCount - invalidPhoneCount;
+  const previewData = data.slice(0, 5);
 
   return (
     <div className="space-y-6">
-      <div className="space-y-2">
-        <h2 className="text-xl font-semibold">Verify Your Data</h2>
-        <p className="text-muted-foreground">
-          Review the data before importing. Phone number deduplication is enabled to prevent duplicate contacts.
-        </p>
-      </div>
-      
-      {/* Batch information */}
-      <Card className="border-blue-200 bg-blue-50">
-        <CardContent className="pt-6">
-          <div className="flex items-start">
-            <FileText className="h-5 w-5 text-blue-500 mr-3 mt-0.5" />
-            <div>
-              <h3 className="font-medium text-blue-700">Import Batch Details</h3>
-              <div className="mt-2 space-y-1 text-sm text-blue-700">
-                <p><strong>Batch ID:</strong> {batchId.substring(0, 8)}...</p>
-                <p><strong>Batch Name:</strong> {batchName}</p>
-                <p><strong>Created At:</strong> {new Date().toLocaleString()}</p>
-                <p><strong>Will Import:</strong> {contactsToImport} contacts (out of {data.length} total)</p>
+      {/* Segment Name Input */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Tag className="h-5 w-5" />
+            Segment Configuration
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="segment-name">Segment Name</Label>
+            <Input
+              id="segment-name"
+              value={segmentName}
+              onChange={(e) => setSegmentName(e.target.value)}
+              placeholder="e.g., VIP List"
+              className="max-w-md"
+            />
+            <p className="text-sm text-gray-500">
+              Optional but recommended. Use letters, numbers, and spaces only.
+            </p>
+          </div>
+          
+          {segmentName && !validateSegmentName(segmentName) && (
+            <div className="flex items-center gap-2 text-red-600">
+              <AlertCircle className="h-4 w-4" />
+              <span className="text-sm">Invalid segment name. Use only letters, numbers, and spaces.</span>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Import Summary */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <CheckCircle className="h-5 w-5" />
+            Import Summary
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <p className="text-sm font-medium">File Information</p>
+              <div className="text-sm text-gray-600 space-y-1">
+                <div>File: {fileName || 'Unknown'}</div>
+                <div>Total Rows: {data.length}</div>
+                <div>Segment: {segmentName}</div>
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Mapped Fields</p>
+              <div className="flex flex-wrap gap-1">
+                {selectedColumns.map((column) => (
+                  <Badge key={column.name} variant="secondary" className="text-xs">
+                    {column.mappedTo}
+                  </Badge>
+                ))}
               </div>
             </div>
           </div>
         </CardContent>
       </Card>
-      
-      <Alert>
-        <Info className="h-4 w-4" />
-        <AlertTitle>Ready to Import with Phone Deduplication</AlertTitle>
-        <AlertDescription>
-          This will import {contactsToImport} unique contacts with enhanced phone number deduplication enabled.
-        </AlertDescription>
-      </Alert>
-      
-      {isCheckingDuplicates ? (
-        <div className="flex items-center justify-center py-8">
-          <div className="text-center">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
-            <p className="text-sm text-muted-foreground">Checking for duplicate phone numbers...</p>
-          </div>
-        </div>
-      ) : (
-        <div className="grid grid-cols-5 gap-4">
-          <div className="bg-muted/30 p-3 rounded-md">
-            <p className="text-sm text-muted-foreground">Total Rows</p>
-            <p className="text-2xl font-semibold">{data.length}</p>
-          </div>
-          
-          <div className="bg-green-50 p-3 rounded-md">
-            <p className="text-sm text-green-700">Will Import</p>
-            <p className="text-2xl font-semibold text-green-700">{contactsToImport}</p>
-          </div>
-          
-          <div className="bg-blue-50 p-3 rounded-md">
-            <p className="text-sm text-blue-700">Valid Phones</p>
-            <p className="text-2xl font-semibold text-blue-700">{validPhoneCount}</p>
-          </div>
-          
-          <div className="bg-amber-50 p-3 rounded-md">
-            <p className="text-sm text-amber-700">File Duplicates</p>
-            <p className="text-2xl font-semibold text-amber-700">{phoneDuplicatesInFile}</p>
-          </div>
-          
-          <div className="bg-red-50 p-3 rounded-md">
-            <p className="text-sm text-red-700">DB Duplicates</p>
-            <p className="text-2xl font-semibold text-red-700">{phoneDuplicatesInDb}</p>
-          </div>
-        </div>
-      )}
-      
-      {validPhoneCount > 0 && (
-        <Alert className="bg-green-50 border-green-200">
-          <CheckCircle2 className="h-4 w-4 text-green-500" />
-          <AlertTitle className="text-green-700">Phone Number Processing</AlertTitle>
-          <AlertDescription className="text-green-700">
-            {validPhoneCount} phone numbers will be standardized to (XXX) XXX-XXXX format during import.
-          </AlertDescription>
-        </Alert>
-      )}
-      
-      {phoneDuplicatesInFile > 0 && (
-        <Alert className="bg-amber-50 border-amber-200">
-          <Users className="h-4 w-4 text-amber-500" />
-          <AlertTitle className="text-amber-700">Duplicates in File</AlertTitle>
-          <AlertDescription className="text-amber-700">
-            {phoneDuplicatesInFile} duplicate phone numbers found within the uploaded file. Only the first occurrence of each phone number will be imported.
-          </AlertDescription>
-        </Alert>
-      )}
-      
-      {phoneDuplicatesInDb > 0 && (
-        <Alert className="bg-red-50 border-red-200">
-          <AlertTriangle className="h-4 w-4 text-red-500" />
-          <AlertTitle className="text-red-700">Existing Phone Numbers</AlertTitle>
-          <AlertDescription className="text-red-700">
-            {phoneDuplicatesInDb} phone numbers already exist in your contact database and will be skipped to prevent duplicates.
-          </AlertDescription>
-        </Alert>
-      )}
-      
-      {invalidPhoneCount > 0 && (
-        <Alert>
-          <Phone className="h-4 w-4" />
-          <AlertTitle>Invalid Phone Numbers</AlertTitle>
-          <AlertDescription className="space-y-2">
-            <p>
-              {invalidPhoneCount} rows contain phone numbers that cannot be formatted to the standard (XXX) XXX-XXXX format.
-              These rows will be skipped during import.
-            </p>
-            {getPhoneExamples().length > 0 && (
-              <div className="mt-2">
-                <p className="text-sm font-medium">Examples:</p>
-                <ul className="text-sm mt-1 space-y-1">
-                  {getPhoneExamples().map(([original, formatted], index) => (
-                    <li key={index}>
-                      <span className="line-through">{original}</span> → <span className="font-medium">{formatted}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </AlertDescription>
-        </Alert>
-      )}
-      
-      {countMissingValues() > 0 && (
-        <Alert>
-          <AlertTitle>Missing Required Values</AlertTitle>
-          <AlertDescription>
-            {countMissingValues()} records are missing both first and last names. These contacts may be imported with default names.
-          </AlertDescription>
-        </Alert>
-      )}
-      
-      <div>
-        <h4 className="text-sm font-medium mb-2">Data Preview (first 5 rows)</h4>
-        
-        <ScrollArea className="h-[300px] border rounded-md">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                {mappedColumns.map((column, index) => (
-                  <TableHead key={index}>
-                    {column.header}
-                    <div className="text-xs text-muted-foreground">
-                      {column.mappedTo}
-                      {column.mappedTo === 'phone' && (
-                        <Badge variant="outline" className="ml-1 text-xs">
-                          Will Format & Dedupe
-                        </Badge>
-                      )}
-                    </div>
-                  </TableHead>
-                ))}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {data.slice(0, 5).map((row, rowIndex) => (
-                <TableRow key={rowIndex}>
-                  {mappedColumns.map((column, colIndex) => (
-                    <TableCell key={colIndex}>
-                      {column.mappedTo === 'phone' && row[column.header] ? (
-                        <div>
-                          <span className={isValidPhoneFormat(row[column.header]) ? 'text-green-600' : 'text-red-500'}>
-                            {isValidPhoneFormat(row[column.header]) 
-                              ? formatPhoneNumber(row[column.header]) 
-                              : row[column.header] + ' (invalid)'}
+
+      {/* Data Preview */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Data Preview</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ScrollArea className="h-64 border rounded-md">
+            <div className="p-4">
+              <div className="space-y-4">
+                {previewData.map((row, index) => (
+                  <div key={index} className="border-b pb-3 last:border-b-0">
+                    <div className="font-medium text-sm">Row {index + 1}</div>
+                    <div className="grid grid-cols-2 gap-2 mt-2 text-sm">
+                      {selectedColumns.map((column) => (
+                        <div key={column.name}>
+                          <span className="font-medium">{column.mappedTo}:</span>
+                          <span className="ml-2 text-gray-600">
+                            {column.mappedTo === 'phone' 
+                              ? formatPhoneNumber(row[column.name] || '') 
+                              : row[column.name] || '-'
+                            }
                           </span>
-                          {!isValidPhoneFormat(row[column.header]) && (
-                            <div className="text-xs text-red-500 mt-1">Will be skipped</div>
-                          )}
                         </div>
-                      ) : (
-                        row[column.header] || '—'
-                      )}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </ScrollArea>
-      </div>
-      
-      {/* Import button section */}
+                      ))}
+                      <div>
+                        <span className="font-medium">segment:</span>
+                        <span className="ml-2 text-gray-600">{segmentName}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </ScrollArea>
+        </CardContent>
+      </Card>
+
+      {/* Action Buttons */}
       <div className="flex justify-between">
-        <Button variant="outline" onClick={onBack}>
+        <Button variant="outline" onClick={onBack} disabled={isImporting}>
           Back
         </Button>
+        
         <Button 
           onClick={handleImport} 
-          disabled={isImporting || isCheckingDuplicates || contactsToImport === 0}
-          className="min-w-[120px]"
+          disabled={isImporting || !segmentName.trim() || !validateSegmentName(segmentName)}
+          className="gap-2"
         >
           {isImporting ? (
             <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Importing...
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Importing... {importProgress}%
             </>
           ) : (
-            <>Import {contactsToImport} Contacts</>
+            <>
+              <Upload className="h-4 w-4" />
+              Import {data.length} Contacts
+            </>
           )}
         </Button>
-      </div>
-      
-      {/* Enhanced explanation of phone deduplication */}
-      <div className="pt-4 text-sm text-muted-foreground border-t">
-        <p className="font-medium">Enhanced Phone Number Deduplication:</p>
-        <ul className="list-disc list-inside mt-2 space-y-1">
-          <li>Phone numbers are normalized to 10-digit format for comparison</li>
-          <li>Duplicates within the file are automatically removed</li>
-          <li>Phone numbers already in your database are detected and skipped</li>
-          <li>All imported phones are formatted to (XXX) XXX-XXXX standard</li>
-          <li>Detailed logging tracks all import actions in the contact_logs table</li>
-        </ul>
       </div>
     </div>
   );

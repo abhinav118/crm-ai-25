@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,7 +14,7 @@ import {
 } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Edit, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Edit, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import Avatar from './Avatar';
 import { getFullName } from '@/utils/contactHelpers';
 import BulkActionsTab from './BulkActions/BulkActionsTab';
@@ -29,6 +30,7 @@ export interface Contact {
   status: 'active' | 'inactive';
   tags?: string[];
   createdAt?: string;
+  segment_name?: string;
 }
 
 interface ContactsTableProps {
@@ -51,6 +53,9 @@ interface ContactsTableProps {
   showCompanyColumn?: boolean;
   showBulkActionsTab?: boolean;
   showTabsHeader?: boolean;
+  segmentFilter?: string;
+  onSegmentFilterChange?: (segment: string) => void;
+  availableSegments?: string[];
 }
 
 const ContactsTable: React.FC<ContactsTableProps> = ({
@@ -72,7 +77,10 @@ const ContactsTable: React.FC<ContactsTableProps> = ({
   showPagination = false,
   showCompanyColumn = true,
   showTabsHeader = true,
-  showBulkActionsTab = true
+  showBulkActionsTab = true,
+  segmentFilter = 'all',
+  onSegmentFilterChange,
+  availableSegments = []
 }) => {
   const [selectAll, setSelectAll] = useState(false);
 
@@ -114,6 +122,10 @@ const ContactsTable: React.FC<ContactsTableProps> = ({
     setSelectAll(contacts.length > 0 && selectedContacts.length === contacts.length);
   }, [selectedContacts, contacts]);
 
+  const clearSegmentFilter = () => {
+    onSegmentFilterChange?.('all');
+  };
+
   const renderContactsTable = () => {
     return (
       <div className="rounded-md border">
@@ -131,6 +143,7 @@ const ContactsTable: React.FC<ContactsTableProps> = ({
               <TableHead>Phone</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Tags</TableHead>
+              <TableHead>Segment</TableHead>
               <TableHead>Last Activity</TableHead>
               <TableHead className="w-12">Actions</TableHead>
             </TableRow>
@@ -144,6 +157,7 @@ const ContactsTable: React.FC<ContactsTableProps> = ({
                   {showCompanyColumn && <TableCell><div className="w-24 h-4 bg-gray-200 rounded animate-pulse" /></TableCell>}
                   <TableCell><div className="w-20 h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
                   <TableCell><div className="w-16 h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
+                  <TableCell><div className="w-20 h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
                   <TableCell><div className="w-20 h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
                   <TableCell><div className="w-20 h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
                   <TableCell><div className="w-8 h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
@@ -200,6 +214,13 @@ const ContactsTable: React.FC<ContactsTableProps> = ({
                     </div>
                   </TableCell>
                   <TableCell className="text-sm text-gray-600">
+                    {contact.segment_name ? (
+                      <Badge variant="outline" className="text-xs">
+                        {contact.segment_name}
+                      </Badge>
+                    ) : '-'}
+                  </TableCell>
+                  <TableCell className="text-sm text-gray-600">
                     {formatDate(contact.lastActivity) || 'Never'}
                   </TableCell>
                   <TableCell>
@@ -218,7 +239,7 @@ const ContactsTable: React.FC<ContactsTableProps> = ({
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={showCompanyColumn ? 8 : 7} className="text-center py-8 text-gray-500">
+                <TableCell colSpan={showCompanyColumn ? 9 : 8} className="text-center py-8 text-gray-500">
                   No contacts found
                 </TableCell>
               </TableRow>
@@ -264,8 +285,40 @@ const ContactsTable: React.FC<ContactsTableProps> = ({
                   <SelectItem value="customer">Customer</SelectItem>
                 </SelectContent>
               </Select>
+
+              <Select value={segmentFilter} onValueChange={onSegmentFilterChange}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="All Segments" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Segments</SelectItem>
+                  {availableSegments.map((segment) => (
+                    <SelectItem key={segment} value={segment}>
+                      {segment}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
+
+          {/* Current Filter Display */}
+          {segmentFilter && segmentFilter !== 'all' && (
+            <div className="flex items-center gap-2 mt-2">
+              <span className="text-sm text-gray-500">Showing:</span>
+              <Badge variant="secondary" className="gap-1">
+                Segment → {segmentFilter}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-4 w-4 p-0 hover:bg-transparent"
+                  onClick={clearSegmentFilter}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </Badge>
+            </div>
+          )}
 
           <TabsContent value="all" className="mt-6">
             {renderContactsTable()}

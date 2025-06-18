@@ -26,6 +26,7 @@ interface ContactData {
   updated_at: string;
   id?: string;
   notes?: string | null;
+  segment_name?: string;
 }
 
 const Index = () => {
@@ -39,15 +40,55 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [segmentFilter, setSegmentFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const pageSize = 20;
 
   const queryClient = useQueryClient();
 
-  // Fetch contacts with pagination
+  // Load segment filter from localStorage on mount
+  React.useEffect(() => {
+    const savedSegmentFilter = localStorage.getItem('contactsSegmentFilter');
+    if (savedSegmentFilter && savedSegmentFilter !== 'all') {
+      setSegmentFilter(savedSegmentFilter);
+    }
+  }, []);
+
+  // Save segment filter to localStorage when it changes
+  const handleSegmentFilterChange = (segment: string) => {
+    setSegmentFilter(segment);
+    localStorage.setItem('contactsSegmentFilter', segment);
+  };
+
+  // Fetch available segments
+  const { data: segmentsData } = useQuery({
+    queryKey: ['contact-segments'],
+    queryFn: async () => {
+      console.log('Fetching available segments...');
+      
+      const { data, error } = await supabase
+        .from('contacts')
+        .select('segment_name')
+        .not('segment_name', 'is', null)
+        .order('segment_name');
+      
+      if (error) {
+        console.error('Error fetching segments:', error);
+        throw error;
+      }
+
+      // Get unique segments
+      const uniqueSegments = [...new Set(data?.map(item => item.segment_name).filter(Boolean))] as string[];
+      console.log('Available segments:', uniqueSegments);
+      
+      return uniqueSegments;
+    },
+  });
+
+  // Fetch contacts with pagination and segment filtering
   const { data: contactsData, isLoading: isLoadingContacts, error: contactsError } = useQuery({
-    queryKey: ['contacts', activeTab, currentPage, searchQuery, statusFilter],
+    queryKey: ['contacts', activeTab, currentPage, searchQuery, statusFilter, segmentFilter],
     queryFn: async () => {
       console.log('Fetching contacts from Supabase...');
       
@@ -64,6 +105,11 @@ const Index = () => {
       // Apply status filter
       if (statusFilter !== 'all') {
         query = query.eq('status', statusFilter);
+      }
+
+      // Apply segment filter
+      if (segmentFilter !== 'all') {
+        query = query.eq('segment_name', segmentFilter);
       }
 
       // Apply pagination for "all" tab
@@ -93,7 +139,8 @@ const Index = () => {
         lastActivity: contact.last_activity || '',
         status: contact.status as 'active' | 'inactive',
         tags: contact.tags || [],
-        createdAt: contact.created_at
+        createdAt: contact.created_at,
+        segment_name: contact.segment_name
       }));
 
       return {
@@ -259,6 +306,7 @@ const Index = () => {
 
   const handleBulkContactsUpdated = () => {
     queryClient.invalidateQueries({ queryKey: ['contacts'] });
+    queryClient.invalidateQueries({ queryKey: ['contact-segments'] });
     setSelectedContacts([]);
   };
 
@@ -361,7 +409,7 @@ const Index = () => {
         <main className="flex-1 p-6">
           <ContactsTable
             contacts={filteredContacts}
-            onContactSelect={handleContactSelect}
+            onContactSelect={setSelectedContacts}
             onEditContact={handleEditContact}
             onContactClick={handleContactClick}
             selectedContacts={selectedContacts}
@@ -378,6 +426,9 @@ const Index = () => {
             showPagination={activeTab === 'all'}
             showCompanyColumn={false}
             showBulkActionsTab={true}
+            segmentFilter={segmentFilter}
+            onSegmentFilterChange={handleSegmentFilterChange}
+            availableSegments={segmentsData || []}
           />
         </main>
       </div>

@@ -170,6 +170,7 @@ export type Database = {
           last_name: string | null
           notes: string | null
           phone: string | null
+          segment_name: string | null
           status: string | null
           tags: string[] | null
           updated_at: string
@@ -184,6 +185,7 @@ export type Database = {
           last_name?: string | null
           notes?: string | null
           phone?: string | null
+          segment_name?: string | null
           status?: string | null
           tags?: string[] | null
           updated_at?: string
@@ -198,6 +200,7 @@ export type Database = {
           last_name?: string | null
           notes?: string | null
           phone?: string | null
+          segment_name?: string | null
           status?: string | null
           tags?: string[] | null
           updated_at?: string
