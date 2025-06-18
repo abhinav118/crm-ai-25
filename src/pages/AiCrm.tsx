@@ -41,7 +41,7 @@ const AiCrm = () => {
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <CustomerInbox onSelectCustomer={handleSelectCustomer} />
+            <CustomerInbox />
             <SmartSegments />
           </div>
           
@@ -62,7 +62,7 @@ const AiCrm = () => {
       
       {selectedCustomerId && (
         <CustomerProfilePanel 
-          customerId={selectedCustomerId}
+          contactId={selectedCustomerId}
           onClose={() => setSelectedCustomerId(null)}
         />
       )}
