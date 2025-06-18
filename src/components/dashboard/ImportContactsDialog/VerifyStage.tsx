@@ -20,9 +20,12 @@ import {
 } from 'lucide-react';
 
 interface Column {
+  header?: string;
   name: string;
   selected: boolean;
   mappedTo: string;
+  updateEmptyValues?: boolean;
+  sampleValues?: string[];
 }
 
 interface VerifyStageProps {

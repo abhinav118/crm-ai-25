@@ -18,3 +18,16 @@ export interface ContactFormProps {
   onClose: () => void;
   initialData?: ContactData;
 }
+
+export interface ContactFormValues {
+  firstName: string;
+  lastName: string;
+  company: string;
+  tags: string[];
+  dndPreference: string;
+}
+
+export interface PhoneEntry {
+  type: string;
+  number: string;
+}
