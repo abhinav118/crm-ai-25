@@ -1,112 +1,144 @@
 
 import React, { useState, useEffect } from 'react';
+import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
-import { MessageSquare } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { MessageSquare, User, Search, Filter, SortDesc } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { getFullName } from '@/utils/contactHelpers';
-import ContactInfoPanel from './ContactInfoPanel';
-import ChatBubbleList from './ChatBubbleList';
-import ChatInput from './ChatInput';
 
-type Message = {
-  id: string;
-  content: string;
-  sent_at: string;
-  sender: string;
-  contact_id: string;
+type Conversation = {
+  contactId: string;
+  contactName: string;
+  lastMessage: string;
+  lastMessageTime: string;
+  unreadCount: number;
+  messageCount: number;
 };
 
-type Contact = {
-  id: string;
-  first_name: string;
-  last_name?: string;
-  email?: string;
-  phone?: string;
-  company?: string;
-  status: 'active' | 'inactive';
-  tags?: string[];
-  lastActivity?: string;
-  createdAt?: string;
-};
-
-interface ConversationsProps {
-  selectedContactId?: string;
-  onClose?: () => void;
-}
-
-const Conversations: React.FC<ConversationsProps> = ({ selectedContactId, onClose }) => {
-  const [contact, setContact] = useState<Contact | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
+const Conversations: React.FC = () => {
+  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filteredConversations, setFilteredConversations] = useState<Conversation[]>([]);
   const { toast } = useToast();
   
   useEffect(() => {
-    if (selectedContactId) {
-      fetchContactAndMessages();
-    }
-  }, [selectedContactId]);
+    fetchConversations();
+  }, []);
   
-  const fetchContactAndMessages = async () => {
-    if (!selectedContactId) return;
-    
+  useEffect(() => {
+    if (searchQuery.trim() === '') {
+      setFilteredConversations(conversations);
+    } else {
+      const query = searchQuery.toLowerCase();
+      const filtered = conversations.filter(
+        convo => convo.contactName.toLowerCase().includes(query)
+      );
+      setFilteredConversations(filtered);
+    }
+  }, [searchQuery, conversations]);
+  
+  const fetchConversations = async () => {
     setIsLoading(true);
     try {
-      console.log('Fetching contact and messages for:', selectedContactId);
+      console.log('Fetching conversations...');
       
-      // Fetch contact information
-      const { data: contactData, error: contactError } = await supabase
+      // First get all contacts with first_name and last_name
+      const { data: contacts, error: contactsError } = await supabase
         .from('contacts')
-        .select('*')
-        .eq('id', selectedContactId)
-        .single();
+        .select('id, first_name, last_name');
         
-      if (contactError) {
-        console.error('Error fetching contact:', contactError);
-        throw contactError;
+      if (contactsError) {
+        console.error('Error fetching contacts:', contactsError);
+        throw contactsError;
       }
       
-      if (!contactData) {
-        console.log('No contact found');
+      if (!contacts || contacts.length === 0) {
+        console.log('No contacts found');
+        setConversations([]);
+        setFilteredConversations([]);
+        setIsLoading(false);
         return;
       }
       
-      // Transform contact data
-      const transformedContact: Contact = {
-        id: contactData.id,
-        first_name: contactData.first_name,
-        last_name: contactData.last_name,
-        email: contactData.email,
-        phone: contactData.phone,
-        company: contactData.company,
-        status: contactData.status as 'active' | 'inactive',
-        tags: contactData.tags || [],
-        lastActivity: contactData.last_activity,
-        createdAt: contactData.created_at
-      };
+      console.log(`Found ${contacts.length} contacts`);
       
-      setContact(transformedContact);
+      // For each contact, get their latest message
+      const conversationsData = await Promise.all(contacts.map(async (contact) => {
+        try {
+          // Get the latest message for this contact
+          const { data: messages, error: messagesError } = await supabase
+            .from('messages')
+            .select('*')
+            .eq('contact_id', contact.id)
+            .order('sent_at', { ascending: false })
+            .limit(1);
+            
+          if (messagesError) {
+            console.error(`Error fetching messages for contact ${contact.id}:`, messagesError);
+            return null;
+          }
+          
+          // If no messages found for this contact, return null (we'll filter these out later)
+          if (!messages || messages.length === 0) {
+            return null;
+          }
+          
+          // Get message count for this contact
+          const { count: messageCount, error: countError } = await supabase
+            .from('messages')
+            .select('*', { count: 'exact', head: true })
+            .eq('contact_id', contact.id);
+            
+          if (countError) {
+            console.error(`Error counting messages for contact ${contact.id}:`, countError);
+            return null;
+          }
+          
+          // Create a conversation object for this contact
+          return {
+            contactId: contact.id,
+            contactName: getFullName(contact),
+            lastMessage: messages[0].content,
+            lastMessageTime: messages[0].sent_at,
+            unreadCount: 0, // Mock unread count for now
+            messageCount: messageCount || 0
+          };
+        } catch (err) {
+          console.error(`Error processing contact ${contact.id}:`, err);
+          return null;
+        }
+      }));
       
-      // Fetch messages for this contact using the correct schema
-      const { data: messagesData, error: messagesError } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('contact_id', selectedContactId)
-        .order('sent_at', { ascending: true });
-        
-      if (messagesError) {
-        console.error('Error fetching messages:', messagesError);
-        throw messagesError;
-      }
+      // Filter out null results (contacts with no messages)
+      const validConversations = conversationsData.filter(Boolean) as Conversation[];
       
-      setMessages(messagesData || []);
+      console.log(`Found ${validConversations.length} valid conversations`);
       
+      // Sort by most recent message
+      validConversations.sort((a, b) => 
+        new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime()
+      );
+      
+      setConversations(validConversations);
+      setFilteredConversations(validConversations);
     } catch (err) {
-      console.error('Error fetching contact and messages:', err);
+      console.error('Error fetching conversations:', err);
       toast({
-        title: 'Error loading conversation',
-        description: 'There was a problem loading the conversation. Please try again.',
+        title: 'Error loading conversations',
+        description: 'There was a problem loading your conversations. Please try again later.',
         variant: 'destructive'
       });
     } finally {
@@ -114,94 +146,121 @@ const Conversations: React.FC<ConversationsProps> = ({ selectedContactId, onClos
     }
   };
   
-  const handleEdit = (contact: Contact) => {
-    // This will be handled by the parent component
-    console.log('Edit contact:', contact);
+  const formatDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      const today = new Date();
+      
+      if (date.toDateString() === today.toDateString()) {
+        // Return time if today
+        return format(date, 'h:mm a');
+      } else {
+        // Return date if not today
+        return format(date, 'MMM d');
+      }
+    } catch (e) {
+      console.error('Error formatting date:', e);
+      return 'Invalid date';
+    }
   };
   
-  const handleMessageSent = () => {
-    // Refresh messages after sending
-    fetchContactAndMessages();
+  const truncateMessage = (message: string, maxLength = 50) => {
+    return message.length > maxLength
+      ? message.substring(0, maxLength) + '...'
+      : message;
   };
   
-  if (!selectedContactId || !contact) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <MessageSquare className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No conversation selected</h3>
-          <p className="text-gray-500">Select a contact to view their conversation</p>
-        </div>
-      </div>
-    );
-  }
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+  };
   
   return (
-    <div className="flex h-full bg-white">
-      {/* Left Panel - Contact Information */}
-      <ContactInfoPanel 
-        contact={contact} 
-        onEdit={handleEdit}
-      />
-      
-      {/* Right Panel - Chat Interface */}
-      <div className="flex-1 flex flex-col">
-        {/* Header */}
-        <div className="p-4 border-b border-gray-200 bg-white">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">
-              {getFullName(contact)}
-            </h2>
-            {onClose && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onClose}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                ✕
-              </Button>
-            )}
-          </div>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-semibold">Conversations</h2>
+        <div className="flex space-x-2">
+          <Button size="sm" variant="outline">
+            <Filter className="mr-2 h-4 w-4" />
+            Filter
+          </Button>
+          <Button size="sm" variant="outline">
+            <SortDesc className="mr-2 h-4 w-4" />
+            Sort
+          </Button>
         </div>
-        
-        {/* Tabs */}
-        <Tabs defaultValue="sms" className="flex-1 flex flex-col">
-          <div className="border-b border-gray-200 px-4">
-            <TabsList className="h-10">
-              <TabsTrigger value="sms" className="flex items-center space-x-2">
-                <MessageSquare className="h-4 w-4" />
-                <span>SMS</span>
-              </TabsTrigger>
-              <TabsTrigger value="email" disabled className="flex items-center space-x-2 opacity-50">
-                <span>Email</span>
-              </TabsTrigger>
-            </TabsList>
-          </div>
-          
-          <TabsContent value="sms" className="flex-1 flex flex-col m-0">
-            {/* Messages */}
-            <ChatBubbleList 
-              messages={messages}
-              contact={contact}
-              isLoading={isLoading}
-            />
-            
-            {/* Input */}
-            <ChatInput
-              contactId={contact.id}
-              contactPhone={contact.phone}
-              onMessageSent={handleMessageSent}
-            />
-          </TabsContent>
-          
-          <TabsContent value="email" className="flex-1 flex items-center justify-center">
-            <div className="text-center text-gray-500">
-              <p>Email functionality coming soon</p>
-            </div>
-          </TabsContent>
-        </Tabs>
       </div>
+      
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+        <Input
+          placeholder="Search conversations..."
+          className="pl-10"
+          value={searchQuery}
+          onChange={handleSearchChange}
+        />
+      </div>
+      
+      <Card>
+        {isLoading ? (
+          <div className="p-4 space-y-4">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="flex items-center space-x-4 py-2">
+                <Skeleton className="h-12 w-12 rounded-full" />
+                <div className="space-y-2 flex-1">
+                  <Skeleton className="h-4 w-1/4" />
+                  <Skeleton className="h-4 w-3/4" />
+                </div>
+                <Skeleton className="h-4 w-16" />
+              </div>
+            ))}
+          </div>
+        ) : filteredConversations.length > 0 ? (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Contact</TableHead>
+                  <TableHead>Last Message</TableHead>
+                  <TableHead>Messages</TableHead>
+                  <TableHead>Time</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredConversations.map((convo) => (
+                  <TableRow 
+                    key={convo.contactId}
+                    className="cursor-pointer hover:bg-gray-50"
+                    onClick={() => console.log('Open conversation:', convo.contactId)}
+                  >
+                    <TableCell className="font-medium">
+                      <div className="flex items-center space-x-3">
+                        <div className="bg-primary/10 text-primary h-10 w-10 rounded-full flex items-center justify-center">
+                          <User size={20} />
+                        </div>
+                        <span>{convo.contactName}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="max-w-xs truncate">
+                      {truncateMessage(convo.lastMessage)}
+                    </TableCell>
+                    <TableCell>{convo.messageCount}</TableCell>
+                    <TableCell>{formatDate(convo.lastMessageTime)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        ) : (
+          <div className="py-16 text-center">
+            <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+              <MessageSquare className="text-primary" size={24} />
+            </div>
+            <h3 className="text-lg font-medium mb-2">No conversations yet</h3>
+            <p className="text-muted-foreground mb-4">Start messaging your contacts to begin conversations</p>
+            <Button>Start a conversation</Button>
+          </div>
+        )}
+      </Card>
     </div>
   );
 };
