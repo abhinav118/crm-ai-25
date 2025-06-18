@@ -413,7 +413,7 @@ const Index = () => {
               onPageChange={setCurrentPage}
               showPagination={activeTab === 'all'}
               showCompanyColumn={false}
-              showBulkActionsTab={true}
+              showBulkActionsTab={false}
             />
           )}
         </main>
