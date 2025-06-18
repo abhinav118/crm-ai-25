@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Upload, Users, Plus, Minus } from 'lucide-react';
+import { Upload, Users, Plus, Minus, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
@@ -24,6 +24,7 @@ const ManageSegmentMembership: React.FC<ManageSegmentMembershipProps> = ({ onAct
   const [uploadMethod, setUploadMethod] = useState<'manual' | 'csv'>('manual');
   const [isLoading, setIsLoading] = useState(false);
   const [operationType, setOperationType] = useState<'add' | 'remove'>('add');
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
   const queryClient = useQueryClient();
 
@@ -50,12 +51,12 @@ const ManageSegmentMembership: React.FC<ManageSegmentMembershipProps> = ({ onAct
     const reader = new FileReader();
     reader.onload = (e) => {
       const text = e.target?.result as string;
-      // Extract phone numbers from CSV - assuming they're in the first column or find phone-like patterns
+      // Extract phone numbers from CSV - look for phone-like patterns
       const lines = text.split('\n');
       const phones = lines
         .map(line => {
           // Try to extract phone numbers from each line
-          const match = line.match(/\b\d{3}[-.]?\d{3}[-.]?\d{4}\b|\(\d{3}\)\s*\d{3}[-.]?\d{4}/);
+          const match = line.match(/\b\d{3}[-.]?\d{3}[-.]?\d{4}\b|\(\d{3}\)\s*\d{3}[-.]?\d{4}|\+1\d{10}\b/);
           return match ? match[0] : line.trim();
         })
         .filter(phone => phone && phone.length > 0)
@@ -83,13 +84,24 @@ const ManageSegmentMembership: React.FC<ManageSegmentMembershipProps> = ({ onAct
     return phone; // Return original if format is unexpected
   };
 
-  const validateAndFormatPhones = (phoneList: string[]): string[] => {
-    return phoneList
-      .filter(phone => {
-        const cleaned = phone.replace(/\D/g, '');
-        return cleaned.length === 10 || (cleaned.length === 11 && cleaned.startsWith('1'));
-      })
-      .map(formatPhoneNumber);
+  const validatePhoneNumbers = (phoneList: string[]): { valid: string[], invalid: string[], errors: string[] } => {
+    const valid: string[] = [];
+    const invalid: string[] = [];
+    const errors: string[] = [];
+
+    phoneList.forEach((phone, index) => {
+      const cleaned = phone.replace(/\D/g, '');
+      const isValid = cleaned.length === 10 || (cleaned.length === 11 && cleaned.startsWith('1'));
+      
+      if (isValid) {
+        valid.push(formatPhoneNumber(phone));
+      } else {
+        invalid.push(phone);
+        errors.push(`Line ${index + 1}: "${phone}" is not a valid phone number`);
+      }
+    });
+
+    return { valid, invalid, errors };
   };
 
   const handleUpdateMembership = async () => {
@@ -114,15 +126,28 @@ const ManageSegmentMembership: React.FC<ManageSegmentMembershipProps> = ({ onAct
     }
 
     setIsLoading(true);
+    setValidationErrors([]);
+    
     try {
-      // Parse phone numbers
+      // Parse and validate phone numbers
       const phoneList = phoneNumbers
         .split('\n')
         .map(phone => phone.trim())
         .filter(phone => phone.length > 0);
 
-      const validPhones = validateAndFormatPhones(phoneList);
+      const { valid: validPhones, invalid: invalidPhones, errors } = validatePhoneNumbers(phoneList);
       
+      if (invalidPhones.length > 0) {
+        setValidationErrors(errors);
+        toast({
+          title: 'Validation Errors',
+          description: `${invalidPhones.length} invalid phone number(s) found. Please check the format.`,
+          variant: 'destructive',
+        });
+        setIsLoading(false);
+        return;
+      }
+
       if (validPhones.length === 0) {
         toast({
           title: 'Error',
@@ -144,7 +169,7 @@ const ManageSegmentMembership: React.FC<ManageSegmentMembershipProps> = ({ onAct
       if (!contacts || contacts.length === 0) {
         toast({
           title: 'No matches found',
-          description: 'No contacts found matching the provided phone numbers.',
+          description: 'No contacts found matching the provided phone numbers. Please double check the input formatting.',
           variant: 'destructive',
         });
         setIsLoading(false);
@@ -182,13 +207,14 @@ const ManageSegmentMembership: React.FC<ManageSegmentMembershipProps> = ({ onAct
       
       toast({
         title: 'Success',
-        description: `${contacts.length} contact(s) ${actionText} ${segmentText}.`,
+        description: `${contacts.length} contact(s) ${actionText} ${segmentText} successfully.`,
       });
 
       // Reset form
       setPhoneNumbers('');
       setNewSegmentName('');
       setSelectedSegment('');
+      setValidationErrors([]);
       
       // Refresh data
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
@@ -240,7 +266,7 @@ const ManageSegmentMembership: React.FC<ManageSegmentMembershipProps> = ({ onAct
           </Tabs>
         </div>
 
-        {/* Segment Selection */}
+        {/* Target Segment Selection */}
         <div className="space-y-2">
           <Label htmlFor="segment-select">
             {operationType === 'add' ? 'Target Segment' : 'Remove from Segment'}
@@ -275,7 +301,7 @@ const ManageSegmentMembership: React.FC<ManageSegmentMembershipProps> = ({ onAct
           </div>
         )}
 
-        {/* Upload Method */}
+        {/* Contact Input Method */}
         <div className="space-y-2">
           <Label>Contact Input Method</Label>
           <Tabs value={uploadMethod} onValueChange={(value: 'manual' | 'csv') => setUploadMethod(value)}>
@@ -289,13 +315,13 @@ const ManageSegmentMembership: React.FC<ManageSegmentMembershipProps> = ({ onAct
                 <Label htmlFor="phone-numbers">Phone Numbers</Label>
                 <Textarea
                   id="phone-numbers"
-                  placeholder="Enter phone numbers (one per line)&#10;Example:&#10;(555) 123-4567&#10;555-123-4567&#10;5551234567"
+                  placeholder="Enter phone numbers (one per line)&#10;Supported formats:&#10;(555) 123-4567&#10;555-123-4567&#10;+15551234567&#10;5551234567"
                   value={phoneNumbers}
                   onChange={(e) => setPhoneNumbers(e.target.value)}
                   rows={8}
                 />
                 <p className="text-xs text-gray-500">
-                  Enter one phone number per line. Supports various formats.
+                  Enter one phone number per line. Supports: (xxx) xxx-xxxx, xxx-xxx-xxxx, +1xxxxxxxxxx, xxxxxxxxxx
                 </p>
               </div>
             </TabsContent>
@@ -328,6 +354,21 @@ const ManageSegmentMembership: React.FC<ManageSegmentMembershipProps> = ({ onAct
             </TabsContent>
           </Tabs>
         </div>
+
+        {/* Validation Errors */}
+        {validationErrors.length > 0 && (
+          <div className="bg-red-50 border border-red-200 rounded-md p-3">
+            <div className="flex items-center gap-2 text-red-800 font-medium mb-2">
+              <AlertCircle className="h-4 w-4" />
+              Validation Errors
+            </div>
+            <div className="text-sm text-red-700 space-y-1">
+              {validationErrors.map((error, index) => (
+                <div key={index}>{error}</div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Action Button */}
         <Button 
