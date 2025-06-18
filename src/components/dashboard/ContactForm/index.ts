@@ -1,3 +1,4 @@
 
-export { default as AddContactForm } from '../AddContactForm';
-export * from './types';
+import ContactForm from './ContactForm';
+
+export default ContactForm;

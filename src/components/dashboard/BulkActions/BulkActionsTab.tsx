@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -19,6 +20,8 @@ import {
 import { format } from 'date-fns';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import BulkActions from './BulkActions';
+import { Contact } from '../ContactsTable';
+import { getFullName } from '@/utils/contactHelpers';
 
 interface BulkActionsTabProps {
   selectedContacts: string[];
@@ -27,7 +30,8 @@ interface BulkActionsTabProps {
 
 interface ContactInfo {
   id: string;
-  name: string;
+  first_name: string;
+  last_name: string;
   email: string;
   phone: string;
   status: string;
@@ -100,7 +104,19 @@ const BulkActionsTab: React.FC<BulkActionsTabProps> = ({
       }
       
       if (data) {
-        setContacts(data as ContactInfo[]);
+        const transformedContacts: ContactInfo[] = data.map(contact => ({
+          id: contact.id,
+          first_name: contact.first_name,
+          last_name: contact.last_name || '',
+          email: contact.email || '',
+          phone: contact.phone || '',
+          status: contact.status,
+          tags: contact.tags || [],
+          created_at: contact.created_at,
+          updated_at: contact.updated_at,
+          company: contact.company || ''
+        }));
+        setContacts(transformedContacts);
       }
     } catch (error) {
       console.error("Exception loading contacts:", error);
@@ -110,8 +126,6 @@ const BulkActionsTab: React.FC<BulkActionsTabProps> = ({
   };
   
   const fetchContactLogs = async (isNewSearch = false): Promise<void> => {
-    // if (selectedContacts.length === 0) return;
-    
     setIsLoadingLogs(true);
     try {
       console.log('Fetching contact logs for selected contacts:', selectedContacts);
@@ -178,7 +192,8 @@ const BulkActionsTab: React.FC<BulkActionsTabProps> = ({
             action: 'sms_sent',
             contact_info: {
               id: contactId,
-              name: contactData.name,
+              first_name: contactData.first_name,
+              last_name: contactData.last_name,
               email: contactData.email,
               phone: contactData.phone,
               status: contactData.status,
@@ -270,7 +285,8 @@ const BulkActionsTab: React.FC<BulkActionsTabProps> = ({
               action: 'note_added',
               contact_info: {
                 id: contactId,
-                name: contactData.name,
+                first_name: contactData.first_name,
+                last_name: contactData.last_name,
                 email: contactData.email,
                 phone: contactData.phone,
                 status: contactData.status,
@@ -300,7 +316,8 @@ const BulkActionsTab: React.FC<BulkActionsTabProps> = ({
               action: 'contact_updated',
               contact_info: {
                 id: contactId,
-                name: contactData.name,
+                first_name: contactData.first_name,
+                last_name: contactData.last_name,
                 email: contactData.email,
                 phone: contactData.phone,
                 status: contactData.status,
@@ -411,7 +428,9 @@ const BulkActionsTab: React.FC<BulkActionsTabProps> = ({
       if (typeof contactInfo === 'string') return contactInfo;
       
       // Prioritize showing name, email, and phone if they exist
-      const name = contactInfo.name ? `${contactInfo.name}` : '';
+      const firstName = contactInfo.first_name || '';
+      const lastName = contactInfo.last_name || '';
+      const name = firstName && lastName ? `${firstName} ${lastName}` : firstName || lastName || '';
       const email = contactInfo.email ? `${contactInfo.email}` : '';
       const phone = contactInfo.phone ? `${contactInfo.phone}` : '';
       
@@ -581,7 +600,8 @@ const BulkActionsTab: React.FC<BulkActionsTabProps> = ({
         action: 'test_action',
         contact_info: {
           id: contactId,
-          name: contactData.name,
+          first_name: contactData.first_name,
+          last_name: contactData.last_name,
           email: contactData.email,
           phone: contactData.phone,
           status: contactData.status,
@@ -750,8 +770,9 @@ const BulkActionsTab: React.FC<BulkActionsTabProps> = ({
         
         <TabsContent value="sms">
           <BulkActions 
-            selectedContacts={selectedContacts} 
+            selectedContacts={selectedContacts.map(id => ({ id } as Contact))} 
             onContactsUpdated={onActionComplete}
+            onSelectionClear={() => {}}
           />
         </TabsContent>
         

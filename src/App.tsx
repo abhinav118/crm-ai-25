@@ -56,7 +56,7 @@ const App = () => {
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/contacts" element={<Index />} />
-              <Route path="/conversations" element={<Index initialTab="conversations" />} />
+              <Route path="/conversations" element={<Index />} />
               <Route path="/campaigns" element={<CampaignsPage />} />
               <Route path="/campaigns/create" element={<CreateCampaignPage />} />
               <Route path="/reporting" element={<ReportingPage />} />

@@ -17,40 +17,39 @@ const chartConfig = {
 };
 
 const DeliveryReportsComponent = () => {
-  const { dateRange } = ImportedUseDateRange();
-  const { data: metrics, isLoading, error } = useDeliveryReportMetrics(dateRange);
+  const { data: metrics, isLoading, error } = useDeliveryReportMetrics();
 
   const deliveryStats = [
     { 
       label: "Total Sent", 
-      value: metrics?.total_sent?.toLocaleString() || "0", 
+      value: metrics?.totalSent?.toLocaleString() || "0", 
       icon: MessageSquare, 
       color: "text-blue-600" 
     },
     { 
       label: "Delivered", 
-      value: metrics?.delivered_count?.toLocaleString() || "0", 
+      value: metrics?.delivered?.toLocaleString() || "0", 
       icon: CheckCircle, 
       color: "text-green-600" 
     },
     { 
       label: "Failed", 
-      value: metrics?.failed_count?.toLocaleString() || "0", 
+      value: metrics?.failed?.toLocaleString() || "0", 
       icon: XCircle, 
       color: "text-red-600" 
     },
     { 
       label: "Pending", 
-      value: metrics?.pending_count?.toLocaleString() || "0", 
+      value: metrics?.pending?.toLocaleString() || "0", 
       icon: Clock, 
       color: "text-yellow-600" 
     }
   ];
 
   const deliveryStatusData = [
-    { name: 'Delivered', value: metrics?.delivered_count || 0, color: '#22c55e' },
-    { name: 'Failed', value: metrics?.failed_count || 0, color: '#ef4444' },
-    { name: 'Pending', value: metrics?.pending_count || 0, color: '#eab308' }
+    { name: 'Delivered', value: metrics?.delivered || 0, color: '#22c55e' },
+    { name: 'Failed', value: metrics?.failed || 0, color: '#ef4444' },
+    { name: 'Pending', value: metrics?.pending || 0, color: '#eab308' }
   ];
 
   const getStatusBadge = (status: string) => {
@@ -99,45 +98,6 @@ const DeliveryReportsComponent = () => {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        {/* Delivery Trends Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <TrendingUp className="h-5 w-5" />
-              Delivery Trends (Last 7 Days)
-            </CardTitle>
-            <CardDescription>Daily message delivery performance</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="flex items-center justify-center h-[200px] xs:h-[240px] sm:h-[300px] text-muted-foreground">
-                <p>Loading delivery trends...</p>
-              </div>
-            ) : metrics?.delivery_trends && metrics.delivery_trends.length > 0 ? (
-              <ChartContainer config={chartConfig} className="h-[200px] xs:h-[240px] sm:h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={metrics.delivery_trends} margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="day" fontSize={12} />
-                    <YAxis fontSize={12} />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Bar dataKey="delivered" fill="var(--color-delivered)" />
-                    <Bar dataKey="failed" fill="var(--color-failed)" />
-                    <Bar dataKey="pending" fill="var(--color-pending)" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </ChartContainer>
-            ) : (
-              <div className="flex items-center justify-center h-[200px] xs:h-[240px] sm:h-[300px] text-muted-foreground">
-                <div className="text-center">
-                  <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No delivery data available for the selected date range</p>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
         {/* Delivery Status Breakdown */}
         <Card>
           <CardHeader>
@@ -186,6 +146,47 @@ const DeliveryReportsComponent = () => {
             )}
           </CardContent>
         </Card>
+
+        {/* Delivery Trends Chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <TrendingUp className="h-5 w-5" />
+              Delivery Performance
+            </CardTitle>
+            <CardDescription>Overall delivery metrics</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="flex items-center justify-center h-[200px] xs:h-[240px] sm:h-[300px] text-muted-foreground">
+                <p>Loading delivery performance...</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="text-center">
+                  <div className="text-4xl font-bold text-green-600">
+                    {metrics?.deliveryRate}%
+                  </div>
+                  <p className="text-sm text-muted-foreground">Overall Delivery Rate</p>
+                </div>
+                <div className="grid grid-cols-3 gap-4 text-center">
+                  <div>
+                    <div className="text-2xl font-semibold text-blue-600">{metrics?.totalSent}</div>
+                    <p className="text-xs text-muted-foreground">Total Sent</p>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-semibold text-green-600">{metrics?.delivered}</div>
+                    <p className="text-xs text-muted-foreground">Delivered</p>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-semibold text-red-600">{metrics?.failed}</div>
+                    <p className="text-xs text-muted-foreground">Failed</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       {/* Recent Deliveries Table */}
@@ -199,30 +200,30 @@ const DeliveryReportsComponent = () => {
             <div className="flex items-center justify-center p-8 text-muted-foreground">
               <p>Loading recent deliveries...</p>
             </div>
-          ) : metrics?.recent_deliveries && metrics.recent_deliveries.length > 0 ? (
+          ) : metrics?.recentActivity && metrics.recentActivity.length > 0 ? (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="min-w-[120px]">Recipient Name</TableHead>
+                    <TableHead className="min-w-[120px]">Contact</TableHead>
                     <TableHead className="min-w-[140px]">Phone Number</TableHead>
                     <TableHead className="min-w-[100px]">Status</TableHead>
-                    <TableHead className="min-w-[100px]">Delivery Time</TableHead>
                     <TableHead className="min-w-[120px]">Timestamp</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {metrics.recent_deliveries.map((delivery) => (
-                    <TableRow key={delivery.id}>
-                      <TableCell className="font-medium">{delivery.recipientName}</TableCell>
-                      <TableCell>{delivery.recipient}</TableCell>
+                  {metrics.recentActivity.map((activity) => (
+                    <TableRow key={activity.id}>
+                      <TableCell className="font-medium">{activity.contact}</TableCell>
+                      <TableCell>{activity.phone}</TableCell>
                       <TableCell>
-                        <span className={getStatusBadge(delivery.status)}>
-                          {delivery.status}
+                        <span className={getStatusBadge(activity.status)}>
+                          {activity.status}
                         </span>
                       </TableCell>
-                      <TableCell>{delivery.deliveryTime}</TableCell>
-                      <TableCell className="text-muted-foreground">{delivery.timestamp}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {new Date(activity.timestamp).toLocaleString()}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -232,7 +233,7 @@ const DeliveryReportsComponent = () => {
             <div className="flex items-center justify-center p-8 text-muted-foreground">
               <div className="text-center">
                 <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No recent deliveries found for the selected date range</p>
+                <p>No recent deliveries found</p>
               </div>
             </div>
           )}
