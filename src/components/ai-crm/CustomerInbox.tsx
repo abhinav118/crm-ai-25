@@ -18,10 +18,12 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
 import { format, formatDistanceToNow } from 'date-fns';
+import { getFullName } from '@/utils/contactHelpers';
 
 interface Contact {
   id: string;
-  name: string;
+  first_name: string;
+  last_name?: string;
   email?: string;
   phone?: string;
   created_at: string;
@@ -87,7 +89,8 @@ const CustomerInbox = ({ onSelectCustomer }: CustomerInboxProps) => {
       // Transform the data to match our Contact interface
       const formattedContacts: Contact[] = data?.map(contact => ({
         id: contact.id,
-        name: contact.name,
+        first_name: contact.first_name,
+        last_name: contact.last_name,
         email: contact.email,
         phone: contact.phone,
         created_at: contact.created_at,
@@ -161,7 +164,7 @@ const CustomerInbox = ({ onSelectCustomer }: CustomerInboxProps) => {
       // Filter by search query
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
-        const nameMatch = contact.name.toLowerCase().includes(query);
+        const nameMatch = getFullName(contact).toLowerCase().includes(query);
         const messageMatch = contact.last_message?.toLowerCase().includes(query) || false;
         
         if (!nameMatch && !messageMatch) {
@@ -426,12 +429,12 @@ const CustomerInbox = ({ onSelectCustomer }: CustomerInboxProps) => {
                       <div className="flex items-center gap-2">
                         <Avatar className="h-8 w-8">
                           <div className="bg-primary text-white rounded-full h-full w-full flex items-center justify-center text-xs font-medium">
-                            {contact.name.split(' ').map(n => n[0]).join('')}
+                            {getFullName(contact).split(' ').map(n => n[0]).join('')}
                           </div>
                         </Avatar>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between">
-                            <div className="font-medium truncate">{contact.name}</div>
+                            <div className="font-medium truncate">{getFullName(contact)}</div>
                             <div className="text-xs text-gray-500">
                               {contact.last_timestamp && formatTimestamp(contact.last_timestamp)}
                             </div>
@@ -466,11 +469,11 @@ const CustomerInbox = ({ onSelectCustomer }: CustomerInboxProps) => {
                     <div className="flex items-center gap-2">
                       <Avatar className="h-8 w-8">
                         <div className="bg-primary text-white rounded-full h-full w-full flex items-center justify-center text-xs font-medium">
-                          {selectedContact.name.split(' ').map(n => n[0]).join('')}
+                          {getFullName(selectedContact).split(' ').map(n => n[0]).join('')}
                         </div>
                       </Avatar>
                       <div>
-                        <div className="font-medium">{selectedContact.name}</div>
+                        <div className="font-medium">{getFullName(selectedContact)}</div>
                         <div className="text-xs text-gray-500 flex items-center gap-1">
                           {selectedContact.last_platform && getChannelIcon(selectedContact.last_platform)}
                           <span>{selectedContact.last_platform}</span>
@@ -493,7 +496,7 @@ const CustomerInbox = ({ onSelectCustomer }: CustomerInboxProps) => {
                           {message.sender === 'customer' && (
                             <Avatar className="h-8 w-8 mt-1">
                               <div className="bg-primary text-white rounded-full h-full w-full flex items-center justify-center text-xs font-medium">
-                                {selectedContact.name.split(' ').map(n => n[0]).join('')}
+                                {getFullName(selectedContact).split(' ').map(n => n[0]).join('')}
                               </div>
                             </Avatar>
                           )}

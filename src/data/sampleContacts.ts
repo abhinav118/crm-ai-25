@@ -3,7 +3,8 @@ import { Contact } from '@/components/dashboard/ContactsTable';
 export const SAMPLE_CONTACTS: Contact[] = [
   {
     id: '1',
-    name: 'Alex Brown',
+    first_name: 'Alex',
+    last_name: 'Brown',
     email: 'alex.brown@example.com',
     phone: '(415) 439-0377',
     company: 'Acme Inc',
@@ -14,7 +15,8 @@ export const SAMPLE_CONTACTS: Contact[] = [
   },
   {
     id: '2',
-    name: 'Traniece Naira',
+    first_name: 'Traniece',
+    last_name: 'Naira',
     email: 'traniece.n@example.com',
     company: 'Global Tech',
     status: 'active',
@@ -24,7 +26,8 @@ export const SAMPLE_CONTACTS: Contact[] = [
   },
   {
     id: '3',
-    name: 'Vicky Lu',
+    first_name: 'Vicky',
+    last_name: 'Lu',
     email: 'vicky.lu@highland-hospital.org',
     phone: '(510) 304-5259',
     company: 'Highland Hospital',
@@ -35,7 +38,8 @@ export const SAMPLE_CONTACTS: Contact[] = [
   },
   {
     id: '4',
-    name: 'Vicky Low',
+    first_name: 'Vicky',
+    last_name: 'Low',
     email: 'vicky.low@example.com',
     company: 'Tech Solutions',
     status: 'inactive',
@@ -43,7 +47,8 @@ export const SAMPLE_CONTACTS: Contact[] = [
   },
   {
     id: '5',
-    name: 'Trang Nguyen',
+    first_name: 'Trang',
+    last_name: 'Nguyen',
     email: 'trang.nguyen@example.com',
     phone: '(650) 555-1234',
     company: 'Startup XYZ',
@@ -54,7 +59,8 @@ export const SAMPLE_CONTACTS: Contact[] = [
   },
   {
     id: '6',
-    name: 'John Smith',
+    first_name: 'John',
+    last_name: 'Smith',
     email: 'john.smith@example.com',
     phone: '(408) 555-6789',
     company: 'ABC Corporation',
@@ -65,7 +71,8 @@ export const SAMPLE_CONTACTS: Contact[] = [
   },
   {
     id: '7',
-    name: 'Sarah Johnson',
+    first_name: 'Sarah',
+    last_name: 'Johnson',
     email: 'sarah.j@example.com',
     company: 'Design Studio',
     status: 'active',
@@ -75,7 +82,8 @@ export const SAMPLE_CONTACTS: Contact[] = [
   },
   {
     id: '8',
-    name: 'Michael Chen',
+    first_name: 'Michael',
+    last_name: 'Chen',
     email: 'michael.chen@example.com',
     phone: '(650) 789-1234',
     company: 'Tech Innovations',
@@ -86,7 +94,8 @@ export const SAMPLE_CONTACTS: Contact[] = [
   },
   {
     id: '9',
-    name: 'Emily Davis',
+    first_name: 'Emily',
+    last_name: 'Davis',
     email: 'emily.davis@example.com',
     phone: '(415) 567-8901',
     company: 'Marketing Pro',
@@ -97,7 +106,8 @@ export const SAMPLE_CONTACTS: Contact[] = [
   },
   {
     id: '10',
-    name: 'David Wilson',
+    first_name: 'David',
+    last_name: 'Wilson',
     email: 'david.wilson@example.com',
     company: 'Wilson Consulting',
     status: 'active',
@@ -107,7 +117,8 @@ export const SAMPLE_CONTACTS: Contact[] = [
   },
   {
     id: '11',
-    name: 'Olivia Martinez',
+    first_name: 'Olivia',
+    last_name: 'Martinez',
     email: 'olivia.m@example.com',
     phone: '(510) 234-5678',
     company: 'Healthcare Solutions',
@@ -118,7 +129,8 @@ export const SAMPLE_CONTACTS: Contact[] = [
   },
   {
     id: '12',
-    name: 'James Taylor',
+    first_name: 'James',
+    last_name: 'Taylor',
     email: 'james.t@example.com',
     phone: '(408) 876-5432',
     company: 'Taylor Industries',
@@ -129,7 +141,8 @@ export const SAMPLE_CONTACTS: Contact[] = [
   },
   {
     id: '13',
-    name: 'Sophia Lee',
+    first_name: 'Sophia',
+    last_name: 'Lee',
     email: 'sophia.lee@example.com',
     company: 'Design Hub',
     status: 'active',
@@ -139,7 +152,8 @@ export const SAMPLE_CONTACTS: Contact[] = [
   },
   {
     id: '14',
-    name: 'Daniel Brown',
+    first_name: 'Daniel',
+    last_name: 'Brown',
     email: 'daniel.b@example.com',
     phone: '(650) 345-6789',
     company: 'Financial Services Inc',
@@ -150,7 +164,8 @@ export const SAMPLE_CONTACTS: Contact[] = [
   },
   {
     id: '15',
-    name: 'Ava Robinson',
+    first_name: 'Ava',
+    last_name: 'Robinson',
     email: 'ava.r@example.com',
     company: 'EdTech Startup',
     status: 'inactive',
@@ -160,7 +175,8 @@ export const SAMPLE_CONTACTS: Contact[] = [
   },
   {
     id: '16',
-    name: 'Ethan Clark',
+    first_name: 'Ethan',
+    last_name: 'Clark',
     email: 'ethan.clark@example.com',
     phone: '(415) 876-5432',
     company: 'Clark & Associates',
@@ -171,7 +187,8 @@ export const SAMPLE_CONTACTS: Contact[] = [
   },
   {
     id: '17',
-    name: 'Mia Lewis',
+    first_name: 'Mia',
+    last_name: 'Lewis',
     email: 'mia.lewis@example.com',
     phone: '(510) 987-6543',
     company: 'Retail Solutions',
@@ -182,7 +199,8 @@ export const SAMPLE_CONTACTS: Contact[] = [
   },
   {
     id: '18',
-    name: 'Liam Johnson',
+    first_name: 'Liam',
+    last_name: 'Johnson',
     email: 'liam.j@example.com',
     company: 'Johnson Media',
     status: 'inactive',
@@ -192,7 +210,8 @@ export const SAMPLE_CONTACTS: Contact[] = [
   },
   {
     id: '19',
-    name: 'Emma White',
+    first_name: 'Emma',
+    last_name: 'White',
     email: 'emma.white@example.com',
     phone: '(408) 234-5678',
     company: 'White Enterprises',
@@ -203,7 +222,8 @@ export const SAMPLE_CONTACTS: Contact[] = [
   },
   {
     id: '20',
-    name: 'Noah Harris',
+    first_name: 'Noah',
+    last_name: 'Harris',
     email: 'noah.h@example.com',
     company: 'Green Energy Co',
     status: 'active',
@@ -213,7 +233,8 @@ export const SAMPLE_CONTACTS: Contact[] = [
   },
   {
     id: '21',
-    name: 'Isabella Moore',
+    first_name: 'Isabella',
+    last_name: 'Moore',
     email: 'isabella.m@example.com',
     phone: '(650) 567-8901',
     company: 'Food Delivery App',
@@ -224,7 +245,8 @@ export const SAMPLE_CONTACTS: Contact[] = [
   },
   {
     id: '22',
-    name: 'Lucas Martin',
+    first_name: 'Lucas',
+    last_name: 'Martin',
     email: 'lucas.martin@example.com',
     company: 'Martin Construction',
     status: 'active',
@@ -234,7 +256,8 @@ export const SAMPLE_CONTACTS: Contact[] = [
   },
   {
     id: '23',
-    name: 'Amelia Jackson',
+    first_name: 'Amelia',
+    last_name: 'Jackson',
     email: 'amelia.j@example.com',
     phone: '(415) 345-6789',
     company: 'Travel Agency',
@@ -245,7 +268,8 @@ export const SAMPLE_CONTACTS: Contact[] = [
   },
   {
     id: '24',
-    name: 'Benjamin Thomas',
+    first_name: 'Benjamin',
+    last_name: 'Thomas',
     email: 'benjamin.t@example.com',
     company: 'Software Solutions',
     status: 'inactive',
@@ -255,7 +279,8 @@ export const SAMPLE_CONTACTS: Contact[] = [
   },
   {
     id: '25',
-    name: 'Charlotte Garcia',
+    first_name: 'Charlotte',
+    last_name: 'Garcia',
     email: 'charlotte.g@example.com',
     phone: '(510) 456-7890',
     company: 'Garcia & Co',
@@ -266,7 +291,8 @@ export const SAMPLE_CONTACTS: Contact[] = [
   },
   {
     id: '26',
-    name: 'Henry Rodriguez',
+    first_name: 'Henry',
+    last_name: 'Rodriguez',
     email: 'henry.r@example.com',
     company: 'Auto Parts Manufacturing',
     status: 'active',
@@ -276,7 +302,8 @@ export const SAMPLE_CONTACTS: Contact[] = [
   },
   {
     id: '27',
-    name: 'Scarlett Adams',
+    first_name: 'Scarlett',
+    last_name: 'Adams',
     email: 'scarlett.a@example.com',
     phone: '(408) 567-8901',
     company: 'Fashion Retail',
@@ -287,7 +314,8 @@ export const SAMPLE_CONTACTS: Contact[] = [
   },
   {
     id: '28',
-    name: 'Leo Campbell',
+    first_name: 'Leo',
+    last_name: 'Campbell',
     email: 'leo.campbell@example.com',
     company: 'Campbell Sports',
     status: 'active',
@@ -297,7 +325,8 @@ export const SAMPLE_CONTACTS: Contact[] = [
   },
   {
     id: '29',
-    name: 'Aria Mitchell',
+    first_name: 'Aria',
+    last_name: 'Mitchell',
     email: 'aria.m@example.com',
     phone: '(650) 456-7890',
     company: 'Mitchell Music',
@@ -308,7 +337,8 @@ export const SAMPLE_CONTACTS: Contact[] = [
   },
   {
     id: '30',
-    name: 'Jack Turner',
+    first_name: 'Jack',
+    last_name: 'Turner',
     email: 'jack.turner@example.com',
     company: 'Turner Electronics',
     status: 'inactive',
@@ -318,7 +348,8 @@ export const SAMPLE_CONTACTS: Contact[] = [
   },
   {
     id: '31',
-    name: 'Luna Phillips',
+    first_name: 'Luna',
+    last_name: 'Phillips',
     email: 'luna.p@example.com',
     phone: '(415) 789-0123',
     company: 'Pet Care Services',
@@ -329,7 +360,8 @@ export const SAMPLE_CONTACTS: Contact[] = [
   },
   {
     id: '32',
-    name: 'Owen Collins',
+    first_name: 'Owen',
+    last_name: 'Collins',
     email: 'owen.collins@example.com',
     company: 'Collins Catering',
     status: 'active',
@@ -339,7 +371,8 @@ export const SAMPLE_CONTACTS: Contact[] = [
   },
   {
     id: '33',
-    name: 'Lily Stewart',
+    first_name: 'Lily',
+    last_name: 'Stewart',
     email: 'lily.s@example.com',
     phone: '(510) 678-9012',
     company: 'Education Consultants',
@@ -350,7 +383,8 @@ export const SAMPLE_CONTACTS: Contact[] = [
   },
   {
     id: '34',
-    name: 'Aiden Morris',
+    first_name: 'Aiden',
+    last_name: 'Morris',
     email: 'aiden.morris@example.com',
     company: 'Morris Real Estate',
     status: 'active',
@@ -360,7 +394,8 @@ export const SAMPLE_CONTACTS: Contact[] = [
   },
   {
     id: '35',
-    name: 'Zoe Cooper',
+    first_name: 'Zoe',
+    last_name: 'Cooper',
     email: 'zoe.c@example.com',
     phone: '(408) 901-2345',
     company: 'Fitness Chain',
@@ -371,7 +406,8 @@ export const SAMPLE_CONTACTS: Contact[] = [
   },
   {
     id: '36',
-    name: 'Gabriel Reed',
+    first_name: 'Gabriel',
+    last_name: 'Reed',
     email: 'gabriel.reed@example.com',
     company: 'Reed Insurance',
     status: 'inactive',
@@ -381,7 +417,8 @@ export const SAMPLE_CONTACTS: Contact[] = [
   },
   {
     id: '37',
-    name: 'Hannah Bailey',
+    first_name: 'Hannah',
+    last_name: 'Bailey',
     email: 'hannah.b@example.com',
     phone: '(650) 123-4567',
     company: 'Bailey Bakery',
@@ -392,7 +429,8 @@ export const SAMPLE_CONTACTS: Contact[] = [
   },
   {
     id: '38',
-    name: 'Carter Murphy',
+    first_name: 'Carter',
+    last_name: 'Murphy',
     email: 'carter.murphy@example.com',
     company: 'Murphy Law Firm',
     status: 'active',
@@ -402,7 +440,8 @@ export const SAMPLE_CONTACTS: Contact[] = [
   },
   {
     id: '39',
-    name: 'Chloe Rivera',
+    first_name: 'Chloe',
+    last_name: 'Rivera',
     email: 'chloe.r@example.com',
     phone: '(415) 234-5678',
     company: 'Rivera Art Gallery',
@@ -413,7 +452,8 @@ export const SAMPLE_CONTACTS: Contact[] = [
   },
   {
     id: '40',
-    name: 'Wyatt Cook',
+    first_name: 'Wyatt',
+    last_name: 'Cook',
     email: 'wyatt.cook@example.com',
     company: 'Cook Landscaping',
     status: 'active',
@@ -423,7 +463,8 @@ export const SAMPLE_CONTACTS: Contact[] = [
   },
   {
     id: '41',
-    name: 'Abigail Ward',
+    first_name: 'Abigail',
+    last_name: 'Ward',
     email: 'abigail.w@example.com',
     phone: '(510) 345-6789',
     company: 'Ward Dental Clinic',
@@ -434,7 +475,8 @@ export const SAMPLE_CONTACTS: Contact[] = [
   },
   {
     id: '42',
-    name: 'Jacob Torres',
+    first_name: 'Jacob',
+    last_name: 'Torres',
     email: 'jacob.torres@example.com',
     company: 'Torres Translation',
     status: 'inactive',
@@ -444,7 +486,8 @@ export const SAMPLE_CONTACTS: Contact[] = [
   },
   {
     id: '43',
-    name: 'Madison Peterson',
+    first_name: 'Madison',
+    last_name: 'Peterson',
     email: 'madison.p@example.com',
     phone: '(408) 456-7890',
     company: 'Peterson Pharmacy',
@@ -455,7 +498,8 @@ export const SAMPLE_CONTACTS: Contact[] = [
   },
   {
     id: '44',
-    name: 'Elijah Gray',
+    first_name: 'Elijah',
+    last_name: 'Gray',
     email: 'elijah.gray@example.com',
     company: 'Gray Architecture',
     status: 'active',
@@ -465,7 +509,8 @@ export const SAMPLE_CONTACTS: Contact[] = [
   },
   {
     id: '45',
-    name: 'Victoria Ramirez',
+    first_name: 'Victoria',
+    last_name: 'Ramirez',
     email: 'victoria.r@example.com',
     phone: '(650) 567-8901',
     company: 'Ramirez Restaurants',
@@ -476,7 +521,8 @@ export const SAMPLE_CONTACTS: Contact[] = [
   },
   {
     id: '46',
-    name: 'Joseph Wright',
+    first_name: 'Joseph',
+    last_name: 'Wright',
     email: 'joseph.wright@example.com',
     company: 'Wright Auto Repair',
     status: 'active',
@@ -486,7 +532,8 @@ export const SAMPLE_CONTACTS: Contact[] = [
   },
   {
     id: '47',
-    name: 'Elizabeth Scott',
+    first_name: 'Elizabeth',
+    last_name: 'Scott',
     email: 'elizabeth.s@example.com',
     phone: '(415) 678-9012',
     company: 'Scott Photography',
@@ -497,7 +544,8 @@ export const SAMPLE_CONTACTS: Contact[] = [
   },
   {
     id: '48',
-    name: 'Samuel King',
+    first_name: 'Samuel',
+    last_name: 'King',
     email: 'samuel.king@example.com',
     company: 'King Security Systems',
     status: 'inactive',
@@ -507,7 +555,8 @@ export const SAMPLE_CONTACTS: Contact[] = [
   },
   {
     id: '49',
-    name: 'Grace Nelson',
+    first_name: 'Grace',
+    last_name: 'Nelson',
     email: 'grace.n@example.com',
     phone: '(510) 789-0123',
     company: 'Nelson Home Care',
@@ -518,7 +567,8 @@ export const SAMPLE_CONTACTS: Contact[] = [
   },
   {
     id: '50',
-    name: 'Andrew Hill',
+    first_name: 'Andrew',
+    last_name: 'Hill',
     email: 'andrew.hill@example.com',
     company: 'Hill IT Services',
     status: 'active',
@@ -531,7 +581,8 @@ export const SAMPLE_CONTACTS: Contact[] = [
 // Sample CSV format contacts for import example
 export const SAMPLE_CSV_CONTACTS = [
   {
-    name: 'John Smith',
+    first_name: 'John',
+    last_name: 'Smith',
     email: 'john@example.com',
     phone: '(555) 123-4567',
     company: 'Acme Inc',
@@ -539,7 +590,8 @@ export const SAMPLE_CSV_CONTACTS = [
     tags: 'customer,lead'
   },
   {
-    name: 'Jane Doe',
+    first_name: 'Jane',
+    last_name: 'Doe',
     email: 'jane@example.com',
     phone: '(555) 234-5678',
     company: 'XYZ Corp',
@@ -547,7 +599,8 @@ export const SAMPLE_CSV_CONTACTS = [
     tags: 'prospect'
   },
   {
-    name: 'Alex Johnson',
+    first_name: 'Alex',
+    last_name: 'Johnson',
     email: 'alex@example.com',
     phone: '(555) 345-6789',
     company: 'ABC Solutions',
@@ -555,7 +608,8 @@ export const SAMPLE_CSV_CONTACTS = [
     tags: 'partner,customer'
   },
   {
-    name: 'Sarah Wilson',
+    first_name: 'Sarah',
+    last_name: 'Wilson',
     email: 'sarah@example.com',
     phone: '(555) 456-7890',
     company: 'Tech Innovators',
@@ -563,7 +617,8 @@ export const SAMPLE_CSV_CONTACTS = [
     tags: 'customer,enterprise'
   },
   {
-    name: 'Michael Brown',
+    first_name: 'Michael',
+    last_name: 'Brown',
     email: 'michael@example.com',
     phone: '(555) 567-8901',
     company: 'Global Services',

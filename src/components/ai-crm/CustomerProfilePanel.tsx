@@ -7,10 +7,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
+import { getFullName, getInitials } from '@/utils/contactHelpers';
 
 interface CustomerType {
   id: string;
-  name: string;
+  first_name: string;
+  last_name?: string;
   email: string | null;
   phone: string | null;
   joinedDate: string;
@@ -35,7 +37,7 @@ interface CustomerType {
     type: 'email_open' | 'email_click' | 'sms_view' | 'website_visit' | 'order_placed';
     description: string;
   }[];
-  notes?: string; // Making notes optional with the ? operator
+  notes?: string;
 }
 
 interface CustomerProfilePanelProps {
@@ -71,7 +73,8 @@ const CustomerProfilePanel = ({ customerId, onClose }: CustomerProfilePanelProps
         if (contactData) {
           const customerDetails: CustomerType = {
             id: contactData.id,
-            name: contactData.name,
+            first_name: contactData.first_name,
+            last_name: contactData.last_name,
             email: contactData.email || 'No email available',
             phone: contactData.phone || 'No phone available',
             joinedDate: contactData.created_at,
@@ -83,7 +86,7 @@ const CustomerProfilePanel = ({ customerId, onClose }: CustomerProfilePanelProps
             purchaseHistory: generateMockPurchaseHistory(),
             engagementHistory: generateMockEngagementHistory(),
             // Handle the case where notes might be missing from the contact data
-            notes: contactData.notes || `Notes about ${contactData.name}'s preferences and history.`
+            notes: contactData.notes || `Notes about ${getFullName(contactData)}'s preferences and history.`
           };
           
           setCustomer(customerDetails);
@@ -105,10 +108,14 @@ const CustomerProfilePanel = ({ customerId, onClose }: CustomerProfilePanelProps
       setTimeout(() => {
         const customerDetails: CustomerType = {
           id: customerId,
-          name: customerId === 'cust_123' ? 'Emma Johnson' : 
-                customerId === 'cust_124' ? 'Michael Williams' :
-                customerId === 'cust_125' ? 'Sophia Miller' :
-                customerId === 'cust_126' ? 'William Jones' : 'Charlotte Wilson',
+          first_name: customerId === 'cust_123' ? 'Emma' : 
+                customerId === 'cust_124' ? 'Michael' :
+                customerId === 'cust_125' ? 'Sophia' :
+                customerId === 'cust_126' ? 'William' : 'Charlotte',
+          last_name: customerId === 'cust_123' ? 'Johnson' : 
+                 customerId === 'cust_124' ? 'Williams' :
+                 customerId === 'cust_125' ? 'Miller' :
+                 customerId === 'cust_126' ? 'Jones' : 'Wilson',
           email: customerId === 'cust_123' ? 'emma@example.com' :
                  customerId === 'cust_124' ? 'michael@example.com' :
                  customerId === 'cust_125' ? 'sophia@example.com' :
@@ -286,11 +293,11 @@ const CustomerProfilePanel = ({ customerId, onClose }: CustomerProfilePanelProps
           <div className="p-4 bg-gray-50 flex items-center space-x-4">
             <Avatar className="h-16 w-16">
               <div className="bg-primary text-2xl text-white rounded-full h-full w-full flex items-center justify-center font-medium">
-                {customer.name.split(' ').map(n => n[0]).join('')}
+                {getInitials(customer)}
               </div>
             </Avatar>
             <div>
-              <h3 className="text-xl font-medium">{customer.name}</h3>
+              <h3 className="text-xl font-medium">{getFullName(customer)}</h3>
               <div className="flex items-center mt-1 space-x-2">
                 <Badge className="bg-blue-100 text-blue-800 border-none hover:bg-blue-200">
                   {customer.customerType}
