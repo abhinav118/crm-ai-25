@@ -164,9 +164,10 @@ export type Database = {
           company: string | null
           created_at: string
           email: string | null
+          first_name: string
           id: string
           last_activity: string | null
-          name: string
+          last_name: string | null
           notes: string | null
           phone: string | null
           status: string | null
@@ -177,9 +178,10 @@ export type Database = {
           company?: string | null
           created_at?: string
           email?: string | null
+          first_name: string
           id?: string
           last_activity?: string | null
-          name: string
+          last_name?: string | null
           notes?: string | null
           phone?: string | null
           status?: string | null
@@ -190,9 +192,10 @@ export type Database = {
           company?: string | null
           created_at?: string
           email?: string | null
+          first_name?: string
           id?: string
           last_activity?: string | null
-          name?: string
+          last_name?: string | null
           notes?: string | null
           phone?: string | null
           status?: string | null

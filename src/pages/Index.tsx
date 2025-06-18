@@ -59,17 +59,27 @@ const Index: React.FC<IndexProps> = ({ initialTab = 'all' }) => {
       
       query = applyFiltersToQuery(query);
       
+      if (searchQuery.trim() !== '') {
+        const searchTerm = searchQuery.toLowerCase();
+        query = query.or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,phone.ilike.%${searchTerm}%,company.ilike.%${searchTerm}%`);
+      }
+      
       const { count: existingCount, error: countError } = await query;
       
       if (countError) throw countError;
       
-      if (existingCount === 0) {
+      if (existingCount === 0 && searchQuery.trim() === '' && Object.keys(activeFilters).length === 0) {
         console.log('No contacts found. Seeding sample data...');
         await seedSampleContacts();
       }
       
       query = supabase.from('contacts').select('*', { count: 'exact', head: true });
       query = applyFiltersToQuery(query);
+      
+      if (searchQuery.trim() !== '') {
+        const searchTerm = searchQuery.toLowerCase();
+        query = query.or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,phone.ilike.%${searchTerm}%,company.ilike.%${searchTerm}%`);
+      }
       
       const { count, error: totalCountError } = await query;
       
@@ -82,6 +92,11 @@ const Index: React.FC<IndexProps> = ({ initialTab = 'all' }) => {
       query = supabase.from('contacts').select('*');
       query = applyFiltersToQuery(query);
       
+      if (searchQuery.trim() !== '') {
+        const searchTerm = searchQuery.toLowerCase();
+        query = query.or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,phone.ilike.%${searchTerm}%,company.ilike.%${searchTerm}%`);
+      }
+      
       const { data, error } = await query
         .order('created_at', { ascending: false })
         .range(from, to);
@@ -93,7 +108,8 @@ const Index: React.FC<IndexProps> = ({ initialTab = 'all' }) => {
       if (data && data.length > 0) {
         const formattedContacts = data.map(contact => ({
           id: contact.id,
-          name: contact.name,
+          first_name: contact.first_name,
+          last_name: contact.last_name,
           email: contact.email || '',
           phone: contact.phone || '',
           company: contact.company || '',
@@ -231,7 +247,8 @@ const Index: React.FC<IndexProps> = ({ initialTab = 'all' }) => {
       if (data && data.length > 0) {
         const formattedRecentContacts = data.map(contact => ({
           id: contact.id,
-          name: contact.name,
+          first_name: contact.first_name,
+          last_name: contact.last_name,
           email: contact.email || '',
           phone: contact.phone || '',
           company: contact.company || '',
@@ -254,11 +271,18 @@ const Index: React.FC<IndexProps> = ({ initialTab = 'all' }) => {
   
   const seedSampleContacts = async () => {
     try {
-      const sampleNames = [
-        'John Smith', 'Emma Johnson', 'Michael Williams', 'Olivia Brown', 'William Jones',
-        'Sophia Miller', 'James Davis', 'Charlotte Wilson', 'Benjamin Moore', 'Amelia Taylor',
-        'Alexander Anderson', 'Harper Thomas', 'Daniel Jackson', 'Abigail White', 'Matthew Harris',
-        'Emily Martin', 'Joseph Thompson', 'Elizabeth Garcia', 'David Martinez', 'Sofia Robinson'
+      const sampleFirstNames = [
+        'John', 'Emma', 'Michael', 'Olivia', 'William',
+        'Sophia', 'James', 'Charlotte', 'Benjamin', 'Amelia',
+        'Alexander', 'Harper', 'Daniel', 'Abigail', 'Matthew',
+        'Emily', 'Joseph', 'Elizabeth', 'David', 'Sofia'
+      ];
+      
+      const sampleLastNames = [
+        'Smith', 'Johnson', 'Williams', 'Brown', 'Jones',
+        'Miller', 'Davis', 'Wilson', 'Moore', 'Taylor',
+        'Anderson', 'Thomas', 'Jackson', 'White', 'Harris',
+        'Martin', 'Thompson', 'Garcia', 'Martinez', 'Robinson'
       ];
       
       const sampleEmails = [
@@ -295,7 +319,8 @@ const Index: React.FC<IndexProps> = ({ initialTab = 'all' }) => {
       
       for (let i = 0; i < 20; i++) {
         sampleContacts.push({
-          name: sampleNames[i],
+          first_name: sampleFirstNames[i],
+          last_name: sampleLastNames[i],
           email: sampleEmails[i],
           phone: samplePhones[i],
           company: sampleCompanies[i],
@@ -369,11 +394,12 @@ const Index: React.FC<IndexProps> = ({ initialTab = 'all' }) => {
   
   const handleSearch = (query: string) => {
     setSearchQuery(query);
+    setCurrentPage(1); // Reset to first page when searching
   };
   
   const handleFilterChange = (filters: FilterState) => {
     setActiveFilters(filters);
-    setCurrentPage(1);
+    setCurrentPage(1); // Reset to first page when filtering
   };
   
   const handlePageChange = (page: number) => {
@@ -383,7 +409,7 @@ const Index: React.FC<IndexProps> = ({ initialTab = 'all' }) => {
   
   const handlePageSizeChange = (size: number) => {
     setPageSize(size);
-    setCurrentPage(1);
+    setCurrentPage(1); // Reset to first page when changing page size
   };
   
   const handleRowClick = (contact: Contact) => {
@@ -495,7 +521,8 @@ const Index: React.FC<IndexProps> = ({ initialTab = 'all' }) => {
       const currentTime = new Date().toISOString();
       
       const contact = {
-        name: formData.name,
+        first_name: formData.first_name,
+        last_name: formData.last_name,
         email: formData.email,
         phone: formData.phone,
         company: formData.company,
@@ -525,7 +552,8 @@ const Index: React.FC<IndexProps> = ({ initialTab = 'all' }) => {
 
       const newContact: Contact = {
         id: data.id,
-        name: data.name,
+        first_name: data.first_name,
+        last_name: data.last_name,
         email: data.email || '',
         phone: data.phone || '',
         company: data.company || '',
@@ -535,9 +563,6 @@ const Index: React.FC<IndexProps> = ({ initialTab = 'all' }) => {
         createdAt: data.created_at,
       };
 
-      setContacts(prevContacts => [newContact, ...prevContacts]);
-      setFilteredContacts(prevContacts => [newContact, ...prevContacts]);
-      
       toast({
         title: 'Success',
         description: 'Contact added successfully',
@@ -545,6 +570,7 @@ const Index: React.FC<IndexProps> = ({ initialTab = 'all' }) => {
       
       setIsAddContactModalOpen(false);
       
+      // Refresh the current page to show the new contact
       fetchContacts();
     } catch (error) {
       console.error('Error adding contact:', error);
@@ -634,7 +660,7 @@ const Index: React.FC<IndexProps> = ({ initialTab = 'all' }) => {
                     </div>
                   ))}
                 </div>
-              ) : contacts.length === 0 ? (
+              ) : totalCount === 0 ? (
                 <div className="flex flex-col items-center justify-center h-60 bg-white rounded-lg border border-gray-200">
                   <p className="text-gray-500 mb-4">No contacts found</p>
                   <Button 
@@ -657,7 +683,7 @@ const Index: React.FC<IndexProps> = ({ initialTab = 'all' }) => {
                 />
               )}
               
-              {contacts.length > 0 && (
+              {totalCount > 0 && (
                 <div className="mt-4">
                   <Pagination
                     currentPage={currentPage}

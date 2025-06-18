@@ -21,8 +21,8 @@ export const useContactForm = ({ onSubmit, onClose, initialData }: UseContactFor
 
   const form = useForm<ContactFormValues>({
     defaultValues: {
-      firstName: initialData?.name ? initialData.name.split(' ')[0] : '',
-      lastName: initialData?.name ? initialData.name.split(' ').slice(1).join(' ') : '',
+      firstName: initialData?.first_name || '',
+      lastName: initialData?.last_name || '',
       company: initialData?.company || '',
       tags: initialData?.tags || [],
       dndPreference: 'all'
@@ -71,9 +71,9 @@ export const useContactForm = ({ onSubmit, onClose, initialData }: UseContactFor
     setIsLoading(true);
     
     try {
-      // Format data for submission
       const submissionData: ContactData = {
-        name: `${values.firstName} ${values.lastName}`.trim(),
+        first_name: values.firstName.trim(),
+        last_name: values.lastName.trim(),
         email: emails[0] && emails[0].trim() !== '' ? emails[0] : null,
         phone: phones[0]?.number && phones[0].number.trim() !== '' ? phones[0].number : null,
         company: values.company || null,
@@ -82,28 +82,23 @@ export const useContactForm = ({ onSubmit, onClose, initialData }: UseContactFor
         updated_at: new Date().toISOString()
       };
       
-      // If we have an ID (editing), include it
       if (initialData?.id) {
         submissionData.id = initialData.id;
       }
       
       console.log('Preparing contact data for submission:', submissionData);
       
-      // Submit data to parent component
       await onSubmit(submissionData);
       
-      // Reset form
       form.reset();
       setPhones([{ type: 'mobile', number: '' }]);
       setEmails(['']);
       
-      // Display success message
       toast({
         title: 'Success',
         description: initialData ? 'Contact updated successfully' : 'Contact added successfully',
       });
       
-      // Close the form
       onClose();
       
     } catch (error) {

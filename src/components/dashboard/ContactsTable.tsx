@@ -3,12 +3,13 @@ import React, { useState } from 'react';
 import { cn } from '@/lib/utils';
 import Avatar from './Avatar';
 import { DataTable, ColumnDef } from '@/components/ui/data-table';
-import { Phone, Mail } from 'lucide-react';
+import { Phone } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 export type Contact = {
   id: string;
-  name: string;
+  first_name: string;
+  last_name: string;
   email: string;
   phone?: string;
   company?: string;
@@ -16,7 +17,7 @@ export type Contact = {
   status: 'active' | 'inactive';
   tags?: string[];
   createdAt: string;
-  user_id?: string; // Added to match database schema
+  user_id?: string;
 };
 
 type ContactsTableProps = {
@@ -87,20 +88,24 @@ const ContactsTable: React.FC<ContactsTableProps> = ({
     }).format(date);
   };
   
+  const getFullName = (contact: Contact) => {
+    return `${contact.first_name} ${contact.last_name}`.trim();
+  };
+  
   const columns: ColumnDef<Contact>[] = [
     {
       id: 'name',
       header: 'Name',
-      accessorKey: 'name',
+      accessorFn: (row) => getFullName(row),
       enableSorting: true,
       cell: ({ row }) => (
         <div className="flex items-center gap-3">
           <Avatar 
-            name={row.name} 
+            name={getFullName(row)} 
             status={row.status} 
           />
           <div>
-            <div className="font-medium">{row.name}</div>
+            <div className="font-medium">{getFullName(row)}</div>
             {row.company && (
               <div className="text-xs text-gray-500">{row.company}</div>
             )}
@@ -125,15 +130,16 @@ const ContactsTable: React.FC<ContactsTableProps> = ({
       ),
     },
     {
-      id: 'email',
-      header: 'Email',
-      accessorKey: 'email',
+      id: 'company',
+      header: 'Company',
+      accessorKey: 'company',
       enableSorting: true,
       cell: ({ row }) => (
-        <div className="flex items-center gap-2">
-          <Mail size={14} className="text-gray-400" />
-          <span>{row.email}</span>
-        </div>
+        row.company ? (
+          <span>{row.company}</span>
+        ) : (
+          <span className="text-gray-400">—</span>
+        )
       ),
     },
     {
@@ -156,7 +162,7 @@ const ContactsTable: React.FC<ContactsTableProps> = ({
       id: 'tags',
       header: 'Tags',
       accessorKey: 'tags',
-      enableSorting: false, // Disabled sorting for tags as requested
+      enableSorting: false,
       cell: ({ row }) => (
         <div className="flex flex-wrap gap-1">
           {row.tags && row.tags.length > 0 ? (

@@ -195,7 +195,7 @@ export function useContactsMetrics(dateRange: DateRange | undefined) {
       console.log('Calculated contacts metrics:', metrics);
       return metrics;
     },
-    refetchInterval: 30000, // Refetch every 30 seconds
-    staleTime: 10000, // Consider data stale after 10 seconds
+    refetchInterval: 30000,
+    staleTime: 10000,
   });
 }
