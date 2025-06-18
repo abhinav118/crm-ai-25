@@ -389,10 +389,10 @@ const Index = () => {
               />
               
               {/* Bulk Actions Content */}
-              <BulkActionsTab
+              {/* <BulkActionsTab
                 selectedContacts={selectedContacts.map(c => c.id)}
                 onActionComplete={handleBulkContactsUpdated}
-              />
+              /> */}
             </div>
           ) : (
             <ContactsTable
