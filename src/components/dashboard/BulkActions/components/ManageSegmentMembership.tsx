@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -71,14 +70,15 @@ const ManageSegmentMembership: React.FC<ManageSegmentMembershipProps> = ({ onAct
     // Remove all non-digits
     const cleaned = phone.replace(/\D/g, '');
     
-    // Add +1 if it's a 10-digit number
+    // Handle 10-digit numbers (add +1 prefix if needed, then format)
     if (cleaned.length === 10) {
-      return `+1${cleaned}`;
+      return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
     }
     
-    // Add + if it's an 11-digit number starting with 1
+    // Handle 11-digit numbers starting with 1 (remove 1, then format)
     if (cleaned.length === 11 && cleaned.startsWith('1')) {
-      return `+${cleaned}`;
+      const withoutCountryCode = cleaned.slice(1);
+      return `(${withoutCountryCode.slice(0, 3)}) ${withoutCountryCode.slice(3, 6)}-${withoutCountryCode.slice(6)}`;
     }
     
     return phone; // Return original if format is unexpected
@@ -158,13 +158,17 @@ const ManageSegmentMembership: React.FC<ManageSegmentMembershipProps> = ({ onAct
         return;
       }
 
-      // Find matching contacts
+      console.log('Searching for contacts with phone numbers:', validPhones);
+
+      // Find matching contacts using the formatted phone numbers
       const { data: contacts, error: fetchError } = await supabase
         .from('contacts')
         .select('id, first_name, last_name, phone, segment_name')
         .in('phone', validPhones);
 
       if (fetchError) throw fetchError;
+
+      console.log('Found contacts:', contacts);
 
       if (!contacts || contacts.length === 0) {
         toast({
@@ -186,7 +190,7 @@ const ManageSegmentMembership: React.FC<ManageSegmentMembershipProps> = ({ onAct
 
         if (error) throw error;
 
-        // Log the action with 2 arguments
+        // Log the action
         const actionDescription = operationType === 'add' 
           ? `Added to segment "${targetSegment}"` 
           : `Removed from segment "${contact.segment_name}"`;
