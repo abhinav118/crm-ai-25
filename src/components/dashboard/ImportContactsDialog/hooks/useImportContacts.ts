@@ -51,6 +51,18 @@ interface ValidatedContact extends Record<string, any> {
   _isValid: boolean;
 }
 
+// Define the contact insert type to match Supabase schema
+interface ContactInsert {
+  first_name: string;
+  last_name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  company?: string | null;
+  status?: string;
+  tags?: string[];
+  notes?: string | null;
+}
+
 // Helper to validate and clean contact data
 const validateAndCleanContact = (row: Record<string, any>, index: number): ValidationResult => {
   const errors: string[] = [];
@@ -329,6 +341,20 @@ export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) =
     });
   };
 
+  // Helper function to ensure contact data conforms to expected type
+  const prepareContactForInsert = (row: Record<string, any>): ContactInsert => {
+    return {
+      first_name: row.first_name || row.last_name || 'Unknown',
+      last_name: row.last_name || null,
+      email: row.email || null,
+      phone: row.phone || null,
+      company: row.company || null,
+      status: row.status || 'active',
+      tags: Array.isArray(row.tags) ? row.tags : [],
+      notes: row.notes || null,
+    };
+  };
+
   const importContacts = async () => {
     setIsImporting(true);
     setImportProgress(0);
@@ -369,7 +395,7 @@ export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) =
       stats.errors += invalidRows.length;
       invalidRows.forEach(row => {
         // Type guard to check if validation errors exist
-        if ('_validationErrors' in row && row._validationErrors) {
+        if ('_validationErrors' in row && Array.isArray(row._validationErrors)) {
           row._validationErrors.forEach((error: string) => {
             errorDetails.push({row, error});
           });
@@ -524,10 +550,11 @@ export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) =
             }
             
             if (isUpdate && existingId) {
-              // Update existing contact
+              // Update existing contact - prepare data for update
+              const updateData = prepareContactForInsert(row);
               const { error } = await supabase
                 .from('contacts')
-                .update(row)
+                .update(updateData)
                 .eq('id', existingId);
               
               if (error) {
@@ -541,7 +568,7 @@ export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) =
                 try {
                   await logContactOperation(
                     existingId,
-                    { id: existingId, ...row },
+                    { id: existingId, ...updateData },
                     'Update',
                     'Contact updated via CSV import',
                     batchId,
@@ -552,10 +579,11 @@ export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) =
                 }
               }
             } else {
-              // Create new contact - insert individual contact
+              // Create new contact - prepare data for insert
+              const insertData = prepareContactForInsert(row);
               const { data: created, error } = await supabase
                 .from('contacts')
-                .insert(row)
+                .insert(insertData)
                 .select();
               
               if (error) {
