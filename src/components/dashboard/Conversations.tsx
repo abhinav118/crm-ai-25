@@ -27,12 +27,7 @@ type Conversation = {
   messageCount: number;
 };
 
-interface ConversationsProps {
-  selectedContactId?: string;
-  onClose?: () => void;
-}
-
-const Conversations: React.FC<ConversationsProps> = ({ selectedContactId, onClose }) => {
+const Conversations: React.FC = () => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -178,12 +173,6 @@ const Conversations: React.FC<ConversationsProps> = ({ selectedContactId, onClos
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
   };
-
-  const handleRowClick = (contactId: string) => {
-    console.log('Open conversation:', contactId);
-    // If there's an onClose callback, we can call it here when opening a specific conversation
-    // This allows the parent component to handle the navigation
-  };
   
   return (
     <div className="space-y-4">
@@ -241,7 +230,7 @@ const Conversations: React.FC<ConversationsProps> = ({ selectedContactId, onClos
                   <TableRow 
                     key={convo.contactId}
                     className="cursor-pointer hover:bg-gray-50"
-                    onClick={() => handleRowClick(convo.contactId)}
+                    onClick={() => console.log('Open conversation:', convo.contactId)}
                   >
                     <TableCell className="font-medium">
                       <div className="flex items-center space-x-3">
