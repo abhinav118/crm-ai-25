@@ -7,6 +7,7 @@ import ActionButtons from '@/components/dashboard/ActionButtons';
 import UserProfile from '@/components/dashboard/UserProfile';
 import ChatInterface from '@/components/dashboard/ChatInterface';
 import BulkActions from '@/components/dashboard/BulkActions/BulkActions';
+import BulkActionsTab from '@/components/dashboard/BulkActions/BulkActionsTab';
 import Sidebar from '@/components/dashboard/Sidebar';
 import Conversations from '@/components/dashboard/Conversations';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
