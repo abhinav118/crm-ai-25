@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Search, Edit, ChevronLeft, ChevronRight } from 'lucide-react';
 import Avatar from './Avatar';
 import { getFullName } from '@/utils/contactHelpers';
+import BulkActions from './BulkActions/BulkActions';
 
 export interface Contact {
   id: string;
@@ -71,7 +72,7 @@ const ContactsTable: React.FC<ContactsTableProps> = ({
   showPagination = false,
   showCompanyColumn = true,
   showTabsHeader = true,
-  showBulkActionsTab = false
+  showBulkActionsTab = true
 }) => {
   const [selectAll, setSelectAll] = useState(false);
 
@@ -233,13 +234,11 @@ const ContactsTable: React.FC<ContactsTableProps> = ({
       {showTabsHeader && (
         <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
           <div className="flex items-center justify-between">
-            <TabsList className={showBulkActionsTab ? "grid grid-cols-4 w-fit" : "grid grid-cols-3 w-fit"}>
+            <TabsList className="grid grid-cols-4 w-fit">
               <TabsTrigger value="all">All Contacts</TabsTrigger>
               <TabsTrigger value="active">Active</TabsTrigger>
               <TabsTrigger value="inactive">Inactive</TabsTrigger>
-              {showBulkActionsTab && (
-                <TabsTrigger value="bulk-actions">Bulk Actions</TabsTrigger>
-              )}
+              <TabsTrigger value="bulk-actions">Bulk Actions</TabsTrigger>
             </TabsList>
             
             <div className="flex items-center space-x-2">
@@ -280,13 +279,15 @@ const ContactsTable: React.FC<ContactsTableProps> = ({
             {renderContactsTable()}
           </TabsContent>
 
-          {showBulkActionsTab && (
-            <TabsContent value="bulk-actions" className="mt-6">
-              <div className="text-center text-gray-500 py-8">
-                <p>Bulk Actions tab content will be handled by the parent component</p>
-              </div>
-            </TabsContent>
-          )}
+          <TabsContent value="bulk-actions" className="mt-6">
+            <BulkActions
+              selectedContacts={selectedContacts}
+              onContactsUpdated={() => {
+                // This will be handled by the parent component
+              }}
+              onSelectionClear={() => onContactSelect([])}
+            />
+          </TabsContent>
         </Tabs>
       )}
 

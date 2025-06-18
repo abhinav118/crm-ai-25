@@ -6,8 +6,6 @@ import ContactForm from '@/components/dashboard/ContactForm';
 import ActionButtons from '@/components/dashboard/ActionButtons';
 import UserProfile from '@/components/dashboard/UserProfile';
 import ChatInterface from '@/components/dashboard/ChatInterface';
-import BulkActions from '@/components/dashboard/BulkActions/BulkActions';
-import BulkActionsTab from '@/components/dashboard/BulkActions/BulkActionsTab';
 import Sidebar from '@/components/dashboard/Sidebar';
 import Conversations from '@/components/dashboard/Conversations';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -361,61 +359,26 @@ const Index = () => {
 
         {/* Content */}
         <main className="flex-1 p-6">
-          {activeTab === 'bulk-actions' ? (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold">Bulk Actions</h2>
-                <p className="text-sm text-gray-500">
-                  {selectedContacts.length} contact{selectedContacts.length !== 1 ? 's' : ''} selected
-                </p>
-              </div>
-              
-              {/* Show contacts table for selection */}
-              <ContactsTable
-                contacts={filteredContacts}
-                onContactSelect={handleContactSelect}
-                onEditContact={handleEditContact}
-                onContactClick={handleContactClick}
-                selectedContacts={selectedContacts}
-                searchQuery={searchQuery}
-                onSearchChange={setSearchQuery}
-                statusFilter={statusFilter}
-                onStatusFilterChange={setStatusFilter}
-                activeTab="all"
-                onTabChange={() => {}}
-                isLoading={isLoadingContacts}
-                showCompanyColumn={false}
-                showTabsHeader={false}
-              />
-              
-              {/* Bulk Actions Content */}
-              {/* <BulkActionsTab
-                selectedContacts={selectedContacts.map(c => c.id)}
-                onActionComplete={handleBulkContactsUpdated}
-              /> */}
-            </div>
-          ) : (
-            <ContactsTable
-              contacts={filteredContacts}
-              onContactSelect={handleContactSelect}
-              onEditContact={handleEditContact}
-              onContactClick={handleContactClick}
-              selectedContacts={selectedContacts}
-              searchQuery={searchQuery}
-              onSearchChange={setSearchQuery}
-              statusFilter={statusFilter}
-              onStatusFilterChange={setStatusFilter}
-              activeTab={activeTab}
-              onTabChange={setActiveTab}
-              isLoading={isLoadingContacts}
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={setCurrentPage}
-              showPagination={activeTab === 'all'}
-              showCompanyColumn={false}
-              showBulkActionsTab={false}
-            />
-          )}
+          <ContactsTable
+            contacts={filteredContacts}
+            onContactSelect={handleContactSelect}
+            onEditContact={handleEditContact}
+            onContactClick={handleContactClick}
+            selectedContacts={selectedContacts}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            statusFilter={statusFilter}
+            onStatusFilterChange={setStatusFilter}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            isLoading={isLoadingContacts}
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            showPagination={activeTab === 'all'}
+            showCompanyColumn={false}
+            showBulkActionsTab={true}
+          />
         </main>
       </div>
 
