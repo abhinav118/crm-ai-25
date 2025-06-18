@@ -170,7 +170,7 @@ const BulkActions: React.FC<BulkActionsProps> = ({
             <div className="mt-4 overflow-y-auto max-h-[60vh]">
               <TabsContent value="actions">
                 <BulkActionsTab
-                  selectedContacts={selectedContacts.map(contact => contact.id)}
+                  selectedContacts={selectedContacts}
                   onActionComplete={handleActionComplete}
                 />
               </TabsContent>
