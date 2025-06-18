@@ -104,7 +104,8 @@ const AddTagsDialog: React.FC<AddTagsDialogProps> = ({
         // Log the tag update action
         await logContactAction('update', {
           id: contact.id,
-          name: getFullName(contact),
+          first_name: contact.first_name,
+          last_name: contact.last_name,
           tags: updatedTags,
           action_name: actionName
         });
