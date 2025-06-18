@@ -63,10 +63,11 @@ const UploadStage: React.FC<UploadStageProps> = ({ onFileSelected }) => {
       
       return {
         header,
+        name: header,
         selected: true,
         mappedTo: null,
-        sample,
         updateEmptyValues: false,
+        sampleValues: [sample]
       };
     });
     
@@ -378,8 +379,9 @@ const UploadStage: React.FC<UploadStageProps> = ({ onFileSelected }) => {
           }
         }
         
-        const columns = results.meta.fields.map(header => ({
+        const columns: CsvColumn[] = results.meta.fields.map(header => ({
           header,
+          name: header,
           selected: false,
           mappedTo: null,
           updateEmptyValues: false,
