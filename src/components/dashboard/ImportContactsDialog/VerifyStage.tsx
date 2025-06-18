@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { CsvColumn } from './types';
 import {
@@ -10,12 +11,13 @@ import {
 } from "@/components/ui/table";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Info, AlertTriangle, Phone, CheckCircle2, FileText } from 'lucide-react';
-import { formatPhoneNumber, isValidPhoneFormat } from './hooks/useImportContacts';
+import { Info, AlertTriangle, Phone, CheckCircle2, FileText, Users } from 'lucide-react';
+import { formatPhoneNumber, isValidPhoneFormat, normalizePhoneNumber } from './hooks/useImportContacts';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface VerifyStageProps {
   columns: CsvColumn[];
@@ -40,6 +42,9 @@ const VerifyStage: React.FC<VerifyStageProps> = ({
   const [duplicateCount, setDuplicateCount] = useState(0);
   const [invalidPhoneCount, setInvalidPhoneCount] = useState(0);
   const [validPhoneCount, setValidPhoneCount] = useState(0);
+  const [phoneDuplicatesInFile, setPhoneDuplicatesInFile] = useState(0);
+  const [phoneDuplicatesInDb, setPhoneDuplicatesInDb] = useState(0);
+  const [isCheckingDuplicates, setIsCheckingDuplicates] = useState(false);
   const [batchId] = useState<string>(crypto.randomUUID());
   const [batchName] = useState<string>(fileName || `Imported contacts ${new Date().toLocaleString()}`);
   const [isImporting, setIsImporting] = useState(false);
@@ -76,59 +81,96 @@ const VerifyStage: React.FC<VerifyStageProps> = ({
 
   // Count missing required values
   const countMissingValues = () => {
-    // Name is the only required field
-    const nameColumn = columns.find(col => col.mappedTo === 'name');
-    if (!nameColumn) return data.length; // If no name column, all are missing
+    // Check for first_name or last_name
+    const firstNameColumn = columns.find(col => col.mappedTo === 'first_name');
+    const lastNameColumn = columns.find(col => col.mappedTo === 'last_name');
     
-    return data.filter(row => !row[nameColumn.header]).length;
+    if (!firstNameColumn && !lastNameColumn) return data.length; // If no name columns, all are missing
+    
+    return data.filter(row => {
+      const firstName = firstNameColumn ? row[firstNameColumn.header] : '';
+      const lastName = lastNameColumn ? row[lastNameColumn.header] : '';
+      return !firstName && !lastName;
+    }).length;
   };
 
-  // Detect duplicates and invalid phones
+  // Enhanced phone duplicate detection
   useEffect(() => {
-    const emailColumn = columns.find(col => col.mappedTo === 'email');
-    const phoneColumn = columns.find(col => col.mappedTo === 'phone');
-    
-    // Reset counters
-    let duplicates = 0;
-    let invalidPhones = 0;
-    let validPhones = 0;
-    
-    // Track unique combinations
-    const uniqueCombinations = new Set<string>();
-    
-    if (emailColumn || phoneColumn) {
-      data.forEach(row => {
-        const email = emailColumn ? (row[emailColumn.header] || '').toLowerCase().trim() : '';
-        const phone = phoneColumn ? (row[phoneColumn.header] || '').trim() : '';
+    const checkPhoneDuplicates = async () => {
+      setIsCheckingDuplicates(true);
+      
+      const phoneColumn = columns.find(col => col.mappedTo === 'phone');
+      
+      // Reset counters
+      let invalidPhones = 0;
+      let validPhones = 0;
+      let fileDuplicates = 0;
+      let dbDuplicates = 0;
+      
+      if (phoneColumn) {
+        // Check duplicates within the file
+        const phoneMap = new Map<string, number>();
         
-        // Check for phone formats
-        if (phone) {
-          if (isValidPhoneFormat(phone)) {
-            validPhones++;
-          } else {
-            invalidPhones++;
+        data.forEach(row => {
+          const phone = row[phoneColumn.header];
+          
+          if (phone) {
+            if (isValidPhoneFormat(phone)) {
+              validPhones++;
+              const normalizedPhone = normalizePhoneNumber(phone);
+              
+              if (phoneMap.has(normalizedPhone)) {
+                fileDuplicates++;
+              } else {
+                phoneMap.set(normalizedPhone, 1);
+              }
+            } else {
+              invalidPhones++;
+            }
+          }
+        });
+        
+        // Check against existing database
+        const uniquePhones = Array.from(phoneMap.keys());
+        
+        if (uniquePhones.length > 0) {
+          try {
+            const { data: existingContacts, error } = await supabase
+              .from('contacts')
+              .select('phone')
+              .not('phone', 'is', null);
+            
+            if (error) {
+              console.error('Error checking existing phones:', error);
+            } else if (existingContacts) {
+              const existingNormalizedPhones = new Set(
+                existingContacts
+                  .map(contact => contact.phone)
+                  .filter(phone => phone && isValidPhoneFormat(phone))
+                  .map(phone => normalizePhoneNumber(phone))
+              );
+              
+              uniquePhones.forEach(normalizedPhone => {
+                if (existingNormalizedPhones.has(normalizedPhone)) {
+                  dbDuplicates++;
+                }
+              });
+            }
+          } catch (error) {
+            console.error('Error checking database duplicates:', error);
           }
         }
-        
-        // Create a unique key based on email and phone
-        const formattedPhone = phone ? formatPhoneNumber(phone) : '';
-        const key = `${email}:${formattedPhone}`;
-        
-        // Skip rows where both email and phone are empty
-        if (!email && !phone) return;
-        
-        // If this combination has been seen before, it's a duplicate
-        if (uniqueCombinations.has(key)) {
-          duplicates++;
-        } else {
-          uniqueCombinations.add(key);
-        }
-      });
+      }
       
-      setDuplicateCount(duplicates);
       setInvalidPhoneCount(invalidPhones);
       setValidPhoneCount(validPhones);
-    }
+      setPhoneDuplicatesInFile(fileDuplicates);
+      setPhoneDuplicatesInDb(dbDuplicates);
+      setDuplicateCount(fileDuplicates + dbDuplicates);
+      setIsCheckingDuplicates(false);
+    };
+    
+    checkPhoneDuplicates();
   }, [columns, data]);
 
   // Get formatted phone examples
@@ -155,9 +197,6 @@ const VerifyStage: React.FC<VerifyStageProps> = ({
   const handleImport = async () => {
     setIsImporting(true);
     try {
-      // Call the provided setImportResult function to trigger the import
-      // The actual import logic is in the useImportContacts hook
-      // which now includes the contact_logs functionality
       setImportResult("Import started");
       onComplete();
     } catch (error) {
@@ -168,12 +207,14 @@ const VerifyStage: React.FC<VerifyStageProps> = ({
     }
   };
 
+  const contactsToImport = data.length - duplicateCount - invalidPhoneCount;
+
   return (
     <div className="space-y-6">
       <div className="space-y-2">
         <h2 className="text-xl font-semibold">Verify Your Data</h2>
         <p className="text-muted-foreground">
-          Review the data before importing. We'll import only unique contacts with valid information.
+          Review the data before importing. Phone number deduplication is enabled to prevent duplicate contacts.
         </p>
       </div>
       
@@ -188,11 +229,8 @@ const VerifyStage: React.FC<VerifyStageProps> = ({
                 <p><strong>Batch ID:</strong> {batchId.substring(0, 8)}...</p>
                 <p><strong>Batch Name:</strong> {batchName}</p>
                 <p><strong>Created At:</strong> {new Date().toLocaleString()}</p>
-                <p><strong>Unique Records:</strong> {data.length - duplicateCount} (out of {data.length} total)</p>
+                <p><strong>Will Import:</strong> {contactsToImport} contacts (out of {data.length} total)</p>
               </div>
-              <p className="mt-2 text-xs text-blue-600">
-                These details will be saved in the contact_logs table for tracking purposes.
-              </p>
             </div>
           </div>
         </CardContent>
@@ -200,55 +238,74 @@ const VerifyStage: React.FC<VerifyStageProps> = ({
       
       <Alert>
         <Info className="h-4 w-4" />
-        <AlertTitle>Ready to Import</AlertTitle>
+        <AlertTitle>Ready to Import with Phone Deduplication</AlertTitle>
         <AlertDescription>
-          Review the data below before proceeding with the import. This will import {data.length - duplicateCount - invalidPhoneCount} unique contacts.
+          This will import {contactsToImport} unique contacts with enhanced phone number deduplication enabled.
         </AlertDescription>
       </Alert>
       
-      <div className="grid grid-cols-4 gap-4">
-        <div className="bg-muted/30 p-3 rounded-md">
-          <p className="text-sm text-muted-foreground">Total Rows</p>
-          <p className="text-2xl font-semibold">{data.length}</p>
+      {isCheckingDuplicates ? (
+        <div className="flex items-center justify-center py-8">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">Checking for duplicate phone numbers...</p>
+          </div>
         </div>
-        
-        <div className="bg-muted/30 p-3 rounded-md">
-          <p className="text-sm text-muted-foreground">Unique Emails</p>
-          <p className="text-2xl font-semibold">{countUniqueEmails()}</p>
+      ) : (
+        <div className="grid grid-cols-5 gap-4">
+          <div className="bg-muted/30 p-3 rounded-md">
+            <p className="text-sm text-muted-foreground">Total Rows</p>
+            <p className="text-2xl font-semibold">{data.length}</p>
+          </div>
+          
+          <div className="bg-green-50 p-3 rounded-md">
+            <p className="text-sm text-green-700">Will Import</p>
+            <p className="text-2xl font-semibold text-green-700">{contactsToImport}</p>
+          </div>
+          
+          <div className="bg-blue-50 p-3 rounded-md">
+            <p className="text-sm text-blue-700">Valid Phones</p>
+            <p className="text-2xl font-semibold text-blue-700">{validPhoneCount}</p>
+          </div>
+          
+          <div className="bg-amber-50 p-3 rounded-md">
+            <p className="text-sm text-amber-700">File Duplicates</p>
+            <p className="text-2xl font-semibold text-amber-700">{phoneDuplicatesInFile}</p>
+          </div>
+          
+          <div className="bg-red-50 p-3 rounded-md">
+            <p className="text-sm text-red-700">DB Duplicates</p>
+            <p className="text-2xl font-semibold text-red-700">{phoneDuplicatesInDb}</p>
+          </div>
         </div>
-        
-        <div className="bg-muted/30 p-3 rounded-md">
-          <p className="text-sm text-muted-foreground">Unique Phones</p>
-          <p className="text-2xl font-semibold">{countUniquePhones()}</p>
-        </div>
-        
-        <div className={`${(duplicateCount > 0 || invalidPhoneCount > 0) ? 'bg-amber-50' : 'bg-green-50'} p-3 rounded-md`}>
-          <p className={`text-sm ${(duplicateCount > 0 || invalidPhoneCount > 0) ? 'text-amber-700' : 'text-green-700'}`}>
-            Will Skip
-          </p>
-          <p className={`text-2xl font-semibold ${(duplicateCount > 0 || invalidPhoneCount > 0) ? 'text-amber-700' : 'text-green-700'}`}>
-            {duplicateCount + invalidPhoneCount}
-          </p>
-        </div>
-      </div>
+      )}
       
       {validPhoneCount > 0 && (
         <Alert className="bg-green-50 border-green-200">
           <CheckCircle2 className="h-4 w-4 text-green-500" />
-          <AlertTitle className="text-green-700">Phone Number Formatting</AlertTitle>
+          <AlertTitle className="text-green-700">Phone Number Processing</AlertTitle>
           <AlertDescription className="text-green-700">
             {validPhoneCount} phone numbers will be standardized to (XXX) XXX-XXXX format during import.
           </AlertDescription>
         </Alert>
       )}
       
-      {duplicateCount > 0 && (
-        <Alert>
-          <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Duplicate Detection</AlertTitle>
-          <AlertDescription>
-            {duplicateCount} duplicate rows with the same email and phone combination were detected. 
-            Only the first occurrence of each unique combination will be imported.
+      {phoneDuplicatesInFile > 0 && (
+        <Alert className="bg-amber-50 border-amber-200">
+          <Users className="h-4 w-4 text-amber-500" />
+          <AlertTitle className="text-amber-700">Duplicates in File</AlertTitle>
+          <AlertDescription className="text-amber-700">
+            {phoneDuplicatesInFile} duplicate phone numbers found within the uploaded file. Only the first occurrence of each phone number will be imported.
+          </AlertDescription>
+        </Alert>
+      )}
+      
+      {phoneDuplicatesInDb > 0 && (
+        <Alert className="bg-red-50 border-red-200">
+          <AlertTriangle className="h-4 w-4 text-red-500" />
+          <AlertTitle className="text-red-700">Existing Phone Numbers</AlertTitle>
+          <AlertDescription className="text-red-700">
+            {phoneDuplicatesInDb} phone numbers already exist in your contact database and will be skipped to prevent duplicates.
           </AlertDescription>
         </Alert>
       )}
@@ -282,7 +339,7 @@ const VerifyStage: React.FC<VerifyStageProps> = ({
         <Alert>
           <AlertTitle>Missing Required Values</AlertTitle>
           <AlertDescription>
-            {countMissingValues()} records are missing a name. These contacts may be imported with blank names.
+            {countMissingValues()} records are missing both first and last names. These contacts may be imported with default names.
           </AlertDescription>
         </Alert>
       )}
@@ -301,7 +358,7 @@ const VerifyStage: React.FC<VerifyStageProps> = ({
                       {column.mappedTo}
                       {column.mappedTo === 'phone' && (
                         <Badge variant="outline" className="ml-1 text-xs">
-                          Will Format
+                          Will Format & Dedupe
                         </Badge>
                       )}
                     </div>
@@ -344,7 +401,7 @@ const VerifyStage: React.FC<VerifyStageProps> = ({
         </Button>
         <Button 
           onClick={handleImport} 
-          disabled={isImporting}
+          disabled={isImporting || isCheckingDuplicates || contactsToImport === 0}
           className="min-w-[120px]"
         >
           {isImporting ? (
@@ -353,19 +410,20 @@ const VerifyStage: React.FC<VerifyStageProps> = ({
               Importing...
             </>
           ) : (
-            <>Import {data.length - duplicateCount} Contacts</>
+            <>Import {contactsToImport} Contacts</>
           )}
         </Button>
       </div>
       
-      {/* Explanation of logging */}
+      {/* Enhanced explanation of phone deduplication */}
       <div className="pt-4 text-sm text-muted-foreground border-t">
-        <p className="font-medium">What happens when you import:</p>
+        <p className="font-medium">Enhanced Phone Number Deduplication:</p>
         <ul className="list-disc list-inside mt-2 space-y-1">
-          <li>Each contact will be created or updated in the contacts table</li>
-          <li>A log entry will be created in the contact_logs table for each contact</li>
-          <li>All contacts in this import will share the same batch ID and name</li>
-          <li>You can track this import batch in the Bulk Actions tab</li>
+          <li>Phone numbers are normalized to 10-digit format for comparison</li>
+          <li>Duplicates within the file are automatically removed</li>
+          <li>Phone numbers already in your database are detected and skipped</li>
+          <li>All imported phones are formatted to (XXX) XXX-XXXX standard</li>
+          <li>Detailed logging tracks all import actions in the contact_logs table</li>
         </ul>
       </div>
     </div>

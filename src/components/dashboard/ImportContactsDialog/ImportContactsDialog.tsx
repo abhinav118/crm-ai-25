@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useImportContacts } from './hooks/useImportContacts';
@@ -8,7 +9,7 @@ import ImportBreadcrumbs from './ImportBreadcrumbs';
 import ImportDialogActions from './ImportDialogActions';
 import { ImportContactsDialogProps } from './types';
 import { Progress } from '@/components/ui/progress';
-import { CheckCircle, Loader2, AlertCircle, Phone, ChevronDown, ChevronUp } from 'lucide-react';
+import { CheckCircle, Loader2, AlertCircle, Phone, ChevronDown, ChevronUp, Users, Database } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const ImportContactsDialog: React.FC<ImportContactsDialogProps> = ({ 
@@ -68,7 +69,7 @@ const ImportContactsDialog: React.FC<ImportContactsDialogProps> = ({
               <h3 className="text-xl font-medium">Importing Contacts...</h3>
               <Progress value={importProgress} className="w-full h-2" />
               <p className="text-sm text-muted-foreground">
-                Please wait while your contacts are being imported.
+                Please wait while your contacts are being imported with phone deduplication.
               </p>
             </>
           ) : (
@@ -83,28 +84,52 @@ const ImportContactsDialog: React.FC<ImportContactsDialogProps> = ({
                 {importStats.errors > 0 ? 'Import Completed with Errors' : 'Import Complete!'}
               </h3>
               
-              <div className="grid grid-cols-5 gap-4 max-w-2xl mx-auto">
+              <div className="grid grid-cols-3 gap-4 max-w-2xl mx-auto">
                 <div className="bg-muted/30 p-3 rounded-md">
-                  <p className="text-sm text-muted-foreground">Total</p>
+                  <p className="text-sm text-muted-foreground">Total Processed</p>
                   <p className="text-2xl font-semibold">{importStats.total}</p>
                 </div>
                 <div className="bg-green-50 p-3 rounded-md">
-                  <p className="text-sm text-green-700">Created</p>
+                  <p className="text-sm text-green-700">Successfully Created</p>
                   <p className="text-2xl font-semibold text-green-700">{importStats.created}</p>
                 </div>
-                <div className="bg-blue-50 p-3 rounded-md">
-                  <p className="text-sm text-blue-700">Updated</p>
-                  <p className="text-2xl font-semibold text-blue-700">{importStats.updated}</p>
-                </div>
                 <div className="bg-amber-50 p-3 rounded-md">
-                  <p className="text-sm text-amber-700">Duplicates</p>
-                  <p className="text-2xl font-semibold text-amber-700">{importStats.duplicates || 0}</p>
-                </div>
-                <div className="bg-amber-50 p-3 rounded-md">
-                  <p className="text-sm text-amber-700">Invalid Phones</p>
-                  <p className="text-2xl font-semibold text-amber-700">{importStats.skippedInvalidPhone || 0}</p>
+                  <p className="text-sm text-amber-700">Total Skipped</p>
+                  <p className="text-2xl font-semibold text-amber-700">
+                    {importStats.duplicates + importStats.errors + importStats.skippedInvalidPhone}
+                  </p>
                 </div>
               </div>
+              
+              {/* Enhanced Phone Deduplication Details */}
+              {(importStats.phoneDuplicatesInFile > 0 || importStats.phoneDuplicatesInDb > 0) && (
+                <div className="max-w-2xl mx-auto space-y-3">
+                  <h4 className="font-medium text-amber-700">Phone Number Deduplication Summary</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    {importStats.phoneDuplicatesInFile > 0 && (
+                      <div className="bg-amber-50 p-3 rounded-md border border-amber-200">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Users className="h-4 w-4 text-amber-600" />
+                          <p className="text-sm font-medium text-amber-700">File Duplicates</p>
+                        </div>
+                        <p className="text-xl font-semibold text-amber-700">{importStats.phoneDuplicatesInFile}</p>
+                        <p className="text-xs text-amber-600">Duplicate phones within uploaded file</p>
+                      </div>
+                    )}
+                    
+                    {importStats.phoneDuplicatesInDb > 0 && (
+                      <div className="bg-red-50 p-3 rounded-md border border-red-200">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Database className="h-4 w-4 text-red-600" />
+                          <p className="text-sm font-medium text-red-700">Database Duplicates</p>
+                        </div>
+                        <p className="text-xl font-semibold text-red-700">{importStats.phoneDuplicatesInDb}</p>
+                        <p className="text-xs text-red-600">Phones already in your database</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
               
               <div className="space-y-3 mt-4">
                 {importStats.errors > 0 && (
@@ -138,7 +163,7 @@ const ImportContactsDialog: React.FC<ImportContactsDialogProps> = ({
                               <li>Required fields are missing (such as name)</li>
                               <li>Data format issues (especially in dates or numeric fields)</li>
                               <li>Data exceeds maximum field length</li>
-                              <li>Duplicate entries that conflict with existing contacts</li>
+                              <li>Database constraint violations</li>
                             </ul>
                             <p className="text-xs text-red-700 mt-2">
                               Check your browser console for detailed error logs.
@@ -166,9 +191,15 @@ const ImportContactsDialog: React.FC<ImportContactsDialogProps> = ({
                 )}
               </div>
               
-              <p className="text-sm text-muted-foreground mt-4">
-                All imported contacts have been standardized to (XXX) XXX-XXXX phone number format.
-              </p>
+              <div className="text-sm text-muted-foreground mt-4 max-w-md mx-auto">
+                <p className="font-medium">Import Benefits:</p>
+                <ul className="list-disc list-inside mt-1 space-y-1 text-left">
+                  <li>All phone numbers standardized to (XXX) XXX-XXXX format</li>
+                  <li>Duplicate phone numbers automatically prevented</li>
+                  <li>All import actions logged for audit trail</li>
+                  <li>Database integrity maintained</li>
+                </ul>
+              </div>
             </>
           )}
         </div>
@@ -184,7 +215,7 @@ const ImportContactsDialog: React.FC<ImportContactsDialogProps> = ({
         <DialogHeader>
           <DialogTitle>Import Contacts</DialogTitle>
           <DialogDescription>
-            Upload a CSV file to import contacts into your database.
+            Upload a CSV file to import contacts with enhanced phone number deduplication.
           </DialogDescription>
         </DialogHeader>
         
