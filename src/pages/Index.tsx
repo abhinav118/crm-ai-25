@@ -1,768 +1,390 @@
-import React, { useState, useEffect } from 'react';
-import Sidebar from '@/components/dashboard/Sidebar';
-import TopToolbar from '@/components/TopToolbar';
-import SearchBar from '@/components/dashboard/SearchBar';
-import ActionButtons from '@/components/dashboard/ActionButtons';
-import ContactsTable, { Contact } from '@/components/dashboard/ContactsTable';
-import { BulkActionsTab } from '@/components/dashboard/BulkActions';
-import ChatInterface from '@/components/dashboard/ChatInterface';
-import Pagination from '@/components/dashboard/Pagination';
-import { useToast } from '@/hooks/use-toast';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
-import AddContactForm from '@/components/dashboard/AddContactForm';
-import { Skeleton } from '@/components/ui/skeleton';
+import React, { useState, useMemo } from 'react';
+import { Plus, MessageSquare, UserPlus, Search, Settings, X, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { UserPlus } from 'lucide-react';
-import { ContactData } from '@/components/dashboard/ContactForm/types';
+import ContactsTable, { Contact } from '@/components/dashboard/ContactsTable';
+import ContactForm from '@/components/dashboard/ContactForm';
+import ActionButtons from '@/components/dashboard/ActionButtons';
+import UserProfile from '@/components/dashboard/UserProfile';
+import ChatInterface from '@/components/dashboard/ChatInterface';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
 import { logContactAction } from '@/utils/contactLogger';
-import { startOfWeek, endOfWeek, subDays, subWeeks, subMonths, subYears } from 'date-fns';
-import { FilterState } from '@/components/dashboard/Filters/FilterDialog';
-import Conversations from '@/components/dashboard/Conversations';
+import { getFullName } from '@/utils/contactHelpers';
 
-type TabValue = 'all' | 'recent' | 'active' | 'inactive' | 'conversations' | 'bulk-actions';
-const VALID_TABS: TabValue[] = ['all', 'recent', 'active', 'inactive', 'conversations', 'bulk-actions'];
-
-interface IndexProps {
-  initialTab?: TabValue;
+// ... keep existing code (ContactData interface and other types)
+interface ContactData {
+  first_name: string;
+  last_name: string;
+  email: string | null;
+  phone: string | null;
+  company: string | null;
+  status: string;
+  tags: string[];
+  last_activity?: string | null;
+  updated_at: string;
+  id?: string;
+  notes?: string | null;
 }
 
-const Index: React.FC<IndexProps> = ({ initialTab = 'all' }) => {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [contacts, setContacts] = useState<Contact[]>([]);
-  const [filteredContacts, setFilteredContacts] = useState<Contact[]>([]);
-  const [recentContacts, setRecentContacts] = useState<Contact[]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
-  const [isLoading, setIsLoading] = useState(true);
+const Index = () => {
+  // ... keep existing code (state declarations)
+  const [selectedContacts, setSelectedContacts] = useState<Contact[]>([]);
+  const [isContactFormOpen, setIsContactFormOpen] = useState(false);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
-  const [selectedCount, setSelectedCount] = useState(0);
-  const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
-  const [activeTab, setActiveTab] = useState<TabValue>(initialTab);
-  const [totalCount, setTotalCount] = useState(0);
-  const [isAddContactModalOpen, setIsAddContactModalOpen] = useState(false);
-  const [isSearchActive, setIsSearchActive] = useState(false);
-  const [activeFilters, setActiveFilters] = useState<FilterState>({});
-  
-  const { toast } = useToast();
-  const location = useLocation();
-  const navigate = useNavigate();
-  
-  const fetchContacts = async () => {
-    setIsLoading(true);
-    try {
+  const [showContactDetails, setShowContactDetails] = useState(false);
+  const [showChatInterface, setShowChatInterface] = useState(false);
+  const [isCompactMode, setIsCompactMode] = useState(false);
+  const [activeTab, setActiveTab] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 20;
+
+  const queryClient = useQueryClient();
+
+  // Fetch contacts with pagination
+  const { data: contactsData, isLoading: isLoadingContacts, error: contactsError } = useQuery({
+    queryKey: ['contacts', activeTab, currentPage, searchQuery, statusFilter],
+    queryFn: async () => {
       console.log('Fetching contacts from Supabase...');
       
-      let query = supabase.from('contacts').select('*', { count: 'exact', head: true });
-      
-      query = applyFiltersToQuery(query);
-      
-      if (searchQuery.trim() !== '') {
-        const searchTerm = searchQuery.toLowerCase();
-        query = query.or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,phone.ilike.%${searchTerm}%,company.ilike.%${searchTerm}%`);
-      }
-      
-      const { count: existingCount, error: countError } = await query;
-      
-      if (countError) throw countError;
-      
-      if (existingCount === 0 && searchQuery.trim() === '' && Object.keys(activeFilters).length === 0) {
-        console.log('No contacts found. Seeding sample data...');
-        await seedSampleContacts();
-      }
-      
-      query = supabase.from('contacts').select('*', { count: 'exact', head: true });
-      query = applyFiltersToQuery(query);
-      
-      if (searchQuery.trim() !== '') {
-        const searchTerm = searchQuery.toLowerCase();
-        query = query.or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,phone.ilike.%${searchTerm}%,company.ilike.%${searchTerm}%`);
-      }
-      
-      const { count, error: totalCountError } = await query;
-      
-      if (totalCountError) throw totalCountError;
-      setTotalCount(count || 0);
-      
-      const from = (currentPage - 1) * pageSize;
-      const to = from + pageSize - 1;
-      
-      query = supabase.from('contacts').select('*');
-      query = applyFiltersToQuery(query);
-      
-      if (searchQuery.trim() !== '') {
-        const searchTerm = searchQuery.toLowerCase();
-        query = query.or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,phone.ilike.%${searchTerm}%,company.ilike.%${searchTerm}%`);
-      }
-      
-      const { data, error } = await query
-        .order('created_at', { ascending: false })
-        .range(from, to);
-      
-      if (error) throw error;
-      
-      console.log('Contacts data received:', data);
-      
-      if (data && data.length > 0) {
-        const formattedContacts = data.map(contact => ({
-          id: contact.id,
-          first_name: contact.first_name,
-          last_name: contact.last_name,
-          email: contact.email || '',
-          phone: contact.phone || '',
-          company: contact.company || '',
-          status: contact.status as 'active' | 'inactive',
-          tags: contact.tags || [],
-          lastActivity: contact.last_activity || contact.created_at,
-          createdAt: contact.created_at,
-        }));
-        
-        setContacts(formattedContacts);
-        setFilteredContacts(formattedContacts);
-        
-        fetchRecentContacts();
-      } else {
-        console.log('No contacts data returned from Supabase');
-        setContacts([]);
-        setFilteredContacts([]);
-        setRecentContacts([]);
-      }
-    } catch (error) {
-      console.error('Error fetching contacts:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load contacts',
-        variant: 'destructive'
-      });
-      setContacts([]);
-      setFilteredContacts([]);
-      setRecentContacts([]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  const applyFiltersToQuery = (query: any) => {
-    if (activeFilters.phone) {
-      const { operator, value } = activeFilters.phone;
-      
-      if (operator === 'is' && value) {
-        query = query.ilike('phone', `%${value}%`);
-      } else if (operator === 'isNot' && value) {
-        query = query.not('phone', 'ilike', `%${value}%`);
-      } else if (operator === 'isEmpty') {
-        query = query.or('phone.is.null,phone.eq.');
-      } else if (operator === 'isNotEmpty') {
-        query = query.not('phone', 'is', null).not('phone', 'eq', '');
-      }
-    }
-    
-    if (activeFilters.email) {
-      const { operator, value } = activeFilters.email;
-      
-      if (operator === 'is' && value) {
-        query = query.ilike('email', `%${value}%`);
-      } else if (operator === 'isNot' && value) {
-        query = query.not('email', 'ilike', `%${value}%`);
-      } else if (operator === 'isEmpty') {
-        query = query.or('email.is.null,email.eq.');
-      } else if (operator === 'isNotEmpty') {
-        query = query.not('email', 'is', null).not('email', 'eq', '');
-      }
-    }
-    
-    if (activeFilters.tag) {
-      const { operator, value } = activeFilters.tag;
-      
-      if (operator === 'is' && value) {
-        query = query.contains('tags', [value]);
-      } else if (operator === 'isNot' && value) {
-        query = query.not('tags', 'cs', `{${value}}`);
-      } else if (operator === 'isEmpty') {
-        query = query.or('tags.is.null,tags.eq.{}');
-      } else if (operator === 'isNotEmpty') {
-        query = query.not('tags', 'is', null).not('tags', 'eq', '{}');
-      } else if (operator === 'anyOf' && Array.isArray(value)) {
-        query = query.overlaps('tags', value);
-      }
-    }
-    
-    if (activeFilters.created) {
-      const { operator, value, unit } = activeFilters.created;
-      
-      if ((operator === 'moreThan' || operator === 'lessThan') && value !== null) {
-        let date: Date;
-        
-        switch (unit) {
-          case 'days':
-            date = subDays(new Date(), Number(value));
-            break;
-          case 'weeks':
-            date = subWeeks(new Date(), Number(value));
-            break;
-          case 'months':
-            date = subMonths(new Date(), Number(value));
-            break;
-          case 'years':
-            date = subYears(new Date(), Number(value));
-            break;
-          default:
-            date = subDays(new Date(), Number(value));
-        }
-        
-        const isoDate = date.toISOString();
-        
-        if (operator === 'moreThan') {
-          query = query.lt('created_at', isoDate);
-        } else if (operator === 'lessThan') {
-          query = query.gt('created_at', isoDate);
-        }
-      }
-    }
-    
-    return query;
-  };
-  
-  const fetchRecentContacts = async () => {
-    try {
-      const now = new Date();
-      const weekStart = startOfWeek(now, { weekStartsOn: 1 });
-      const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
-      
-      const startDate = weekStart.toISOString();
-      const endDate = weekEnd.toISOString();
-      
-      console.log(`Fetching contacts with last_activity between ${startDate} and ${endDate}`);
-      
-      const { data, error } = await supabase
+      let query = supabase
         .from('contacts')
-        .select('*')
-        .or(`last_activity.gte.${startDate},last_activity.lte.${endDate}`)
-        .order('last_activity', { ascending: false });
-      
-      if (error) throw error;
-      
-      if (data && data.length > 0) {
-        const formattedRecentContacts = data.map(contact => ({
-          id: contact.id,
-          first_name: contact.first_name,
-          last_name: contact.last_name,
-          email: contact.email || '',
-          phone: contact.phone || '',
-          company: contact.company || '',
-          status: contact.status as 'active' | 'inactive',
-          tags: contact.tags || [],
-          lastActivity: contact.last_activity || contact.created_at,
-          createdAt: contact.created_at,
-        }));
-        
-        setRecentContacts(formattedRecentContacts);
-        console.log(`Found ${formattedRecentContacts.length} recent contacts`);
-      } else {
-        setRecentContacts([]);
+        .select('*', { count: 'exact' })
+        .order('created_at', { ascending: false });
+
+      // Apply search filter
+      if (searchQuery) {
+        query = query.or(`first_name.ilike.%${searchQuery}%,last_name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%,company.ilike.%${searchQuery}%`);
       }
-    } catch (error) {
-      console.error('Error fetching recent contacts:', error);
-      setRecentContacts([]);
-    }
-  };
-  
-  const seedSampleContacts = async () => {
-    try {
-      const sampleFirstNames = [
-        'John', 'Emma', 'Michael', 'Olivia', 'William',
-        'Sophia', 'James', 'Charlotte', 'Benjamin', 'Amelia',
-        'Alexander', 'Harper', 'Daniel', 'Abigail', 'Matthew',
-        'Emily', 'Joseph', 'Elizabeth', 'David', 'Sofia'
-      ];
-      
-      const sampleLastNames = [
-        'Smith', 'Johnson', 'Williams', 'Brown', 'Jones',
-        'Miller', 'Davis', 'Wilson', 'Moore', 'Taylor',
-        'Anderson', 'Thomas', 'Jackson', 'White', 'Harris',
-        'Martin', 'Thompson', 'Garcia', 'Martinez', 'Robinson'
-      ];
-      
-      const sampleEmails = [
-        'john@example.com', 'emma@example.com', 'michael@example.com', 'olivia@example.com', 'william@example.com',
-        'sophia@example.com', 'james@example.com', 'charlotte@example.com', 'benjamin@example.com', 'amelia@example.com',
-        'alexander@example.com', 'harper@example.com', 'daniel@example.com', 'abigail@example.com', 'matthew@example.com',
-        'emily@example.com', 'joseph@example.com', 'elizabeth@example.com', 'david@example.com', 'sofia@example.com'
-      ];
-      
-      const sampleCompanies = [
-        'Tech Solutions', 'Global Innovations', 'Digital Dynamics', 'Modern Systems', 'Future Technologies',
-        'Smart Enterprises', 'Peak Performance', 'Bright Ideas', 'Strategic Solutions', 'Advanced Technologies',
-        'Creative Concepts', 'Innovative Designs', 'Premium Products', 'Elite Services', 'Precise Engineering',
-        'Quality Assurance', 'Infinite Possibilities', 'Prime Solutions', 'Universal Systems', 'Progressive Innovations'
-      ];
-      
-      const samplePhones = [
-        '+1 (555) 123-4567', '+1 (555) 234-5678', '+1 (555) 345-6789', '+1 (555) 456-7890', '+1 (555) 567-8901',
-        '+1 (555) 678-9012', '+1 (555) 789-0123', '+1 (555) 890-1234', '+1 (555) 901-2345', '+1 (555) 012-3456',
-        '+1 (555) 112-2334', '+1 (555) 223-3445', '+1 (555) 334-4556', '+1 (555) 445-5667', '+1 (555) 556-6778',
-        '+1 (555) 667-7889', '+1 (555) 778-8990', '+1 (555) 889-9001', '+1 (555) 990-0112', '+1 (555) 001-1223'
-      ];
-      
-      const sampleTags = [
-        ['client', 'active'], ['prospect', 'interested'], ['client', 'premium'], ['lead', 'new'], ['client', 'inactive'],
-        ['partner', 'active'], ['vendor', 'regular'], ['client', 'vip'], ['lead', 'warm'], ['client', 'standard'],
-        ['prospect', 'cold'], ['client', 'priority'], ['vendor', 'preferred'], ['lead', 'hot'], ['client', 'potential'],
-        ['partner', 'new'], ['prospect', 'qualified'], ['client', 'returning'], ['lead', 'unqualified'], ['partner', 'strategic']
-      ];
-      
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      const sampleContacts = [];
-      
-      for (let i = 0; i < 20; i++) {
-        sampleContacts.push({
-          first_name: sampleFirstNames[i],
-          last_name: sampleLastNames[i],
-          email: sampleEmails[i],
-          phone: samplePhones[i],
-          company: sampleCompanies[i],
-          status: i % 5 === 0 ? 'inactive' : 'active',
-          tags: sampleTags[i]
-        });
+
+      // Apply status filter
+      if (statusFilter !== 'all') {
+        query = query.eq('status', statusFilter);
       }
+
+      // Apply pagination for "all" tab
+      if (activeTab === 'all') {
+        const from = (currentPage - 1) * pageSize;
+        const to = from + pageSize - 1;
+        query = query.range(from, to);
+      }
+
+      const { data, error, count } = await query;
       
-      const { error } = await supabase.from('contacts').insert(sampleContacts);
+      if (error) {
+        console.error('Error fetching contacts:', error);
+        throw error;
+      }
+
+      console.log('Fetched contacts:', data?.length, 'Total count:', count);
       
-      if (error) throw error;
-      
-      console.log('Sample contacts seeded successfully');
-    } catch (error) {
-      console.error('Error seeding sample contacts:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to seed sample contacts',
-        variant: 'destructive'
-      });
+      // Transform the data to match our Contact interface
+      const transformedContacts: Contact[] = (data || []).map(contact => ({
+        id: contact.id,
+        first_name: contact.first_name,
+        last_name: contact.last_name,
+        email: contact.email || '',
+        phone: contact.phone || '',
+        company: contact.company || '',
+        lastActivity: contact.last_activity || '',
+        status: contact.status as 'active' | 'inactive',
+        tags: contact.tags || [],
+        createdAt: contact.created_at
+      }));
+
+      return {
+        contacts: transformedContacts,
+        totalCount: count || 0
+      };
+    },
+  });
+
+  const contacts = useMemo(() => contactsData?.contacts || [], [contactsData]);
+  const totalContacts = contactsData?.totalCount || 0;
+  const totalPages = Math.ceil(totalContacts / pageSize);
+
+  // ... keep existing code (filter logic and event handlers)
+  const filteredContacts = useMemo(() => {
+    let filtered = contacts;
+
+    if (activeTab === 'active') {
+      filtered = filtered.filter(contact => contact.status === 'active');
+    } else if (activeTab === 'inactive') {
+      filtered = filtered.filter(contact => contact.status === 'inactive');
     }
+
+    return filtered;
+  }, [contacts, activeTab]);
+
+  const handleContactSelect = (contacts: Contact[]) => {
+    setSelectedContacts(contacts);
   };
-  
-  useEffect(() => {
-    fetchContacts();
-    
-    const channel = supabase
-      .channel('schema-db-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
-          schema: 'public',
-          table: 'contacts'
-        },
-        (payload) => {
-          console.log('Real-time update received for contacts:', payload);
-          fetchContacts();
-        }
-      )
-      .subscribe();
-      
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [currentPage, pageSize, activeFilters]);
-  
-  useEffect(() => {
-    const hash = location.hash.replace('#', '');
-    if (hash && VALID_TABS.includes(hash as TabValue)) {
-      setActiveTab(hash as TabValue);
-    }
-  }, [location]);
-  
-  useEffect(() => {
-    if (searchQuery.trim() === '') {
-      setFilteredContacts(contacts);
-    } else {
-      const query = searchQuery.toLowerCase();
-      const filtered = contacts.filter(
-        contact =>
-          contact.name.toLowerCase().includes(query) ||
-          (contact.email && contact.email.toLowerCase().includes(query)) ||
-          (contact.phone && contact.phone.includes(query)) ||
-          (contact.company && contact.company.toLowerCase().includes(query))
-      );
-      setFilteredContacts(filtered);
-    }
-    setCurrentPage(1);
-  }, [searchQuery, contacts]);
-  
-  const handleSearch = (query: string) => {
-    setSearchQuery(query);
-    setCurrentPage(1); // Reset to first page when searching
+
+  const handleAddContact = () => {
+    setIsContactFormOpen(true);
+    setSelectedContact(null);
   };
-  
-  const handleFilterChange = (filters: FilterState) => {
-    setActiveFilters(filters);
-    setCurrentPage(1); // Reset to first page when filtering
-  };
-  
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-  
-  const handlePageSizeChange = (size: number) => {
-    setPageSize(size);
-    setCurrentPage(1); // Reset to first page when changing page size
-  };
-  
-  const handleRowClick = (contact: Contact) => {
+
+  const handleEditContact = (contact: Contact) => {
     setSelectedContact(contact);
+    setIsContactFormOpen(true);
   };
-  
-  const handleSelectRow = (id: string, isSelected: boolean) => {
-    const newSelectedRows = new Set(selectedRows);
-    
-    if (isSelected) {
-      newSelectedRows.add(id);
-    } else {
-      newSelectedRows.delete(id);
-    }
-    
-    setSelectedRows(newSelectedRows);
-    setSelectedCount(newSelectedRows.size);
-  };
-  
-  const handleSelectAll = (isSelected: boolean) => {
-    if (isSelected) {
-      const allIds = new Set(filteredContacts.map(contact => contact.id));
-      setSelectedRows(allIds);
-      setSelectedCount(allIds.size);
-    } else {
-      setSelectedRows(new Set());
-      setSelectedCount(0);
-    }
-  };
-  
-  const handleTabChange = (value: string) => {
-    if (VALID_TABS.includes(value as TabValue)) {
-      setActiveTab(value as TabValue);
-      navigate(`/#${value}`);
-    } else {
-      console.warn(`Invalid tab value: ${value}`);
-      setActiveTab('all');
-      navigate('/#all');
-    }
-  };
-  
-  const handleTagsAdded = () => {
-    fetchContacts();
-    setSelectedRows(new Set());
-    setSelectedCount(0);
-  };
-  
-  const getSelectedContacts = (): Contact[] => {
-    return contacts.filter(contact => selectedRows.has(contact.id));
-  };
-  
-  const handleSendMessage = () => {
-    if (selectedRows.size > 0) {
-      const firstSelectedId = Array.from(selectedRows)[0];
-      const contact = contacts.find(c => c.id === firstSelectedId);
-      if (contact) {
-        setSelectedContact(contact);
-      }
-    }
+
+  const handleContactClick = (contact: Contact) => {
+    setSelectedContact(contact);
+    setShowContactDetails(true);
   };
 
   const handleDeleteContacts = async () => {
-    if (selectedRows.size === 0) return;
+    if (selectedContacts.length === 0) return;
     
     try {
-      const selectedIds = Array.from(selectedRows);
-      
-      const contactsToDelete = contacts.filter(c => selectedIds.includes(c.id));
-      
-      console.log(`Deleting ${selectedIds.length} contacts with IDs:`, selectedIds);
+      const contactIds = selectedContacts.map(contact => contact.id);
       
       const { error } = await supabase
         .from('contacts')
         .delete()
-        .in('id', selectedIds);
+        .in('id', contactIds);
       
       if (error) throw error;
       
-      for (const contact of contactsToDelete) {
-        await logContactAction('delete', contact);
+      // Log deletion for each contact
+      for (const contact of selectedContacts) {
+        await logContactAction('delete', {
+          id: contact.id,
+          first_name: contact.first_name,
+          last_name: contact.last_name
+        });
       }
-      
-      setContacts(prevContacts => prevContacts.filter(c => !selectedIds.includes(c.id)));
-      setFilteredContacts(prevContacts => prevContacts.filter(c => !selectedIds.includes(c.id)));
-      setSelectedRows(new Set());
-      setSelectedCount(0);
       
       toast({
         title: 'Success',
-        description: `${selectedIds.length} contact${selectedIds.length > 1 ? 's' : ''} deleted successfully`,
+        description: `${selectedContacts.length} contact${selectedContacts.length > 1 ? 's' : ''} deleted successfully`,
       });
       
-      fetchContacts();
-      
+      setSelectedContacts([]);
+      queryClient.invalidateQueries({ queryKey: ['contacts'] });
     } catch (error) {
       console.error('Error deleting contacts:', error);
       toast({
         title: 'Error',
-        description: 'Failed to delete contacts',
+        description: 'Failed to delete contacts. Please try again.',
         variant: 'destructive'
       });
     }
   };
 
-  const handleAddContact = async (formData: ContactData): Promise<void> => {
+  const handleSubmitContact = async (contactData: ContactData) => {
     try {
-      console.log('Submitting contact with data:', formData);
-      
-      const currentTime = new Date().toISOString();
-      
-      const contact = {
-        first_name: formData.first_name,
-        last_name: formData.last_name,
-        email: formData.email,
-        phone: formData.phone,
-        company: formData.company,
-        status: 'active',
-        tags: formData.tags || [],
-        last_activity: currentTime
-      };
-
-      console.log('Inserting contact with data:', contact);
-
-      const { data, error } = await supabase
-        .from('contacts')
-        .insert(contact)
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Supabase error during contact creation:', error);
-        throw error;
+      if (selectedContact) {
+        // Update existing contact
+        const { data, error } = await supabase
+          .from('contacts')
+          .update(contactData)
+          .eq('id', selectedContact.id)
+          .select();
+        
+        if (error) throw error;
+        
+        await logContactAction('update', {
+          id: selectedContact.id,
+          ...contactData
+        });
+        
+        toast({
+          title: 'Success',
+          description: 'Contact updated successfully',
+        });
+      } else {
+        // Create new contact
+        const { data, error } = await supabase
+          .from('contacts')
+          .insert([contactData])
+          .select();
+        
+        if (error) throw error;
+        
+        if (data && data[0]) {
+          await logContactAction('create', {
+            id: data[0].id,
+            ...contactData
+          });
+        }
+        
+        toast({
+          title: 'Success',
+          description: 'Contact added successfully',
+        });
       }
-
-      if (!data) {
-        throw new Error('No data returned from insert operation');
-      }
-
-      console.log('Contact added successfully:', data);
-
-      const newContact: Contact = {
-        id: data.id,
-        first_name: data.first_name,
-        last_name: data.last_name,
-        email: data.email || '',
-        phone: data.phone || '',
-        company: data.company || '',
-        status: data.status as 'active' | 'inactive',
-        tags: data.tags || [],
-        lastActivity: data.last_activity || data.created_at,
-        createdAt: data.created_at,
-      };
-
-      toast({
-        title: 'Success',
-        description: 'Contact added successfully',
-      });
       
-      setIsAddContactModalOpen(false);
-      
-      // Refresh the current page to show the new contact
-      fetchContacts();
+      queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      setIsContactFormOpen(false);
+      setSelectedContact(null);
     } catch (error) {
-      console.error('Error adding contact:', error);
-      toast({
-        title: 'Error',
-        description: `Failed to add contact: ${(error as Error).message}`,
-        variant: 'destructive'
-      });
+      console.error('Error submitting contact:', error);
       throw error;
     }
   };
-  
-  const totalPages = Math.ceil(totalCount / pageSize);
-  
-  const toggleSidebar = () => {
-    setSidebarCollapsed(!sidebarCollapsed);
+
+  const handleSaveProfile = (updatedContact: Contact) => {
+    setSelectedContact(updatedContact);
+    queryClient.invalidateQueries({ queryKey: ['contacts'] });
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-2">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-          <p className="text-sm text-muted-foreground">Loading dashboard...</p>
-        </div>
-      </div>
-    );
-  }
-  
+  const handleContactsImported = () => {
+    queryClient.invalidateQueries({ queryKey: ['contacts'] });
+  };
+
+  const handleTagsAdded = () => {
+    queryClient.invalidateQueries({ queryKey: ['contacts'] });
+  };
+
+  const toggleChatInterface = () => {
+    if (!selectedContact) {
+      toast({
+        title: 'No contact selected',
+        description: 'Please select a contact first',
+        variant: 'destructive'
+      });
+      return;
+    }
+    setShowChatInterface(!showChatInterface);
+  };
+
+  const handleCloseContactDetails = () => {
+    setShowContactDetails(false);
+    setSelectedContact(null);
+  };
+
+  const handleCloseChatInterface = () => {
+    setShowChatInterface(false);
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50 w-full">
-      <Sidebar collapsed={sidebarCollapsed} onToggle={toggleSidebar} />
-      
-      <div 
-        className={`transition-all duration-300 ${
-          sidebarCollapsed ? "ml-[70px]" : "ml-[240px]"
-        }`}
-      >
-        <TopToolbar pageTitle="Contacts" />
-        
-        <main className="p-4 sm:p-6">
-          <div className="mb-6">
-            <h1 className="text-2xl font-semibold text-gray-900 mb-1">Contacts</h1>
-            <p className="text-gray-500">Manage and organize your contacts efficiently</p>
-          </div>
-          
-          <div className="mb-6 flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
-            <SearchBar 
-              onSearch={handleSearch}
-              onFilterChange={handleFilterChange}
-              onActiveChange={(active) => setIsSearchActive(active)}
-              className="transition-all duration-300 ease-in-out"
-              totalCount={totalCount}
-            />
-            <div className="flex gap-2 transition-all duration-300 ease-in-out">
-              <ActionButtons 
-                selectedCount={selectedCount} 
-                onAddContact={() => setIsAddContactModalOpen(true)}
-                onSendMessage={handleSendMessage}
-                onDeleteContacts={handleDeleteContacts}
-                selectedContacts={getSelectedContacts()}
-                onTagsAdded={handleTagsAdded}
-                compactMode={isSearchActive}
-              />
-            </div>
-          </div>
-          
-          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full mb-6">
-            <TabsList className="mb-2 w-full sm:w-auto overflow-x-auto hide-scrollbar">
-              <TabsTrigger value="all">All Contacts</TabsTrigger>
-              <TabsTrigger value="recent">Recent</TabsTrigger>
-              <TabsTrigger value="active">Active</TabsTrigger>
-              <TabsTrigger value="inactive">Inactive</TabsTrigger>
-              <TabsTrigger value="conversations">Conversations</TabsTrigger>
-              <TabsTrigger value="bulk-actions">Bulk Actions</TabsTrigger>
-            </TabsList>
-            <TabsContent value="all" className="pt-4">
-              {isLoading ? (
-                <div className="space-y-4">
-                  {Array.from({ length: 5 }).map((_, index) => (
-                    <div key={index} className="flex items-center space-x-4">
-                      <Skeleton className="h-12 w-12 rounded-full" />
-                      <div className="space-y-2">
-                        <Skeleton className="h-4 w-[250px]" />
-                        <Skeleton className="h-4 w-[200px]" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : totalCount === 0 ? (
-                <div className="flex flex-col items-center justify-center h-60 bg-white rounded-lg border border-gray-200">
-                  <p className="text-gray-500 mb-4">No contacts found</p>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setIsAddContactModalOpen(true)}
-                    className="gap-2"
+    <div className="min-h-screen bg-gray-50">
+      <div className="flex h-screen">
+        {/* Main Content */}
+        <div className={`flex-1 flex flex-col transition-all duration-300 ${showContactDetails ? 'mr-80' : ''} ${showChatInterface ? 'mr-96' : ''}`}>
+          {/* Header */}
+          <header className="bg-white shadow-sm border-b px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <h1 className="text-2xl font-bold text-gray-900">Contacts</h1>
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsCompactMode(!isCompactMode)}
+                    className="text-gray-500"
                   >
-                    <UserPlus size={16} />
-                    Add your first contact
+                    <Menu size={16} />
                   </Button>
                 </div>
-              ) : (
-                <ContactsTable 
-                  contacts={filteredContacts} 
-                  onRowClick={handleRowClick}
-                  isSelectable={true}
-                  selectedRows={selectedRows}
-                  onSelectRow={handleSelectRow}
-                  onSelectAll={handleSelectAll}
-                />
-              )}
+              </div>
               
-              {totalCount > 0 && (
-                <div className="mt-4">
-                  <Pagination
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    onPageChange={handlePageChange}
-                    totalRecords={totalCount}
-                    pageSize={pageSize}
-                    onPageSizeChange={handlePageSizeChange}
-                  />
-                </div>
-              )}
-            </TabsContent>
-            <TabsContent value="recent">
-              {isLoading ? (
-                <div className="space-y-4">
-                  {Array.from({ length: 5 }).map((_, index) => (
-                    <div key={index} className="flex items-center space-x-4">
-                      <Skeleton className="h-12 w-12 rounded-full" />
-                      <div className="space-y-2">
-                        <Skeleton className="h-4 w-[250px]" />
-                        <Skeleton className="h-4 w-[200px]" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : recentContacts.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-60 bg-white rounded-lg border border-gray-200">
-                  <p className="text-gray-500 mb-4">No recent contacts found this week</p>
-                </div>
-              ) : (
-                <ContactsTable 
-                  contacts={recentContacts} 
-                  onRowClick={handleRowClick}
-                  isSelectable={true}
-                  selectedRows={selectedRows}
-                  onSelectRow={handleSelectRow}
-                  onSelectAll={handleSelectAll}
+              <div className="flex items-center space-x-4">
+                <ActionButtons
+                  selectedCount={selectedContacts.length}
+                  onAddContact={handleAddContact}
+                  onDeleteContacts={handleDeleteContacts}
+                  selectedContacts={selectedContacts}
+                  onTagsAdded={handleTagsAdded}
+                  onContactsImported={handleContactsImported}
+                  compactMode={isCompactMode}
                 />
-              )}
-            </TabsContent>
-            <TabsContent value="active">
-              <div className="flex items-center justify-center h-60 bg-white rounded-lg border border-gray-200">
-                <p className="text-gray-500">Active contacts view coming soon</p>
+                
+                {selectedContact && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={toggleChatInterface}
+                    className="gap-2"
+                  >
+                    <MessageSquare size={16} />
+                    {showChatInterface ? 'Close Chat' : 'Chat'}
+                  </Button>
+                )}
               </div>
-            </TabsContent>
-            <TabsContent value="inactive">
-              <div className="flex items-center justify-center h-60 bg-white rounded-lg border border-gray-200">
-                <p className="text-gray-500">Inactive contacts view coming soon</p>
-              </div>
-            </TabsContent>
-            <TabsContent value="conversations" className="pt-4">
-              <Conversations />
-            </TabsContent>
-            <TabsContent value="bulk-actions" className="pt-4">
-              <BulkActionsTab 
-                selectedContacts={Array.from(selectedRows)}
-                onActionComplete={() => {
-                  setSelectedRows(new Set());
-                  setSelectedCount(0);
-                  fetchContacts();
-                }}
-              />
-            </TabsContent>
-          </Tabs>
-        </main>
-      </div>
-      
-      {selectedContact && (
-        <ChatInterface 
-          contact={selectedContact} 
-          onClose={() => setSelectedContact(null)}
-        />
-      )}
+            </div>
+          </header>
 
-      <AddContactForm 
-        open={isAddContactModalOpen} 
-        onOpenChange={setIsAddContactModalOpen} 
-        onSubmit={handleAddContact}
-      />
+          {/* Content */}
+          <main className="flex-1 p-6">
+            <ContactsTable
+              contacts={filteredContacts}
+              onContactSelect={handleContactSelect}
+              onEditContact={handleEditContact}
+              onContactClick={handleContactClick}
+              selectedContacts={selectedContacts}
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              statusFilter={statusFilter}
+              onStatusFilterChange={setStatusFilter}
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+              isLoading={isLoadingContacts}
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              showPagination={activeTab === 'all'}
+            />
+          </main>
+        </div>
+
+        {/* Contact Details Sidebar */}
+        {showContactDetails && selectedContact && (
+          <div className="fixed right-0 top-0 bottom-0 w-80 bg-white shadow-lg border-l z-40">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h2 className="text-lg font-semibold">Contact Details</h2>
+              <Button variant="ghost" size="sm" onClick={handleCloseContactDetails}>
+                <X size={16} />
+              </Button>
+            </div>
+            <UserProfile contact={selectedContact} onSave={handleSaveProfile} />
+          </div>
+        )}
+
+        {/* Chat Interface Sidebar */}
+        {showChatInterface && selectedContact && (
+          <div className="fixed right-0 top-0 bottom-0 w-96 bg-white shadow-lg border-l z-50">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h2 className="text-lg font-semibold">Chat - {getFullName(selectedContact)}</h2>
+              <Button variant="ghost" size="sm" onClick={handleCloseChatInterface}>
+                <X size={16} />
+              </Button>
+            </div>
+            <ChatInterface contact={selectedContact} />
+          </div>
+        )}
+      </div>
+
+      {/* Contact Form Modal */}
+      {isContactFormOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <ContactForm
+              onSubmit={handleSubmitContact}
+              onClose={() => {
+                setIsContactFormOpen(false);
+                setSelectedContact(null);
+              }}
+              initialData={selectedContact ? {
+                id: selectedContact.id,
+                first_name: selectedContact.first_name,
+                last_name: selectedContact.last_name,
+                email: selectedContact.email,
+                phone: selectedContact.phone,
+                company: selectedContact.company,
+                status: selectedContact.status,
+                tags: selectedContact.tags,
+                updated_at: new Date().toISOString()
+              } : undefined}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

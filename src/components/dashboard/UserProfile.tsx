@@ -11,6 +11,7 @@ import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { logContactAction } from '@/utils/contactLogger';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { getFullName } from '@/utils/contactHelpers';
 
 interface UserProfileProps {
   contact: Contact;
@@ -19,7 +20,15 @@ interface UserProfileProps {
 
 const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
   const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState(contact);
+  const [formData, setFormData] = useState({
+    first_name: contact.first_name,
+    last_name: contact.last_name || '',
+    email: contact.email || '',
+    phone: contact.phone || '',
+    company: contact.company || '',
+    status: contact.status,
+    tags: contact.tags || []
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [newTag, setNewTag] = useState('');
 
@@ -59,7 +68,8 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
     try {
       const currentTime = new Date().toISOString();
       const updateData = {
-        name: formData.name,
+        first_name: formData.first_name,
+        last_name: formData.last_name || null,
         email: formData.email || null,
         phone: formData.phone || null,
         company: formData.company || null,
@@ -85,6 +95,8 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
       
       await logContactAction('update', {
         id: contact.id,
+        first_name: updateData.first_name,
+        last_name: updateData.last_name,
         ...updateData
       });
       
@@ -93,7 +105,13 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
         
         const updatedContact = {
           ...contact,
-          ...updateData,
+          first_name: updateData.first_name,
+          last_name: updateData.last_name,
+          email: updateData.email,
+          phone: updateData.phone,
+          company: updateData.company,
+          status: updateData.status,
+          tags: updateData.tags,
           updated_at: currentTime
         };
         
@@ -114,7 +132,8 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
       
       const transformedContact: Contact = {
         id: data[0].id,
-        name: data[0].name,
+        first_name: data[0].first_name,
+        last_name: data[0].last_name,
         email: data[0].email || '',
         phone: data[0].phone || '',
         company: data[0].company || '',
@@ -174,13 +193,22 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
         <ScrollArea className="flex-1">
           <form onSubmit={handleSubmit} className="space-y-3 p-4">
             <div>
-              <Label htmlFor="name">Full Name</Label>
+              <Label htmlFor="first_name">First Name</Label>
               <Input 
-                id="name" 
-                name="name"
-                value={formData.name} 
+                id="first_name" 
+                name="first_name"
+                value={formData.first_name} 
                 onChange={handleChange} 
                 required
+              />
+            </div>
+            <div>
+              <Label htmlFor="last_name">Last Name</Label>
+              <Input 
+                id="last_name" 
+                name="last_name"
+                value={formData.last_name} 
+                onChange={handleChange} 
               />
             </div>
             <div>
@@ -277,7 +305,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
         <ScrollArea className="flex-1">
           <div className="p-4 space-y-6">
             <div className="space-y-4">
-              <ProfileItem icon={<User className="h-5 w-5" />} label="Name" value={contact.name} />
+              <ProfileItem icon={<User className="h-5 w-5" />} label="Name" value={getFullName(contact)} />
               <ProfileItem icon={<Phone className="h-5 w-5" />} label="Phone" value={contact.phone || 'Not provided'} />
               <ProfileItem icon={<Mail className="h-5 w-5" />} label="Email" value={contact.email || 'Not provided'} />
               <ProfileItem icon={<Building className="h-5 w-5" />} label="Company" value={contact.company || 'Not provided'} />

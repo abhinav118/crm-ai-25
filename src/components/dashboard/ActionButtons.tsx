@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { 
@@ -24,6 +23,7 @@ import SendMessageDialog from './SendMessageDialog';
 import { Contact } from './ContactsTable';
 import { useToast } from '@/hooks/use-toast';
 import ImportContactsDialog from './ImportContactsDialog/ImportContactsDialog';
+import { getFullName } from '@/utils/contactHelpers';
 
 type ActionButtonsProps = {
   selectedCount?: number;
@@ -102,7 +102,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
     const headers = ['Name', 'Email', 'Phone', 'Company', 'Status', 'Tags', 'Last Activity', 'Created At'];
     
     const rows = selectedContacts.map(contact => [
-      contact.name,
+      getFullName(contact),
       contact.email || '',
       contact.phone || '',
       contact.company || '',

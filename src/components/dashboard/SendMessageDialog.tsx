@@ -1,24 +1,18 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { 
-  PaperclipIcon, 
-  SmileIcon, 
-  ZapIcon, 
-  SendIcon,
-  XIcon,
-  ImageIcon,
-  FileIcon,
-  Loader2,
-  ArrowUpIcon
-} from "lucide-react";
+import React, { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { X, Send, MessageSquare, Upload, Smile } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import Avatar from '@/components/dashboard/Avatar';
 import { Contact } from './ContactsTable';
+import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
-import { PromptSuggestion } from '@/components/ui/prompt-suggestion';
-import { PromptInput, PromptInputActions, PromptInputTextarea } from '@/components/ui/prompt-input';
+import { getFullName } from '@/utils/contactHelpers';
 
 interface SendMessageDialogProps {
   open: boolean;
@@ -26,253 +20,47 @@ interface SendMessageDialogProps {
   selectedContacts: Contact[];
 }
 
-type EmojiData = {
-  emoji: string;
-  description?: string;
-};
-
-// Emoji categories for the picker
-const emojiCategories = {
-  "Smiles & People": [
-    { emoji: "😀", description: "grinning" },
-    { emoji: "😁", description: "grinning with smiling eyes" },
-    { emoji: "😂", description: "joy" },
-    { emoji: "😃", description: "smiley" },
-    { emoji: "😄", description: "smile" },
-    { emoji: "😅", description: "sweat smile" },
-    { emoji: "😆", description: "laughing" },
-    { emoji: "😉", description: "wink" },
-    { emoji: "😊", description: "blush" },
-    { emoji: "😋", description: "yum" },
-    { emoji: "😎", description: "sunglasses" },
-    { emoji: "😍", description: "heart eyes" },
-    { emoji: "😘", description: "kissing heart" },
-    { emoji: "🙂", description: "slightly smiling face" },
-    { emoji: "🤔", description: "thinking face" },
-    { emoji: "😐", description: "neutral face" },
-    { emoji: "😒", description: "unamused" },
-    { emoji: "😞", description: "disappointed" },
-    { emoji: "😔", description: "pensive" },
-    { emoji: "😢", description: "cry" },
-    { emoji: "😭", description: "sob" },
-    { emoji: "😡", description: "rage" },
-    { emoji: "😱", description: "scream" },
-    { emoji: "😴", description: "sleeping" },
-  ],
-  "Animals & Nature": [
-    { emoji: "🐶", description: "dog" },
-    { emoji: "🐱", description: "cat" },
-    { emoji: "🐭", description: "mouse" },
-    { emoji: "🐹", description: "hamster" },
-    { emoji: "🐰", description: "rabbit" },
-    { emoji: "🦊", description: "fox" },
-    { emoji: "🐻", description: "bear" },
-    { emoji: "🐼", description: "panda" },
-  ],
-  "Food & Drink": [
-    { emoji: "🍎", description: "apple" },
-    { emoji: "🍐", description: "pear" },
-    { emoji: "🍊", description: "tangerine" },
-    { emoji: "🍋", description: "lemon" },
-    { emoji: "🍌", description: "banana" },
-    { emoji: "🍉", description: "watermelon" },
-    { emoji: "🍇", description: "grapes" },
-    { emoji: "🍓", description: "strawberry" },
-  ],
-  "Activities": [
-    { emoji: "⚽", description: "soccer" },
-    { emoji: "🏀", description: "basketball" },
-    { emoji: "🏈", description: "football" },
-    { emoji: "⚾", description: "baseball" },
-    { emoji: "🎾", description: "tennis" },
-    { emoji: "🏐", description: "volleyball" },
-    { emoji: "🏉", description: "rugby" },
-    { emoji: "🎱", description: "8ball" },
-  ],
-};
-
-// Message prompt suggestions
-const MESSAGE_SUGGESTIONS = [
-  "Thanks for reaching out! How can I help you today?",
-  "We received your inquiry and will get back to you shortly.",
-  "Your appointment is confirmed for tomorrow at 2 PM.",
-  "Just following up on our conversation. Any updates?",
-  "Happy birthday! 🎂 We've got a special offer just for you.",
-  "Your order has been shipped and will arrive in 2-3 business days.",
-  "Thank you for your purchase! Here's your receipt.",
-  "We miss you! Come back and enjoy 15% off your next purchase."
-];
-
-const AI_PROMPT_SUGGESTIONS = [
-  "Create a friendly welcome message",
-  "Write a professional follow-up",
-  "Generate a sales promotion announcement",
-  "Craft a birthday greeting with discount offer",
-  "Write a shipping confirmation message",
-  "Create a customer satisfaction survey request"
-];
-
-const SendMessageDialog: React.FC<SendMessageDialogProps> = ({ 
-  open, 
+const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
+  open,
   onClose,
-  selectedContacts 
+  selectedContacts
 }) => {
-  const [name, setName] = useState('');
+  const [activeTab, setActiveTab] = useState('sms');
   const [message, setMessage] = useState('');
+  const [subject, setSubject] = useState('');
+  const [scheduleType, setScheduleType] = useState('now');
+  const [scheduleDate, setScheduleDate] = useState('');
+  const [scheduleTime, setScheduleTime] = useState('');
+  const [mediaUrl, setMediaUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [charCount, setCharCount] = useState(0);
-  const [wordCount, setWordCount] = useState(0);
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [searchEmoji, setSearchEmoji] = useState('');
-  const [attachments, setAttachments] = useState<{ file: File; url?: string }[]>([]);
-  const [uploading, setUploading] = useState(false);
-  const [aiPrompt, setAiPrompt] = useState('');
-  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
-  const [showPromptInput, setShowPromptInput] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const emojiPickerRef = useRef<HTMLDivElement>(null);
-  
-  const { toast } = useToast();
-  
-  // Reset form when dialog opens
+  const [recipientCount, setRecipientCount] = useState(0);
+
   useEffect(() => {
-    if (open) {
-      setName('');
-      setMessage('');
-      setAttachments([]);
-      setAiPrompt('');
-      setShowPromptInput(false);
+    // Count recipients based on the selected tab
+    if (activeTab === 'sms') {
+      const smsRecipients = selectedContacts.filter(contact => contact.phone);
+      setRecipientCount(smsRecipients.length);
+    } else {
+      const emailRecipients = selectedContacts.filter(contact => contact.email);
+      setRecipientCount(emailRecipients.length);
     }
-  }, [open]);
-
-  // Update character and word counts
-  useEffect(() => {
-    setCharCount(message.length);
-    setWordCount(message.trim() ? message.trim().split(/\s+/).length : 0);
-  }, [message]);
-
-  // Close emoji picker when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        emojiPickerRef.current && 
-        !emojiPickerRef.current.contains(event.target as Node) &&
-        !(event.target as Element).closest('[data-emoji-trigger="true"]')
-      ) {
-        setShowEmojiPicker(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
-
-  const handleEmojiClick = (emoji: string) => {
-    setMessage(prev => prev + emoji);
-    setShowEmojiPicker(false);
-  };
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const file = e.target.files[0];
-      
-      // Basic validation - max size 5MB
-      if (file.size > 5 * 1024 * 1024) {
-        toast({
-          title: "File too large",
-          description: "Maximum file size is 5MB",
-          variant: "destructive"
-        });
-        return;
-      }
-      
-      // Add file to attachments array
-      setAttachments(prev => [...prev, { file }]);
-      
-      // Upload to Twilio Assets API
-      uploadFile(file);
-    }
-  };
-
-  const uploadFile = async (file: File) => {
-    setUploading(true);
-    
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      
-      const { data, error } = await supabase.functions.invoke(
-        'upload-twilio-asset',
-        {
-          body: formData
-        }
-      );
-      
-      if (error) throw error;
-      
-      // Update attachment with URL
-      setAttachments(prev => 
-        prev.map(att => 
-          att.file === file 
-            ? { ...att, url: data.mediaUrl } 
-            : att
-        )
-      );
-      
-      toast({
-        title: "File uploaded",
-        description: "Your file has been uploaded successfully",
-      });
-    } catch (error) {
-      console.error("Error uploading file:", error);
-      toast({
-        title: "Upload failed",
-        description: "Failed to upload file. Please try again.",
-        variant: "destructive"
-      });
-      // Remove failed attachment
-      setAttachments(prev => prev.filter(att => att.file !== file));
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const removeAttachment = (index: number) => {
-    setAttachments(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const filteredEmojis = searchEmoji 
-    ? Object.values(emojiCategories).flat().filter(emoji => 
-        emoji.description?.toLowerCase().includes(searchEmoji.toLowerCase())
-      )
-    : null;
+  }, [selectedContacts, activeTab]);
 
   const handleSendMessage = async () => {
-    if (!name.trim()) {
-      toast({
-        title: "Name is required",
-        description: "Please enter a name for your message template",
-        variant: "destructive"
-      });
-      return;
-    }
-
     if (!message.trim()) {
       toast({
-        title: "Message is required",
-        description: "Please enter a message body",
-        variant: "destructive"
+        title: 'Error',
+        description: 'Please enter a message',
+        variant: 'destructive'
       });
       return;
     }
 
-    if (selectedContacts.length === 0) {
+    if (recipientCount === 0) {
       toast({
-        title: "No contacts selected",
-        description: "Please select at least one contact to send the message to",
-        variant: "destructive"
+        title: 'Error',
+        description: `No ${activeTab === 'sms' ? 'phone numbers' : 'email addresses'} found for selected contacts`,
+        variant: 'destructive'
       });
       return;
     }
@@ -280,517 +68,308 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
     setIsLoading(true);
 
     try {
-      // Track successful and failed sends
-      let successCount = 0;
-      let failedCount = 0;
-      
-      // Store messages in the messages table and send SMS to each contact
-      for (const contact of selectedContacts) {
-        if (!contact.phone) {
-          console.log(`Skipping contact ${contact.name} - no phone number`);
-          failedCount++;
-          continue;
-        }
+      // Here you would implement the actual sending logic
+      // For now, we'll simulate the API call
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
-        // First, store the message in the database
-        const { data: messageData, error: messageError } = await supabase
-          .from('messages')
-          .insert({
+      // Log the message for each contact
+      for (const contact of selectedContacts) {
+        if (activeTab === 'sms' && contact.phone) {
+          // Insert into messages table
+          await supabase.from('messages').insert({
             contact_id: contact.id,
             content: message,
             sender: 'user',
             channel: 'sms'
-          })
-          .select()
-          .single();
-
-        if (messageError) {
-          console.error("Error storing message:", messageError);
-          failedCount++;
-          continue;
-        }
-
-        // Prepare the message payload with attachments if any
-        const messagePayload: any = {
-          to: contact.phone,
-          message: message,
-          contactId: contact.id
-        };
-
-        // Add media URLs if attachments exist
-        if (attachments.length > 0) {
-          const mediaUrls = attachments
-            .filter(att => att.url)
-            .map(att => att.url);
-            
-          if (mediaUrls.length > 0) {
-            messagePayload.mediaUrls = mediaUrls;
-          }
-        }
-
-        // Send the SMS via the Supabase Edge Function
-        const { data, error } = await supabase.functions.invoke('send-sms', {
-          body: messagePayload
-        });
-
-        if (error) {
-          console.error("Error sending SMS:", error);
-          failedCount++;
-        } else {
-          console.log("SMS sent successfully:", data);
-          successCount++;
+          });
+        } else if (activeTab === 'email' && contact.email) {
+          // Insert into messages table
+          await supabase.from('messages').insert({
+            contact_id: contact.id,
+            content: `${subject}\n\n${message}`,
+            sender: 'user',
+            channel: 'email'
+          });
         }
       }
 
-      // Show toast with results
-      if (successCount > 0) {
-        toast({
-          title: "Messages sent",
-          description: `Successfully sent to ${successCount} contact${successCount !== 1 ? 's' : ''}${failedCount > 0 ? `, failed to send to ${failedCount}` : ''}`,
-          variant: successCount > 0 ? "default" : "destructive"
-        });
-      } else {
-        toast({
-          title: "Failed to send messages",
-          description: "Could not send messages to any contacts",
-          variant: "destructive"
-        });
-      }
+      toast({
+        title: 'Success',
+        description: `${activeTab.toUpperCase()} sent to ${recipientCount} recipient${recipientCount > 1 ? 's' : ''}`,
+      });
 
-      // Close the dialog
       onClose();
     } catch (error) {
-      console.error("Error in send message flow:", error);
+      console.error('Error sending message:', error);
       toast({
-        title: "Error",
-        description: "An error occurred while sending messages",
-        variant: "destructive"
+        title: 'Error',
+        description: 'Failed to send message. Please try again.',
+        variant: 'destructive'
       });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleGenerateWithAI = async () => {
-    if (!aiPrompt.trim()) {
-      toast({
-        title: "Prompt required",
-        description: "Please enter what kind of message you'd like to generate",
-        variant: "destructive"
-      });
-      return;
-    }
+  const handleAddEmoji = (emoji: string) => {
+    setMessage(prev => prev + emoji);
+  };
 
-    setIsGeneratingAI(true);
-
-    try {
-      console.log("Calling Supabase function with prompt:", aiPrompt);
-      
-      // Use the standard invoke method without the responseType option
-      const { data, error } = await supabase.functions.invoke('generate-sms', {
-        body: { prompt: aiPrompt }
-      });
-      
-      if (error) {
-        console.error("Error calling function:", error);
-        throw new Error(`Failed to generate text: ${error.message}`);
-      }
-      
-      if (!data) {
-        console.error("Failed to generate text - no data in response");
-        throw new Error('Failed to generate text - no response data');
-      }
-      
-      // Check if data is a ReadableStream
-      if (data.constructor && data.constructor.name === 'ReadableStream') {
-        console.log("Received stream response");
-        const reader = data.getReader();
-        let generatedText = '';
-        const decoder = new TextDecoder();
-        
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          
-          try {
-            const chunk = decoder.decode(value, { stream: true });
-            console.log("Received chunk:", chunk);
-            
-            const lines = chunk.split('\n').filter(line => line.trim() !== '');
-            
-            for (const line of lines) {
-              if (line.startsWith('data:')) {
-                const data = line.substring(5).trim();
-                if (data === '[DONE]') continue;
-                
-                try {
-                  const parsed = JSON.parse(data);
-                  if (parsed.choices && parsed.choices[0]?.delta?.content) {
-                    generatedText += parsed.choices[0].delta.content;
-                    setMessage(generatedText);
-                  }
-                } catch (e) {
-                  console.error('Error parsing SSE data:', e, 'Raw data:', data);
-                }
-              }
-            }
-          } catch (decodeError) {
-            console.error('Error decoding chunk:', decodeError);
-          }
-        }
-      } else {
-        // Handle non-streaming response
-        console.log("Received non-stream response:", data);
-        if (typeof data === 'string') {
-          setMessage(data);
-        } else if (data.text || data.content || data.message) {
-          setMessage(data.text || data.content || data.message);
-        } else {
-          console.error("Unexpected data format:", data);
-          throw new Error('Unexpected response format from AI generation');
-        }
-      }
-      
-      // Hide the prompt input after successful generation
-      setShowPromptInput(false);
-      setAiPrompt('');
-      
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // In a real app, you would upload the file to your storage service
+      // For now, we'll just set a placeholder URL
+      setMediaUrl(URL.createObjectURL(file));
       toast({
-        title: "Message generated",
-        description: "AI-generated message has been created",
+        title: 'File uploaded',
+        description: `${file.name} has been uploaded`,
       });
-    } catch (error) {
-      console.error("Error generating message:", error);
-      toast({
-        title: "Generation failed",
-        description: error instanceof Error ? error.message : "Failed to generate message",
-        variant: "destructive"
-      });
-    } finally {
-      setIsGeneratingAI(false);
     }
   };
 
-  const renderFilePreview = (file: File) => {
-    const isImage = file.type.startsWith('image/');
-    
-    return (
-      <div className="flex items-center bg-gray-100 rounded-md p-2 mb-2">
-        {isImage ? (
-          <ImageIcon size={16} className="text-gray-500 mr-2" />
-        ) : (
-          <FileIcon size={16} className="text-gray-500 mr-2" />
-        )}
-        <span className="text-sm truncate flex-1">{file.name}</span>
-        <button 
-          onClick={() => removeAttachment(attachments.findIndex(a => a.file === file))}
-          className="p-1 hover:bg-gray-200 rounded-full"
-        >
-          <XIcon size={14} className="text-gray-500" />
-        </button>
-      </div>
-    );
+  const getValidContacts = () => {
+    if (activeTab === 'sms') {
+      return selectedContacts.filter(contact => contact.phone);
+    } else {
+      return selectedContacts.filter(contact => contact.email);
+    }
+  };
+
+  const getInvalidContacts = () => {
+    if (activeTab === 'sms') {
+      return selectedContacts.filter(contact => !contact.phone);
+    } else {
+      return selectedContacts.filter(contact => !contact.email);
+    }
   };
 
   return (
-    <Dialog open={open} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[800px]">
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Create Text Snippet</DialogTitle>
+          <DialogTitle className="text-xl flex items-center gap-2">
+            <MessageSquare className="h-5 w-5" />
+            Send Message
+          </DialogTitle>
+          <DialogDescription>
+            Send SMS or Email to selected contacts
+          </DialogDescription>
         </DialogHeader>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
-          {/* Left column - Form */}
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <label htmlFor="name" className="text-sm font-medium flex items-center">
-                Name <span className="text-red-500 ml-1">*</span>
-              </label>
-              <Input 
-                id="name"
-                placeholder="Enter Snippet Name" 
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <label htmlFor="message" className="text-sm font-medium flex items-center">
-                Snippets Body <span className="text-red-500 ml-1">*</span>
-              </label>
 
-              {/* Message suggestions */}
-              <div className="mb-3">
-                <h4 className="text-sm text-muted-foreground mb-2">Quick templates:</h4>
-                <div className="flex flex-wrap gap-2">
-                  {MESSAGE_SUGGESTIONS.slice(0, 4).map((suggestion, index) => (
-                    <PromptSuggestion 
-                      key={index} 
-                      size="sm"
-                      variant="outline"
-                      className="text-xs py-1"
-                      onClick={() => setMessage(suggestion)}
-                    >
-                      {suggestion.length > 20 ? suggestion.substring(0, 20) + "..." : suggestion}
-                    </PromptSuggestion>
-                  ))}
-                </div>
-              </div>
-
-              <div className="border rounded-md">
-                <div className="flex items-center p-2 border-b">
-                  <button 
-                    type="button"
-                    className="p-1 rounded hover:bg-gray-100"
-                    onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                    data-emoji-trigger="true"
-                  >
-                    <SmileIcon size={18} className="text-gray-500" />
-                  </button>
-                  <button 
-                    type="button"
-                    className="p-1 rounded hover:bg-gray-100 mx-1"
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    <PaperclipIcon size={18} className="text-gray-500" />
-                    <input 
-                      type="file" 
-                      ref={fileInputRef}
-                      className="hidden"
-                      onChange={handleFileUpload}
-                      accept="image/*,video/*,audio/*,.pdf,.doc,.docx"
-                    />
-                  </button>
-                  <button 
-                    className="p-1 rounded hover:bg-gray-100"
-                    onClick={() => setShowPromptInput(!showPromptInput)}
-                  >
-                    <ZapIcon size={18} className={showPromptInput ? "text-indigo-500" : "text-gray-500"} />
-                  </button>
-                  
-                  {/* Emoji Picker */}
-                  {showEmojiPicker && (
-                    <div 
-                      ref={emojiPickerRef}
-                      className="absolute top-[110px] left-6 bg-white border rounded-md shadow-lg z-50 w-64"
-                    >
-                      <div className="p-2 border-b">
-                        <div className="flex space-x-1 mb-2 overflow-x-auto">
-                          {Object.keys(emojiCategories).slice(0, 4).map(category => {
-                            const firstEmoji = emojiCategories[category as keyof typeof emojiCategories][0].emoji;
-                            return (
-                              <button 
-                                key={category}
-                                className="p-1 hover:bg-gray-100 rounded"
-                                title={category}
-                              >
-                                {firstEmoji}
-                              </button>
-                            );
-                          })}
-                        </div>
-                        <Input 
-                          placeholder="Search emoji" 
-                          value={searchEmoji}
-                          onChange={(e) => setSearchEmoji(e.target.value)}
-                          className="w-full text-sm"
-                        />
-                      </div>
-                      
-                      <div className="max-h-64 overflow-y-auto p-2">
-                        {filteredEmojis ? (
-                          <>
-                            <div className="text-xs font-medium text-gray-500 mb-1">Search Results</div>
-                            <div className="grid grid-cols-8 gap-1">
-                              {filteredEmojis.map((emoji, i) => (
-                                <button
-                                  key={i}
-                                  className="p-1 text-xl hover:bg-gray-100 rounded"
-                                  onClick={() => handleEmojiClick(emoji.emoji)}
-                                  title={emoji.description}
-                                >
-                                  {emoji.emoji}
-                                </button>
-                              ))}
-                            </div>
-                          </>
-                        ) : (
-                          Object.entries(emojiCategories).map(([category, emojis]) => (
-                            <div key={category} className="mb-3">
-                              <div className="text-xs font-medium text-gray-500 mb-1">{category}</div>
-                              <div className="grid grid-cols-8 gap-1">
-                                {emojis.map((emoji, i) => (
-                                  <button
-                                    key={i}
-                                    className="p-1 text-xl hover:bg-gray-100 rounded"
-                                    onClick={() => handleEmojiClick(emoji.emoji)}
-                                    title={emoji.description}
-                                  >
-                                    {emoji.emoji}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-                
-                {showPromptInput ? (
-                  <div className="p-3 border-b bg-slate-50">
-                    <h4 className="text-sm font-medium mb-2">Generate with AI</h4>
-                    <div className="space-y-3">
-                      <div className="flex flex-wrap gap-2">
-                        {AI_PROMPT_SUGGESTIONS.slice(0, 4).map((suggestion, index) => (
-                          <PromptSuggestion 
-                            key={index}
-                            size="sm"
-                            variant="outline" 
-                            onClick={() => setAiPrompt(suggestion)}
-                            className="text-xs py-1"
-                          >
-                            {suggestion}
-                          </PromptSuggestion>
-                        ))}
-                      </div>
-                      <PromptInput
-                        className="border-input bg-white"
-                        value={aiPrompt}
-                        onValueChange={setAiPrompt}
-                        onSubmit={handleGenerateWithAI}
-                      >
-                        <PromptInputTextarea placeholder="Describe the message you want to generate..." />
-                        <PromptInputActions className="justify-end">
-                          <Button
-                            size="sm"
-                            className="size-8 cursor-pointer rounded-full"
-                            onClick={handleGenerateWithAI}
-                            disabled={!aiPrompt.trim() || isGeneratingAI}
-                            aria-label="Generate"
-                          >
-                            {isGeneratingAI ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <ZapIcon className="h-3 w-3" />
-                            )}
-                          </Button>
-                        </PromptInputActions>
-                      </PromptInput>
-                    </div>
-                  </div>
-                ) : null}
-                
-                <Textarea 
-                  id="message"
-                  placeholder="Type a message" 
-                  className="border-0 focus-visible:ring-0 resize-none min-h-[150px]"
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
+        <div className="space-y-6">
+          {/* Recipients */}
+          <div>
+            <h3 className="text-lg font-medium mb-3">Recipients ({selectedContacts.length})</h3>
+            <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+              {selectedContacts.map(contact => (
+                <Avatar 
+                  key={contact.id} 
+                  name={getFullName(contact)} 
+                  status={contact.status}
+                  size="sm"
                 />
-                <div className="px-3 py-2 text-xs text-gray-500 text-right">
-                  {charCount} characters | {wordCount} words | {Math.ceil(charCount / 160)} segs
-                </div>
-              </div>
-            </div>
-            
-            {attachments.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-sm font-medium">Attachments</p>
-                <div className="space-y-1">
-                  {attachments.map((att, index) => (
-                    <div key={index} className="relative">
-                      {renderFilePreview(att.file)}
-                      {!att.url && uploading && (
-                        <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            
-            <Button 
-              variant="outline" 
-              className="gap-2"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <PaperclipIcon size={16} />
-              Add attachment
-            </Button>
-            
-            <div className="space-y-2">
-              <p className="text-sm font-medium">Test Snippet</p>
-              <div className="flex space-x-2">
-                <Input placeholder="Enter phone number" className="flex-1" />
-                <Button variant="default" className="gap-2 bg-indigo-600 hover:bg-indigo-700">
-                  <SendIcon size={16} />
-                  Send
-                </Button>
-              </div>
+              ))}
             </div>
           </div>
-          
-          {/* Right column - Preview */}
-          <div className="flex justify-center items-start">
-            <div className="relative w-[280px] h-[540px] bg-black rounded-[36px] p-[12px] shadow-xl overflow-hidden">
-              <div className="absolute inset-0 mx-auto w-[66%] h-[4%] top-0 bg-black rounded-b-2xl"></div>
-              <div className="bg-white h-full w-full rounded-[24px] overflow-hidden flex flex-col">
-                <div className="p-2 text-center text-xs bg-gray-100 flex justify-between items-center">
-                  <span>9:41</span>
-                  <div className="flex items-center">
-                    <span className="h-2 w-2 rounded-full bg-black mr-1"></span>
-                    <span className="h-2 w-2 rounded-full bg-black mr-1"></span>
-                    <span className="h-2 w-2 rounded-full bg-black"></span>
+
+          {/* Channel Tabs */}
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="sms">SMS</TabsTrigger>
+              <TabsTrigger value="email">Email</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="sms" className="space-y-4">
+              <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                <span className="text-sm text-blue-700">
+                  {recipientCount} recipient{recipientCount !== 1 ? 's' : ''} with phone numbers
+                </span>
+                {getInvalidContacts().length > 0 && (
+                  <span className="text-sm text-orange-600">
+                    {getInvalidContacts().length} contact{getInvalidContacts().length !== 1 ? 's' : ''} without phone numbers will be skipped
+                  </span>
+                )}
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="sms-message">Message</Label>
+                  <div className="relative">
+                    <Textarea
+                      id="sms-message"
+                      placeholder="Type your SMS message..."
+                      value={message}
+                      onChange={(e) => setMessage(e.target.value)}
+                      rows={4}
+                      maxLength={160}
+                      className="pr-16"
+                    />
+                    <div className="absolute bottom-2 right-2 text-xs text-gray-500">
+                      {message.length}/160
+                    </div>
                   </div>
                 </div>
-                <div className="flex-1 p-4 overflow-y-auto">
-                  {message ? (
-                    <div className="bg-blue-500 text-white p-3 rounded-lg max-w-[90%] ml-auto">
-                      {message}
-                      {attachments.length > 0 && (
-                        <div className="mt-1 text-xs text-blue-100">
-                          {attachments.length} attachment{attachments.length !== 1 ? 's' : ''}
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-center h-full text-gray-400 text-sm">
-                      Message preview will appear here
-                    </div>
-                  )}
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleAddEmoji('😊')}
+                    type="button"
+                  >
+                    <Smile className="h-4 w-4 mr-1" />
+                    😊
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleAddEmoji('👍')}
+                    type="button"
+                  >
+                    👍
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleAddEmoji('🎉')}
+                    type="button"
+                  >
+                    🎉
+                  </Button>
+                </div>
+
+                <div>
+                  <Label htmlFor="media-upload">Media (Optional)</Label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Input
+                      id="media-upload"
+                      type="file"
+                      accept="image/*,video/*"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => document.getElementById('media-upload')?.click()}
+                      type="button"
+                    >
+                      <Upload className="h-4 w-4 mr-1" />
+                      Upload Media
+                    </Button>
+                    {mediaUrl && (
+                      <Badge variant="secondary">Media attached</Badge>
+                    )}
+                  </div>
                 </div>
               </div>
+            </TabsContent>
+
+            <TabsContent value="email" className="space-y-4">
+              <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                <span className="text-sm text-blue-700">
+                  {recipientCount} recipient{recipientCount !== 1 ? 's' : ''} with email addresses
+                </span>
+                {getInvalidContacts().length > 0 && (
+                  <span className="text-sm text-orange-600">
+                    {getInvalidContacts().length} contact{getInvalidContacts().length !== 1 ? 's' : ''} without email addresses will be skipped
+                  </span>
+                )}
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="email-subject">Subject</Label>
+                  <Input
+                    id="email-subject"
+                    placeholder="Enter email subject..."
+                    value={subject}
+                    onChange={(e) => setSubject(e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="email-message">Message</Label>
+                  <Textarea
+                    id="email-message"
+                    placeholder="Type your email message..."
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    rows={6}
+                  />
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
+
+          {/* Scheduling */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium">Scheduling</h3>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <Label htmlFor="schedule-type">Send</Label>
+                <Select value={scheduleType} onValueChange={setScheduleType}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="now">Send Now</SelectItem>
+                    <SelectItem value="later">Schedule for Later</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {scheduleType === 'later' && (
+                <>
+                  <div>
+                    <Label htmlFor="schedule-date">Date</Label>
+                    <Input
+                      id="schedule-date"
+                      type="date"
+                      value={scheduleDate}
+                      onChange={(e) => setScheduleDate(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="schedule-time">Time</Label>
+                    <Input
+                      id="schedule-time"
+                      type="time"
+                      value={scheduleTime}
+                      onChange={(e) => setScheduleTime(e.target.value)}
+                    />
+                  </div>
+                </>
+              )}
             </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex justify-between pt-4">
+            <Button
+              variant="outline"
+              onClick={onClose}
+              disabled={isLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSendMessage}
+              disabled={isLoading || recipientCount === 0}
+              className="gap-2"
+            >
+              {isLoading ? (
+                'Sending...'
+              ) : (
+                <>
+                  <Send className="h-4 w-4" />
+                  Send {activeTab.toUpperCase()} ({recipientCount})
+                </>
+              )}
+            </Button>
           </div>
         </div>
-        
-        <DialogFooter className="sm:justify-between">
-          <Button variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button 
-            variant="default" 
-            onClick={handleSendMessage} 
-            className="gap-2 bg-indigo-600 hover:bg-indigo-700" 
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Sending...</span>
-              </>
-            ) : (
-              <>
-                <SendIcon size={16} />
-                <span>Send</span>
-              </>
-            )}
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

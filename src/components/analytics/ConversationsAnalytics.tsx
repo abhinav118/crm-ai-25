@@ -4,6 +4,7 @@ import { MetricsCard } from './MetricsCard';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { MessageSquare, Zap, Users } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { getFullName } from '@/utils/contactHelpers';
 
 type ConversationStats = {
   total_messages: number;
@@ -73,13 +74,13 @@ export const ConversationsAnalytics = () => {
         const messagesWithContacts = await Promise.all((messagesData || []).map(async (message) => {
           const { data: contactData } = await supabase
             .from('contacts')
-            .select('name')
+            .select('first_name, last_name')
             .eq('id', message.contact_id)
             .single();
             
           return {
             ...message,
-            contact_name: contactData?.name || 'Unknown Contact'
+            contact_name: contactData ? getFullName(contactData) : 'Unknown Contact'
           };
         }));
         

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +9,7 @@ import { Contact } from './ContactsTable';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { logContactAction } from '@/utils/contactLogger';
+import { getFullName } from '@/utils/contactHelpers';
 
 interface AddTagsDialogProps {
   open: boolean;
@@ -104,7 +104,7 @@ const AddTagsDialog: React.FC<AddTagsDialogProps> = ({
         // Log the tag update action
         await logContactAction('update', {
           id: contact.id,
-          name: contact.name,
+          name: getFullName(contact),
           tags: updatedTags,
           action_name: actionName
         });
@@ -144,7 +144,7 @@ const AddTagsDialog: React.FC<AddTagsDialogProps> = ({
           
           <div className="flex flex-wrap gap-2 mb-4">
             {selectedContacts.map(contact => (
-              <Avatar key={contact.id} name={contact.name} status={contact.status} />
+              <Avatar key={contact.id} name={getFullName(contact)} status={contact.status} />
             ))}
           </div>
           
