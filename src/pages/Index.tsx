@@ -387,18 +387,11 @@ const Index = () => {
                 showTabsHeader={false}
               />
               
-              {/* Bulk Actions Panel */}
-              {selectedContacts.length > 0 && (
-                <div className="bg-white rounded-lg border p-6">
-                  <h3 className="text-lg font-medium mb-4">
-                    Send Message to {selectedContacts.length} Contact{selectedContacts.length !== 1 ? 's' : ''}
-                  </h3>
-                  {/* This will be handled by the existing BulkActions component */}
-                  <div className="text-sm text-gray-500">
-                    Use the bulk actions panel at the bottom of the screen to send messages to selected contacts.
-                  </div>
-                </div>
-              )}
+              {/* Bulk Actions Content */}
+              <BulkActionsTab
+                selectedContacts={selectedContacts.map(c => c.id)}
+                onActionComplete={handleBulkContactsUpdated}
+              />
             </div>
           ) : (
             <ContactsTable
