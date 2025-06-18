@@ -489,11 +489,11 @@ const Index = () => {
       )}
 
       {/* Bulk Actions */}
-      <BulkActions
+      {/* <BulkActions
         selectedContacts={selectedContacts}
         onContactsUpdated={handleBulkContactsUpdated}
         onSelectionClear={handleBulkSelectionClear}
-      />
+      /> */}
     </div>
   );
 };
