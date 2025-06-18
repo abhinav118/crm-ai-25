@@ -36,6 +36,7 @@ const Index = () => {
   const [showContactDetails, setShowContactDetails] = useState(false);
   const [showChatInterface, setShowChatInterface] = useState(false);
   const [showConversationsModal, setShowConversationsModal] = useState(false);
+  const [showUserProfileModal, setShowUserProfileModal] = useState(false);
   const [isCompactMode, setIsCompactMode] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -143,6 +144,10 @@ const Index = () => {
       } else {
         setSelectedContacts([...selectedContacts, contact]);
       }
+    } else if (activeTab === 'all') {
+      // In all contacts tab, open user profile modal
+      setSelectedContact(contact);
+      setShowUserProfileModal(true);
     } else {
       // In other tabs, open conversations modal
       setSelectedContact(contact);
@@ -286,6 +291,11 @@ const Index = () => {
 
   const handleCloseConversationsModal = () => {
     setShowConversationsModal(false);
+    setSelectedContact(null);
+  };
+
+  const handleCloseUserProfileModal = () => {
+    setShowUserProfileModal(false);
     setSelectedContact(null);
   };
 
@@ -463,6 +473,25 @@ const Index = () => {
                 selectedContactId={selectedContact.id}
                 onClose={handleCloseConversationsModal}
               />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* User Profile Modal */}
+      {showUserProfileModal && selectedContact && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 h-[80vh]">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h2 className="text-lg font-semibold">
+                {getFullName(selectedContact)}
+              </h2>
+              <Button variant="ghost" size="sm" onClick={handleCloseUserProfileModal}>
+                <X size={16} />
+              </Button>
+            </div>
+            <div className="h-[calc(80vh-4rem)]">
+              <UserProfile contact={selectedContact} onSave={handleSaveProfile} />
             </div>
           </div>
         </div>
