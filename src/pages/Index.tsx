@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { Plus, MessageSquare, UserPlus, Search, Settings, X, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -6,13 +7,14 @@ import ContactForm from '@/components/dashboard/ContactForm';
 import ActionButtons from '@/components/dashboard/ActionButtons';
 import UserProfile from '@/components/dashboard/UserProfile';
 import ChatInterface from '@/components/dashboard/ChatInterface';
+import BulkActions from '@/components/dashboard/BulkActions/BulkActions';
+import Sidebar from '@/components/dashboard/Sidebar';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { logContactAction } from '@/utils/contactLogger';
 import { getFullName } from '@/utils/contactHelpers';
 
-// ... keep existing code (ContactData interface and other types)
 interface ContactData {
   first_name: string;
   last_name: string;
@@ -28,7 +30,6 @@ interface ContactData {
 }
 
 const Index = () => {
-  // ... keep existing code (state declarations)
   const [selectedContacts, setSelectedContacts] = useState<Contact[]>([]);
   const [isContactFormOpen, setIsContactFormOpen] = useState(false);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
@@ -39,6 +40,7 @@ const Index = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const pageSize = 20;
 
   const queryClient = useQueryClient();
@@ -105,7 +107,6 @@ const Index = () => {
   const totalContacts = contactsData?.totalCount || 0;
   const totalPages = Math.ceil(totalContacts / pageSize);
 
-  // ... keep existing code (filter logic and event handlers)
   const filteredContacts = useMemo(() => {
     let filtered = contacts;
 
@@ -241,6 +242,15 @@ const Index = () => {
     queryClient.invalidateQueries({ queryKey: ['contacts'] });
   };
 
+  const handleBulkContactsUpdated = () => {
+    queryClient.invalidateQueries({ queryKey: ['contacts'] });
+    setSelectedContacts([]);
+  };
+
+  const handleBulkSelectionClear = () => {
+    setSelectedContacts([]);
+  };
+
   const toggleChatInterface = () => {
     if (!selectedContact) {
       toast({
@@ -262,103 +272,116 @@ const Index = () => {
     setShowChatInterface(false);
   };
 
+  const toggleSidebar = () => {
+    setSidebarCollapsed(!sidebarCollapsed);
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="flex h-screen">
-        {/* Main Content */}
-        <div className={`flex-1 flex flex-col transition-all duration-300 ${showContactDetails ? 'mr-80' : ''} ${showChatInterface ? 'mr-96' : ''}`}>
-          {/* Header */}
-          <header className="bg-white shadow-sm border-b px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <h1 className="text-2xl font-bold text-gray-900">Contacts</h1>
-                <div className="flex items-center space-x-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setIsCompactMode(!isCompactMode)}
-                    className="text-gray-500"
-                  >
-                    <Menu size={16} />
-                  </Button>
-                </div>
+    <div className="min-h-screen bg-gray-50 flex w-full">
+      {/* Sidebar */}
+      <Sidebar collapsed={sidebarCollapsed} onToggle={toggleSidebar} />
+      
+      {/* Main Content */}
+      <div className={`flex-1 flex flex-col transition-all duration-300 ${sidebarCollapsed ? 'ml-[63px]' : 'ml-[234px]'} ${showContactDetails ? 'mr-80' : ''} ${showChatInterface ? 'mr-96' : ''}`}>
+        {/* Header */}
+        <header className="bg-white shadow-sm border-b px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={toggleSidebar}
+                className="text-gray-500"
+              >
+                <Menu size={16} />
+              </Button>
+              <h1 className="text-2xl font-bold text-gray-900">Contacts</h1>
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsCompactMode(!isCompactMode)}
+                  className="text-gray-500"
+                >
+                  <Settings size={16} />
+                </Button>
               </div>
+            </div>
+            
+            <div className="flex items-center space-x-4">
+              <ActionButtons
+                selectedCount={selectedContacts.length}
+                onAddContact={handleAddContact}
+                onDeleteContacts={handleDeleteContacts}
+                selectedContacts={selectedContacts}
+                onTagsAdded={handleTagsAdded}
+                onContactsImported={handleContactsImported}
+                compactMode={isCompactMode}
+              />
               
-              <div className="flex items-center space-x-4">
-                <ActionButtons
-                  selectedCount={selectedContacts.length}
-                  onAddContact={handleAddContact}
-                  onDeleteContacts={handleDeleteContacts}
-                  selectedContacts={selectedContacts}
-                  onTagsAdded={handleTagsAdded}
-                  onContactsImported={handleContactsImported}
-                  compactMode={isCompactMode}
-                />
-                
-                {selectedContact && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={toggleChatInterface}
-                    className="gap-2"
-                  >
-                    <MessageSquare size={16} />
-                    {showChatInterface ? 'Close Chat' : 'Chat'}
-                  </Button>
-                )}
-              </div>
+              {selectedContact && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={toggleChatInterface}
+                  className="gap-2"
+                >
+                  <MessageSquare size={16} />
+                  {showChatInterface ? 'Close Chat' : 'Chat'}
+                </Button>
+              )}
             </div>
-          </header>
-
-          {/* Content */}
-          <main className="flex-1 p-6">
-            <ContactsTable
-              contacts={filteredContacts}
-              onContactSelect={handleContactSelect}
-              onEditContact={handleEditContact}
-              onContactClick={handleContactClick}
-              selectedContacts={selectedContacts}
-              searchQuery={searchQuery}
-              onSearchChange={setSearchQuery}
-              statusFilter={statusFilter}
-              onStatusFilterChange={setStatusFilter}
-              activeTab={activeTab}
-              onTabChange={setActiveTab}
-              isLoading={isLoadingContacts}
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={setCurrentPage}
-              showPagination={activeTab === 'all'}
-            />
-          </main>
-        </div>
-
-        {/* Contact Details Sidebar */}
-        {showContactDetails && selectedContact && (
-          <div className="fixed right-0 top-0 bottom-0 w-80 bg-white shadow-lg border-l z-40">
-            <div className="flex items-center justify-between p-4 border-b">
-              <h2 className="text-lg font-semibold">Contact Details</h2>
-              <Button variant="ghost" size="sm" onClick={handleCloseContactDetails}>
-                <X size={16} />
-              </Button>
-            </div>
-            <UserProfile contact={selectedContact} onSave={handleSaveProfile} />
           </div>
-        )}
+        </header>
 
-        {/* Chat Interface Sidebar */}
-        {showChatInterface && selectedContact && (
-          <div className="fixed right-0 top-0 bottom-0 w-96 bg-white shadow-lg border-l z-50">
-            <div className="flex items-center justify-between p-4 border-b">
-              <h2 className="text-lg font-semibold">Chat - {getFullName(selectedContact)}</h2>
-              <Button variant="ghost" size="sm" onClick={handleCloseChatInterface}>
-                <X size={16} />
-              </Button>
-            </div>
-            <ChatInterface contact={selectedContact} onClose={handleCloseChatInterface} />
-          </div>
-        )}
+        {/* Content */}
+        <main className="flex-1 p-6">
+          <ContactsTable
+            contacts={filteredContacts}
+            onContactSelect={handleContactSelect}
+            onEditContact={handleEditContact}
+            onContactClick={handleContactClick}
+            selectedContacts={selectedContacts}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            statusFilter={statusFilter}
+            onStatusFilterChange={setStatusFilter}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            isLoading={isLoadingContacts}
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            showPagination={activeTab === 'all'}
+          />
+        </main>
       </div>
+
+      {/* Contact Details Sidebar */}
+      {showContactDetails && selectedContact && (
+        <div className="fixed right-0 top-0 bottom-0 w-80 bg-white shadow-lg border-l z-40">
+          <div className="flex items-center justify-between p-4 border-b">
+            <h2 className="text-lg font-semibold">Contact Details</h2>
+            <Button variant="ghost" size="sm" onClick={handleCloseContactDetails}>
+              <X size={16} />
+            </Button>
+          </div>
+          <UserProfile contact={selectedContact} onSave={handleSaveProfile} />
+        </div>
+      )}
+
+      {/* Chat Interface Sidebar */}
+      {showChatInterface && selectedContact && (
+        <div className="fixed right-0 top-0 bottom-0 w-96 bg-white shadow-lg border-l z-50">
+          <div className="flex items-center justify-between p-4 border-b">
+            <h2 className="text-lg font-semibold">Chat - {getFullName(selectedContact)}</h2>
+            <Button variant="ghost" size="sm" onClick={handleCloseChatInterface}>
+              <X size={16} />
+            </Button>
+          </div>
+          <ChatInterface contact={selectedContact} onClose={handleCloseChatInterface} />
+        </div>
+      )}
 
       {/* Contact Form Modal */}
       {isContactFormOpen && (
@@ -385,6 +408,13 @@ const Index = () => {
           </div>
         </div>
       )}
+
+      {/* Bulk Actions */}
+      <BulkActions
+        selectedContacts={selectedContacts}
+        onContactsUpdated={handleBulkContactsUpdated}
+        onSelectionClear={handleBulkSelectionClear}
+      />
     </div>
   );
 };

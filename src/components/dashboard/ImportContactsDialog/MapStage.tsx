@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { CsvColumn } from './types';
 import { CheckCircle, HelpCircle, XCircle, Info } from 'lucide-react';
@@ -35,9 +36,10 @@ interface MapStageProps {
 }
 
 const MapStage: React.FC<MapStageProps> = ({ columns, setColumns }) => {
-  // List of available fields in the contacts table
+  // Updated contact fields to use first_name and last_name instead of name
   const contactFields = [
-    { id: 'name', label: 'Name', required: true },
+    { id: 'first_name', label: 'First Name', required: true },
+    { id: 'last_name', label: 'Last Name', required: false },
     { id: 'email', label: 'Email', required: false },
     { id: 'phone', label: 'Phone', required: false },
     { id: 'company', label: 'Company', required: false },
@@ -110,7 +112,9 @@ const MapStage: React.FC<MapStageProps> = ({ columns, setColumns }) => {
       }
       
       // 2. Partial match (contains)
-      // Common field synonyms
+      // Updated field synonyms to handle first_name and last_name
+      const firstNameFields = ['first name', 'firstname', 'first_name', 'fname', 'given name'];
+      const lastNameFields = ['last name', 'lastname', 'last_name', 'lname', 'surname', 'family name'];
       const nameFields = ['name', 'full name', 'fullname', 'person', 'contact'];
       const emailFields = ['email', 'e-mail', 'mail', 'email address'];
       const phoneFields = ['phone', 'telephone', 'mobile', 'cell', 'contact number', 'tel', 'phone number'];
@@ -118,8 +122,19 @@ const MapStage: React.FC<MapStageProps> = ({ columns, setColumns }) => {
       const statusFields = ['status', 'state', 'active', 'inactive'];
       const tagFields = ['tag', 'category', 'group', 'label'];
       
+      // Check for first name
+      if (firstNameFields.some(term => headerLower.includes(term))) {
+        return { ...column, selected: true, mappedTo: 'first_name' };
+      }
+      
+      // Check for last name
+      if (lastNameFields.some(term => headerLower.includes(term))) {
+        return { ...column, selected: true, mappedTo: 'last_name' };
+      }
+      
+      // Check for general name field - map to first_name
       if (nameFields.some(term => headerLower.includes(term))) {
-        return { ...column, selected: true, mappedTo: 'name' };
+        return { ...column, selected: true, mappedTo: 'first_name' };
       }
       
       if (emailFields.some(term => headerLower.includes(term))) {
@@ -142,24 +157,6 @@ const MapStage: React.FC<MapStageProps> = ({ columns, setColumns }) => {
         return { ...column, selected: true, mappedTo: 'tags' };
       }
       
-      // 3. Special case for first name and last name
-      if (headerLower.includes('first') && headerLower.includes('name')) {
-        return {
-          ...column,
-          selected: true,
-          mappedTo: 'name' // Map to name
-        };
-      }
-      
-      if (headerLower.includes('last') && headerLower.includes('name')) {
-        // For last name, we'll keep it selected but not mapped yet
-        return {
-          ...column,
-          selected: true,
-          mappedTo: null
-        };
-      }
-      
       // If no match found, still show the column but don't select it
       return {
         ...column,
@@ -172,19 +169,19 @@ const MapStage: React.FC<MapStageProps> = ({ columns, setColumns }) => {
     setColumns(updatedColumns);
     setAutoMapApplied(true);
     
-    // Check for first name and last name columns to possibly combine
-    const firstNameCol = updatedColumns.find(col => 
-      col.header.toLowerCase().includes('first') && col.header.toLowerCase().includes('name')
-    );
-    
-    const lastNameCol = updatedColumns.find(col => 
-      col.header.toLowerCase().includes('last') && col.header.toLowerCase().includes('name')
-    );
+    // Check for first name and last name columns
+    const firstNameCol = updatedColumns.find(col => col.mappedTo === 'first_name');
+    const lastNameCol = updatedColumns.find(col => col.mappedTo === 'last_name');
     
     if (firstNameCol && lastNameCol) {
       toast({
         title: "Name fields detected",
-        description: "First name and last name fields were detected. They will be combined into the Name field during import.",
+        description: "First name and last name fields were detected and mapped successfully.",
+      });
+    } else if (firstNameCol && !lastNameCol) {
+      toast({
+        title: "First name field detected",
+        description: "First name field was mapped. Consider mapping a last name field if available.",
       });
     }
     
@@ -238,7 +235,7 @@ const MapStage: React.FC<MapStageProps> = ({ columns, setColumns }) => {
       <div>
         <h3 className="text-lg font-medium">Map Columns to Contact Fields</h3>
         <p className="text-sm text-muted-foreground mb-4">
-          Select which CSV columns to import and map them to contact fields.
+          Select which CSV columns to import and map them to contact fields. First Name is required.
         </p>
       </div>
       
@@ -255,7 +252,7 @@ const MapStage: React.FC<MapStageProps> = ({ columns, setColumns }) => {
                 </TooltipTrigger>
                 <TooltipContent>
                   <p className="w-[220px] text-xs">
-                    If checked, empty values will be replaced with defaults (e.g., "Imported Contact" for names).
+                    If checked, empty values will be replaced with defaults (e.g., "Unknown" for names).
                   </p>
                 </TooltipContent>
               </Tooltip>
@@ -334,7 +331,7 @@ const MapStage: React.FC<MapStageProps> = ({ columns, setColumns }) => {
                       <th key={index} className="text-left p-2 text-xs font-medium">
                         {column.header}
                         <div className="text-muted-foreground">
-                          {column.mappedTo || 'Not mapped'}
+                          {column.mappedTo ? contactFields.find(f => f.id === column.mappedTo)?.label || 'Not mapped' : 'Not mapped'}
                         </div>
                       </th>
                     ))}
