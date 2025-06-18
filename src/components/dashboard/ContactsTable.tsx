@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Search, Edit, ChevronLeft, ChevronRight } from 'lucide-react';
 import Avatar from './Avatar';
 import { getFullName } from '@/utils/contactHelpers';
-import BulkActions from './BulkActions/BulkActions';
+import BulkActionsTab from './BulkActions/BulkActionsTab';
 
 export interface Contact {
   id: string;
@@ -280,10 +280,13 @@ const ContactsTable: React.FC<ContactsTableProps> = ({
           </TabsContent>
 
           <TabsContent value="bulk-actions" className="mt-6">
-            <BulkActions
+            <BulkActionsTab
               selectedContacts={selectedContacts}
-              onContactsUpdated={() => {
+              onActionComplete={() => {
                 // This will be handled by the parent component
+                if (window.location.reload) {
+                  console.log('Action completed, refreshing data...');
+                }
               }}
               onSelectionClear={() => onContactSelect([])}
             />

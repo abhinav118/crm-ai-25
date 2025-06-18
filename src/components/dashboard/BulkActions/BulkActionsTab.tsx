@@ -13,19 +13,17 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
-  Loader2, Search, Filter, ChevronsUpDown, ArrowUpDown, 
-  User, Mail, Phone, Tag, MessageCircle, History, 
-  CheckCircle, AlertCircle, Info, Calendar, Clock, Send
+  Loader2, Search, CheckCircle, History, 
+  User, Mail, Phone, Tag, MessageCircle, Clock, Send, Plus, X
 } from "lucide-react";
 import { format } from 'date-fns';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import BulkActions from './BulkActions';
 import { Contact } from '../ContactsTable';
 import { getFullName } from '@/utils/contactHelpers';
 
 interface BulkActionsTabProps {
-  selectedContacts: string[];
+  selectedContacts: Contact[];
   onActionComplete?: () => void;
+  onSelectionClear?: () => void;
 }
 
 interface ContactInfo {
@@ -44,7 +42,7 @@ interface ContactInfo {
 interface ContactLog {
   id: string;
   action: string;
-  contact_info: any; // Using 'any' to accommodate various JSON structures
+  contact_info: any;
   created_at: string;
   batch_id: string | null;
   batch_name: string | null;
@@ -52,122 +50,171 @@ interface ContactLog {
 
 const BulkActionsTab: React.FC<BulkActionsTabProps> = ({ 
   selectedContacts,
-  onActionComplete
+  onActionComplete,
+  onSelectionClear
 }) => {
-  const [activeTab, setActiveTab] = useState("summary");
-  const [message, setMessage] = useState("");
-  const [status, setStatus] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState("operations");
+  
+  // Operations tab state
+  const [status, setStatus] = useState<string>('');
   const [tags, setTags] = useState<string[]>([]);
   const [newTag, setNewTag] = useState("");
   const [note, setNote] = useState("");
-  const [isSending, setIsSending] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   
-  // Contact info state
-  const [contacts, setContacts] = useState<ContactInfo[]>([]);
-  const [isLoadingContacts, setIsLoadingContacts] = useState(false);
+  // SMS tab state
+  const [message, setMessage] = useState("");
+  const [isSending, setIsSending] = useState(false);
   
-  // Contact logs state
+  // Logs tab state
   const [contactLogs, setContactLogs] = useState<ContactLog[]>([]);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
-  const [logsPage, setLogsPage] = useState(1);
-  const [hasMoreLogs, setHasMoreLogs] = useState(true);
   const [logSearchQuery, setLogSearchQuery] = useState("");
-  const [logTypeFilter, setLogTypeFilter] = useState<string | null>(null);
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   
-  // Load contact logs
+  // Convert Contact[] to ContactInfo[]
+  const contactsInfo: ContactInfo[] = selectedContacts.map(contact => ({
+    id: contact.id,
+    first_name: contact.first_name,
+    last_name: contact.last_name || '',
+    email: contact.email || '',
+    phone: contact.phone || '',
+    status: contact.status,
+    tags: contact.tags || [],
+    created_at: contact.createdAt || '',
+    updated_at: contact.lastActivity || contact.createdAt || '',
+    company: contact.company || ''
+  }));
+
+  // Fetch contact logs when logs tab is active
   useEffect(() => {
     if (activeTab === 'logs') {
       fetchContactLogs();
     }
-  }, [activeTab, selectedContacts, logsPage, logTypeFilter, sortOrder]);
-  
-  const fetchSelectedContacts = async () => {
-    if (selectedContacts.length === 0) return;
-    
-    setIsLoadingContacts(true);
-    try {
-      const { data, error } = await supabase
-        .from('contacts')
-        .select('*')
-        .in('id', selectedContacts);
-      
-      if (error) {
-        console.error("Error fetching contacts:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load contact information.",
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      if (data) {
-        const transformedContacts: ContactInfo[] = data.map(contact => ({
-          id: contact.id,
-          first_name: contact.first_name,
-          last_name: contact.last_name || '',
-          email: contact.email || '',
-          phone: contact.phone || '',
-          status: contact.status,
-          tags: contact.tags || [],
-          created_at: contact.created_at,
-          updated_at: contact.updated_at,
-          company: contact.company || ''
-        }));
-        setContacts(transformedContacts);
-      }
-    } catch (error) {
-      console.error("Exception loading contacts:", error);
-    } finally {
-      setIsLoadingContacts(false);
-    }
-  };
-  
-  const fetchContactLogs = async (isNewSearch = false): Promise<void> => {
+  }, [activeTab, selectedContacts]);
+
+  const fetchContactLogs = async () => {
     setIsLoadingLogs(true);
     try {
-      console.log('Fetching contact logs for selected contacts:', selectedContacts);
-      
-      // Simply get all logs without filtering
       const { data, error } = await supabase
         .from('contact_logs')
         .select('*')
-        .order('created_at', { ascending: sortOrder === 'asc' });
+        .order('created_at', { ascending: false })
+        .limit(100);
       
       if (error) {
         console.error("Error fetching contact logs:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load contact logs. Please try again.",
-          variant: "destructive",
-        });
         return;
       }
       
-      if (data) {
-        console.log('Received contact logs data:', data);
-        
-        // Cast to ContactLog[] for TypeScript
-        const typedData = data as ContactLog[];
-        
-        // For new searches, replace existing data, otherwise append
-        setContactLogs(prev => isNewSearch ? typedData : [...prev, ...typedData]);
-        setHasMoreLogs(typedData.length === 20);
-      }
+      setContactLogs(data || []);
     } catch (error) {
       console.error("Exception loading contact logs:", error);
-      toast({
-        title: "Error",
-        description: "An unexpected error occurred. Please try again.",
-        variant: "destructive",
-      });
     } finally {
       setIsLoadingLogs(false);
     }
   };
-  
+
+  const handleUpdateContacts = async () => {
+    if (!status && tags.length === 0 && !note.trim()) {
+      toast({
+        title: "Error",
+        description: "Please specify at least one change to make.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setIsSaving(true);
+    try {
+      const contactIds = selectedContacts.map(c => c.id);
+      const updates: Record<string, any> = {};
+      const updatedFields = [];
+      
+      if (status && status !== 'no_change') {
+        updates.status = status;
+        updatedFields.push(`status to "${status}"`);
+      }
+      
+      if (tags.length > 0) {
+        updates.tags = tags;
+        updatedFields.push(`tags to [${tags.join(', ')}]`);
+      }
+      
+      // Update contacts if there are field changes
+      if (Object.keys(updates).length > 0) {
+        const { error } = await supabase
+          .from('contacts')
+          .update(updates)
+          .in('id', contactIds);
+        
+        if (error) throw error;
+      }
+      
+      // Add note if provided
+      if (note.trim()) {
+        updatedFields.push('added note');
+        
+        for (const contact of contactsInfo) {
+          await supabase.from('contact_logs').insert({
+            action: 'note_added',
+            contact_info: {
+              ...contact,
+              note: note,
+              timestamp: new Date().toISOString()
+            },
+            created_at: new Date().toISOString(),
+            batch_id: null,
+            batch_name: null
+          });
+        }
+      }
+      
+      // Create update logs
+      if (updatedFields.length > 0) {
+        const description = `Bulk updated: ${updatedFields.join(', ')}`;
+        
+        for (const contact of contactsInfo) {
+          await supabase.from('contact_logs').insert({
+            action: 'bulk_update',
+            contact_info: {
+              ...contact,
+              changes: updatedFields,
+              description,
+              timestamp: new Date().toISOString()
+            },
+            created_at: new Date().toISOString(),
+            batch_id: null,
+            batch_name: null
+          });
+        }
+      }
+      
+      toast({
+        title: "Success",
+        description: `Successfully updated ${selectedContacts.length} contacts.`,
+      });
+      
+      // Reset form
+      setStatus('');
+      setTags([]);
+      setNewTag('');
+      setNote('');
+      
+      if (onActionComplete) {
+        onActionComplete();
+      }
+    } catch (error) {
+      console.error("Error updating contacts:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update contacts. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleSendSMS = async () => {
     if (!message.trim()) {
       toast({
@@ -180,35 +227,19 @@ const BulkActionsTab: React.FC<BulkActionsTabProps> = ({
     
     setIsSending(true);
     try {
-      // Implement your SMS sending logic here
-      // For each contact in selectedContacts...
-      
-      // Create logs for SMS sent - updated to use correct schema
-      for (const contactId of selectedContacts) {
-        const contactData = contacts.find(c => c.id === contactId);
-        if (contactData) {
-          // Generate a log matching the schema structure we saw in sample data
-          await supabase.from('contact_logs').insert({
-            action: 'sms_sent',
-            contact_info: {
-              id: contactId,
-              first_name: contactData.first_name,
-              last_name: contactData.last_name,
-              email: contactData.email,
-              phone: contactData.phone,
-              status: contactData.status,
-              company: contactData.company || null,
-              tags: contactData.tags || [],
-              createdAt: contactData.created_at,
-              lastActivity: contactData.updated_at || contactData.created_at,
-              timestamp: new Date().toISOString(),
-              message: message
-            },
-            created_at: new Date().toISOString(),
-            batch_id: null,
-            batch_name: null
-          });
-        }
+      // Create SMS logs for each contact
+      for (const contact of contactsInfo) {
+        await supabase.from('contact_logs').insert({
+          action: 'sms_sent',
+          contact_info: {
+            ...contact,
+            message: message,
+            timestamp: new Date().toISOString()
+          },
+          created_at: new Date().toISOString(),
+          batch_id: null,
+          batch_name: null
+        });
       }
       
       toast({
@@ -216,7 +247,6 @@ const BulkActionsTab: React.FC<BulkActionsTabProps> = ({
         description: `Message sent to ${selectedContacts.length} contacts.`,
       });
       
-      // Reset form
       setMessage("");
       
       if (onActionComplete) {
@@ -233,154 +263,18 @@ const BulkActionsTab: React.FC<BulkActionsTabProps> = ({
       setIsSending(false);
     }
   };
-  
-  const handleUpdateContacts = async () => {
-    if (!status && tags.length === 0 && !note.trim()) {
-      toast({
-        title: "Error",
-        description: "Please specify at least one change to make.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    setIsSaving(true);
-    try {
-      // Track what was updated for logs
-      const updatedFields = [];
-      const updates: Record<string, any> = {};
-      
-      if (status && status !== 'no_change') {
-        updates.status = status;
-        updatedFields.push(`status to "${status}"`);
-      }
-      
-      if (tags.length > 0) {
-        updates.tags = tags;
-        updatedFields.push(`tags to [${tags.join(', ')}]`);
-      }
-      
-      // Only proceed with update if there are fields to update
-      if (Object.keys(updates).length > 0) {
-        // Update all selected contacts
-        const { error } = await supabase
-          .from('contacts')
-          .update(updates)
-          .in('id', selectedContacts);
-        
-        if (error) {
-          throw error;
-        }
-      }
-      
-      // Add note if provided
-      if (note.trim()) {
-        updatedFields.push('added note');
-        
-        // Add a log entry for each contact - updated to use correct schema
-        for (const contactId of selectedContacts) {
-          const contactData = contacts.find(c => c.id === contactId);
-          if (contactData) {
-            await supabase.from('contact_logs').insert({
-              action: 'note_added',
-              contact_info: {
-                id: contactId,
-                first_name: contactData.first_name,
-                last_name: contactData.last_name,
-                email: contactData.email,
-                phone: contactData.phone,
-                status: contactData.status,
-                company: contactData.company || null,
-                tags: contactData.tags || [],
-                createdAt: contactData.created_at,
-                lastActivity: contactData.updated_at || contactData.created_at,
-                timestamp: new Date().toISOString(),
-                note: note
-              },
-              created_at: new Date().toISOString(),
-              batch_id: null,
-              batch_name: null
-            });
-          }
-        }
-      }
-      
-      // Create logs for updates - updated to use correct schema
-      if (updatedFields.length > 0) {
-        const description = `Bulk updated: ${updatedFields.join(', ')}`;
-        
-        for (const contactId of selectedContacts) {
-          const contactData = contacts.find(c => c.id === contactId);
-          if (contactData) {
-            await supabase.from('contact_logs').insert({
-              action: 'contact_updated',
-              contact_info: {
-                id: contactId,
-                first_name: contactData.first_name,
-                last_name: contactData.last_name,
-                email: contactData.email,
-                phone: contactData.phone,
-                status: contactData.status,
-                company: contactData.company || null,
-                tags: contactData.tags || [],
-                createdAt: contactData.created_at,
-                lastActivity: contactData.updated_at || contactData.created_at,
-                timestamp: new Date().toISOString(),
-                changes: updatedFields,
-                description
-              },
-              created_at: new Date().toISOString(),
-              batch_id: null,
-              batch_name: null
-            });
-          }
-        }
-      }
-      
-      toast({
-        title: "Contacts Updated",
-        description: `Successfully updated ${selectedContacts.length} contacts.`,
-      });
-      
-      // Refresh contact data
-      fetchSelectedContacts();
-      
-      // Reset form
-      setStatus(null);
-      setTags([]);
-      setNewTag("");
-      setNote("");
-      
-      if (onActionComplete) {
-        onActionComplete();
-      }
-    } catch (error) {
-      console.error("Error updating contacts:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update contacts. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSaving(false);
-    }
-  };
-  
+
   const handleAddTag = () => {
     if (newTag.trim() && !tags.includes(newTag.trim())) {
       setTags([...tags, newTag.trim()]);
       setNewTag("");
     }
   };
-  
+
   const handleRemoveTag = (tag: string) => {
     setTags(tags.filter(t => t !== tag));
   };
-  
-  const handleSortToggle = () => {
-    setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc');
-  };
-  
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'active':
@@ -395,287 +289,139 @@ const BulkActionsTab: React.FC<BulkActionsTabProps> = ({
         return <Badge>{status}</Badge>;
     }
   };
-  
+
   const getActionLabel = (action: string) => {
     switch (action) {
-      case 'contact_updated': return 'Update';
-      case 'note_added': return 'Note';
-      case 'sms_sent': return 'SMS';
-      case 'message_sent': return 'SMS';
-      case 'email_sent': return 'Email';
-      case 'call_logged': return 'Call';
+      case 'bulk_update': return 'Bulk Update';
+      case 'note_added': return 'Note Added';
+      case 'sms_sent': return 'SMS Sent';
+      case 'contact_updated': return 'Updated';
       default: return action.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
     }
   };
-  
+
   const getActionBadgeColor = (action: string) => {
     switch (action) {
       case 'sms_sent': return 'bg-blue-100 text-blue-800';
-      case 'message_sent': return 'bg-blue-100 text-blue-800';
-      case 'contact_updated': return 'bg-amber-100 text-amber-800';
+      case 'bulk_update': return 'bg-amber-100 text-amber-800';
       case 'note_added': return 'bg-purple-100 text-purple-800';
-      case 'email_sent': return 'bg-green-100 text-green-800';
-      case 'call_logged': return 'bg-indigo-100 text-indigo-800';
+      case 'contact_updated': return 'bg-green-100 text-green-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
-  
-  const getContactInfoDisplay = (contactInfo: ContactLog['contact_info']): string => {
+
+  const getContactInfoDisplay = (contactInfo: any): string => {
     if (!contactInfo) return 'No contact information';
     
     try {
-      // If it's already a string, return it
-      if (typeof contactInfo === 'string') return contactInfo;
-      
-      // Prioritize showing name, email, and phone if they exist
       const firstName = contactInfo.first_name || '';
       const lastName = contactInfo.last_name || '';
       const name = firstName && lastName ? `${firstName} ${lastName}` : firstName || lastName || '';
       const email = contactInfo.email ? `${contactInfo.email}` : '';
-      const phone = contactInfo.phone ? `${contactInfo.phone}` : '';
       
-      // If we have these primary identifiers, show them
-      if (name || email || phone) {
-        const parts = [];
-        if (name) parts.push(name);
-        if (email) parts.push(email);
-        if (phone) parts.push(phone);
-        return parts.join(' • ');
-      }
+      const parts = [];
+      if (name) parts.push(name);
+      if (email) parts.push(email);
       
-      // If we have a timestamp, include it
-      const timestamp = contactInfo.timestamp ? `at ${format(new Date(contactInfo.timestamp), 'HH:mm:ss')}` : '';
-      
-      // For updates and other actions, show what action was performed
-      if (contactInfo.description) {
-        return contactInfo.description + (timestamp ? ` ${timestamp}` : '');
-      }
-      
-      // For messages or notes, prioritize them
       if (contactInfo.message) {
-        return `Message: "${contactInfo.message}"` + (timestamp ? ` ${timestamp}` : '');
+        return `${parts.join(' • ')} - Message: "${contactInfo.message}"`;
       }
       
       if (contactInfo.note) {
-        return `Note: "${contactInfo.note}"` + (timestamp ? ` ${timestamp}` : '');
+        return `${parts.join(' • ')} - Note: "${contactInfo.note}"`;
       }
       
-      // For other cases, show a summarized version
-      const maxEntries = 3;
-      const entries = Object.entries(contactInfo)
-        .filter(([key, _]) => !['id', 'timestamp', 'createdAt', 'lastActivity'].includes(key))
-        .slice(0, maxEntries);
+      if (contactInfo.description) {
+        return `${parts.join(' • ')} - ${contactInfo.description}`;
+      }
       
-      if (entries.length === 0) return 'No details';
-      
-      return entries
-        .map(([key, value]) => {
-          if (value === null || value === undefined) return null;
-          if (typeof value === 'object') return `${key}: ${JSON.stringify(value).substring(0, 30)}...`;
-          return `${key}: ${String(value).substring(0, 30)}${String(value).length > 30 ? '...' : ''}`;
-        })
-        .filter(Boolean)
-        .join(', ') + (timestamp ? ` ${timestamp}` : '');
+      return parts.join(' • ') || 'Contact information';
     } catch (e) {
-      console.error('Error displaying contact info:', e);
       return 'Error displaying contact information';
     }
   };
-  
-  // Function to format the date in a readable way
+
   const formatDate = (dateString: string): string => {
     try {
-      const date = new Date(dateString);
-      return format(date, 'yyyy-MM-dd HH:mm:ss');
+      return format(new Date(dateString), 'yyyy-MM-dd HH:mm:ss');
     } catch (e) {
       return 'Invalid date';
     }
   };
-  
-  // Function to truncate ID values for display
-  const truncateId = (id: string): string => {
-    if (!id) return '-';
-    return id.length > 8 ? `${id.substring(0, 8)}...` : id;
-  };
-  
-  // Replacing the logs table section in the UI
-  const renderContactLogsTable = () => {
+
+  const filteredLogs = contactLogs.filter(log => {
+    if (!logSearchQuery) return true;
     return (
-      <div className="border rounded-md overflow-hidden">
-        <ScrollArea className="h-[400px]">
-          <Table>
-            <TableHeader className="sticky top-0 bg-white z-10">
-              <TableRow>
-                <TableHead className="w-[80px]">ID</TableHead>
-                <TableHead className="w-[100px]">Action</TableHead>
-                <TableHead className="w-auto">Contact Info</TableHead>
-                <TableHead className="w-[180px]">Created At</TableHead>
-                <TableHead className="w-[100px]">Batch ID</TableHead>
-                <TableHead className="w-[120px]">Batch Name</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {contactLogs.length > 0 ? (
-                contactLogs.map((log) => (
-                  <TableRow key={log.id} className="group hover:bg-muted/30">
-                    <TableCell className="align-top font-mono text-xs">
-                      {truncateId(log.id)}
-                    </TableCell>
-                    <TableCell className="align-top">
-                      <Badge className={`${getActionBadgeColor(log.action)}`}>
-                        {getActionLabel(log.action)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="align-top">
-                      <div className="text-sm">
-                        {getContactInfoDisplay(log.contact_info)}
-                      </div>
-                      {log.contact_info?.id && (
-                        <div className="mt-1 text-xs text-muted-foreground">
-                          Contact ID: {truncateId(log.contact_info.id)}
-                        </div>
-                      )}
-                    </TableCell>
-                    <TableCell className="align-top whitespace-nowrap text-xs">
-                      {formatDate(log.created_at)}
-                    </TableCell>
-                    <TableCell className="align-top font-mono text-xs">
-                      {log.batch_id ? truncateId(log.batch_id) : '-'}
-                    </TableCell>
-                    <TableCell className="align-top text-xs">
-                      {log.batch_name || '-'}
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center">
-                    {isLoadingLogs ? (
-                      <div className="flex justify-center items-center">
-                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                      </div>
-                    ) : (
-                      <div className="flex flex-col items-center text-muted-foreground py-8">
-                        <AlertCircle className="h-8 w-8 mb-2" />
-                        <span className="font-medium mb-1">No activity logs found</span>
-                        <span className="text-sm">Actions performed on these contacts will appear here</span>
-                      </div>
-                    )}
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </ScrollArea>
+      log.action.toLowerCase().includes(logSearchQuery.toLowerCase()) ||
+      getContactInfoDisplay(log.contact_info).toLowerCase().includes(logSearchQuery.toLowerCase())
+    );
+  });
+
+  if (selectedContacts.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-center">
+        <User className="h-12 w-12 text-gray-400 mb-4" />
+        <h3 className="text-lg font-medium text-gray-900 mb-2">No contacts selected</h3>
+        <p className="text-gray-500">Select contacts from the table to perform bulk actions.</p>
       </div>
     );
-  };
-  
-  // Function to create a test log entry for debugging
-  const createTestLogEntry = async () => {
-    if (selectedContacts.length === 0) {
-      toast({
-        title: "No Contacts Selected",
-        description: "Please select at least one contact to create a test log.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    try {
-      const contactId = selectedContacts[0];
-      const contactData = contacts.find(c => c.id === contactId);
-      
-      if (!contactData) {
-        toast({
-          title: "Error",
-          description: "Contact data not found.",
-          variant: "destructive"
-        });
-        return;
-      }
-      
-      // Create a test log entry
-      const { data, error } = await supabase.from('contact_logs').insert({
-        action: 'test_action',
-        contact_info: {
-          id: contactId,
-          first_name: contactData.first_name,
-          last_name: contactData.last_name,
-          email: contactData.email,
-          phone: contactData.phone,
-          status: contactData.status,
-          company: contactData.company || null,
-          tags: contactData.tags || [],
-          createdAt: contactData.created_at,
-          lastActivity: contactData.updated_at || contactData.created_at,
-          timestamp: new Date().toISOString(),
-          message: "This is a test log entry"
-        },
-        created_at: new Date().toISOString(),
-        batch_id: null,
-        batch_name: null
-      }).select();
-      
-      if (error) {
-        console.error("Error creating test log:", error);
-        toast({
-          title: "Error",
-          description: "Failed to create test log entry.",
-          variant: "destructive"
-        });
-        return;
-      }
-      
-      console.log("Created test log entry:", data);
-      toast({
-        title: "Test Log Created",
-        description: "Successfully created a test log entry. Check the logs tab."
-      });
-      
-      // Refresh logs
-      fetchContactLogs(true);
-    } catch (error) {
-      console.error("Exception creating test log:", error);
-      toast({
-        title: "Error",
-        description: "An unexpected error occurred.",
-        variant: "destructive"
-      });
-    }
-  };
-  
+  }
+
   return (
     <div className="space-y-6">
-      {/* Operations tabs */}
-      <Tabs
-        defaultValue="summary"
-        value={activeTab}
-        onValueChange={setActiveTab}
-        className="w-full"
-      >
-        <TabsList className="grid grid-cols-3 mb-4">
-          <TabsTrigger value="summary">
-            <div className="flex items-center">
-              <CheckCircle className="h-4 w-4 mr-2" />
-              Operations
-            </div>
+      {/* Selected contacts summary */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2">
+            <CheckCircle className="h-5 w-5 text-green-600" />
+            {selectedContacts.length} Contact{selectedContacts.length !== 1 ? 's' : ''} Selected
+          </CardTitle>
+          <CardDescription>
+            Perform bulk actions on the selected contacts below.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-2">
+            {selectedContacts.slice(0, 5).map((contact) => (
+              <Badge key={contact.id} variant="outline">
+                {getFullName(contact)}
+              </Badge>
+            ))}
+            {selectedContacts.length > 5 && (
+              <Badge variant="outline">+{selectedContacts.length - 5} more</Badge>
+            )}
+          </div>
+          {onSelectionClear && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onSelectionClear}
+              className="mt-3"
+            >
+              Clear Selection
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Main tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid grid-cols-3 w-full">
+          <TabsTrigger value="operations" className="flex items-center gap-2">
+            <CheckCircle className="h-4 w-4" />
+            Operations
           </TabsTrigger>
-          <TabsTrigger value="sms">
-            <div className="flex items-center">
-              <Send className="h-4 w-4 mr-2" />
-              Send SMS
-            </div>
+          <TabsTrigger value="sms" className="flex items-center gap-2">
+            <Send className="h-4 w-4" />
+            SMS
           </TabsTrigger>
-          <TabsTrigger value="logs">
-            <div className="flex items-center">
-              <History className="h-4 w-4 mr-2" />
-              Activity Logs
-            </div>
+          <TabsTrigger value="logs" className="flex items-center gap-2">
+            <History className="h-4 w-4" />
+            Activity Logs
           </TabsTrigger>
         </TabsList>
         
-        <TabsContent value="summary">
+        <TabsContent value="operations" className="mt-6">
           <Card>
             <CardHeader>
               <CardTitle>Update Contacts</CardTitle>
@@ -683,178 +429,207 @@ const BulkActionsTab: React.FC<BulkActionsTabProps> = ({
                 Make changes to all selected contacts at once.
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="status">Status</Label>
-                  <Select value={status || ''} onValueChange={setStatus}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select status..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="no_change">No change</SelectItem>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="inactive">Inactive</SelectItem>
-                      <SelectItem value="lead">Lead</SelectItem>
-                      <SelectItem value="customer">Customer</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>Tags</Label>
-                  <div className="flex space-x-2">
-                    <Input 
-                      placeholder="Add a tag..."
-                      value={newTag}
-                      onChange={(e) => setNewTag(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          handleAddTag();
-                        }
-                      }}
-                    />
-                    <Button type="button" variant="outline" onClick={handleAddTag}>
-                      <Tag className="h-4 w-4 mr-2" />
-                      Add
-                    </Button>
-                  </div>
-                  
-                  {tags.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {tags.map(tag => (
-                        <Badge key={tag} variant="secondary" className="px-2 py-1">
-                          {tag}
-                          <button
-                            className="ml-2 text-xs"
-                            onClick={() => handleRemoveTag(tag)}
-                          >
-                            ✕
-                          </button>
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="note">Add Note</Label>
-                  <Textarea
-                    id="note"
-                    placeholder="Add a note to all selected contacts..."
-                    rows={3}
-                    value={note}
-                    onChange={(e) => setNote(e.target.value)}
-                  />
-                </div>
-                
-                <Button 
-                  className="w-full" 
-                  onClick={handleUpdateContacts}
-                  disabled={isSaving}
-                >
-                  {isSaving ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Saving Changes...
-                    </>
-                  ) : (
-                    <>Update All Contacts</>
-                  )}
-                </Button>
+            <CardContent className="space-y-6">
+              {/* Status Update */}
+              <div className="space-y-2">
+                <Label htmlFor="status">Update Status</Label>
+                <Select value={status} onValueChange={setStatus}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select new status..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">No change</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                    <SelectItem value="lead">Lead</SelectItem>
+                    <SelectItem value="customer">Customer</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
+              
+              {/* Tags Management */}
+              <div className="space-y-2">
+                <Label>Add Tags</Label>
+                <div className="flex gap-2">
+                  <Input 
+                    placeholder="Enter tag name..."
+                    value={newTag}
+                    onChange={(e) => setNewTag(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddTag();
+                      }
+                    }}
+                  />
+                  <Button type="button" variant="outline" onClick={handleAddTag}>
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+                
+                {tags.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {tags.map(tag => (
+                      <Badge key={tag} variant="secondary" className="px-2 py-1">
+                        {tag}
+                        <button
+                          className="ml-2 text-xs hover:text-red-500"
+                          onClick={() => handleRemoveTag(tag)}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+              
+              {/* Add Notes */}
+              <div className="space-y-2">
+                <Label htmlFor="note">Add Note</Label>
+                <Textarea
+                  id="note"
+                  placeholder="Add a note to all selected contacts..."
+                  rows={3}
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                />
+              </div>
+              
+              {/* Save Button */}
+              <Button 
+                className="w-full" 
+                onClick={handleUpdateContacts}
+                disabled={isSaving}
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Updating Contacts...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="mr-2 h-4 w-4" />
+                    Update All Contacts
+                  </>
+                )}
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
         
-        <TabsContent value="sms">
-          <BulkActions 
-            selectedContacts={selectedContacts.map(id => ({ id } as Contact))} 
-            onContactsUpdated={onActionComplete}
-            onSelectionClear={() => {}}
-          />
-        </TabsContent>
-        
-        <TabsContent value="logs">
+        <TabsContent value="sms" className="mt-6">
           <Card>
             <CardHeader>
-              <CardTitle>Contact Activity Logs</CardTitle>
+              <CardTitle>Send SMS Message</CardTitle>
               <CardDescription>
-                View the history of actions performed on the selected contacts.
+                Send a bulk SMS message to all selected contacts.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="message">Message</Label>
+                <Textarea
+                  id="message"
+                  placeholder="Type your message here..."
+                  rows={4}
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                />
+                <div className="text-sm text-gray-500">
+                  {message.length}/160 characters
+                </div>
+              </div>
+              
+              <Button 
+                className="w-full" 
+                onClick={handleSendSMS}
+                disabled={isSending || !message.trim()}
+              >
+                {isSending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Sending SMS...
+                  </>
+                ) : (
+                  <>
+                    <Send className="mr-2 h-4 w-4" />
+                    Send to {selectedContacts.length} Contact{selectedContacts.length !== 1 ? 's' : ''}
+                  </>
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="logs" className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Activity Logs</CardTitle>
+              <CardDescription>
+                View the history of actions performed on contacts.
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {/* Search and filters */}
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Search in logs..."
-                      className="pl-8"
-                      value={logSearchQuery}
-                      onChange={(e) => setLogSearchQuery(e.target.value)}
-                    />
-                  </div>
-                  
-                  <Button
-                    variant="outline"
-                    className="flex items-center gap-2"
-                    onClick={handleSortToggle}
-                    title={sortOrder === 'desc' ? "Newest first" : "Oldest first"}
-                  >
-                    {sortOrder === 'desc' ? (
-                      <>
-                        <Clock className="h-4 w-4" />
-                        <span className="hidden sm:inline">Newest first</span>
-                      </>
-                    ) : (
-                      <>
-                        <Calendar className="h-4 w-4" />
-                        <span className="hidden sm:inline">Oldest first</span>
-                      </>
-                    )}
-                  </Button>
+                {/* Search */}
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Search in logs..."
+                    className="pl-8"
+                    value={logSearchQuery}
+                    onChange={(e) => setLogSearchQuery(e.target.value)}
+                  />
                 </div>
                 
-                {/* Logs table */}
-                {renderContactLogsTable()}
-                
-                {/* Load more button */}
-                {hasMoreLogs && (
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    disabled={isLoadingLogs}
-                    onClick={() => setLogsPage(prev => prev + 1)}
-                  >
-                    {isLoadingLogs ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Loading...
-                      </>
-                    ) : (
-                      <>Load more logs</>
-                    )}
-                  </Button>
-                )}
-                
-                {/* Debug button - only visible in development */}
-                {process.env.NODE_ENV !== 'production' && (
-                  <div className="mt-4">
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      onClick={createTestLogEntry}
-                    >
-                      Create Test Log Entry
-                    </Button>
-                    <p className="text-xs text-muted-foreground text-center mt-2">
-                      (Debug button - only visible in development)
-                    </p>
-                  </div>
-                )}
+                {/* Logs Table */}
+                <div className="border rounded-md">
+                  <ScrollArea className="h-[400px]">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Action</TableHead>
+                          <TableHead>Contact Info</TableHead>
+                          <TableHead>Created At</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {isLoadingLogs ? (
+                          <TableRow>
+                            <TableCell colSpan={3} className="text-center py-8">
+                              <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+                            </TableCell>
+                          </TableRow>
+                        ) : filteredLogs.length > 0 ? (
+                          filteredLogs.map((log) => (
+                            <TableRow key={log.id}>
+                              <TableCell>
+                                <Badge className={getActionBadgeColor(log.action)}>
+                                  {getActionLabel(log.action)}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <div className="text-sm">
+                                  {getContactInfoDisplay(log.contact_info)}
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-sm text-gray-600">
+                                {formatDate(log.created_at)}
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        ) : (
+                          <TableRow>
+                            <TableCell colSpan={3} className="text-center py-8 text-gray-500">
+                              {logSearchQuery ? 'No matching logs found' : 'No activity logs found'}
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </ScrollArea>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -864,8 +639,4 @@ const BulkActionsTab: React.FC<BulkActionsTabProps> = ({
   );
 };
 
-// Add a named export alongside the default export for better compatibility
-export { BulkActionsTab };
-
-// Maintain the default export
 export default BulkActionsTab;
