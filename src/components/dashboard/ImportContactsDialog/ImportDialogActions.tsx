@@ -28,8 +28,8 @@ const ImportDialogActions: React.FC<ImportDialogActionsProps> = ({
         return 'Map Fields';
       case 'map':
         return 'Verify Data';
-      case 'verify':
-        return isImporting ? 'Importing...' : 'Import Contacts';
+      // case 'verify':
+      //   return isImporting ? 'Importing...' : 'Import Contacts';
       default:
         return 'Next';
     }
