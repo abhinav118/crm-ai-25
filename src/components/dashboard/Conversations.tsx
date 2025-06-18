@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,6 +15,7 @@ import {
 } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
+import { getFullName } from '@/utils/contactHelpers';
 
 type Conversation = {
   contactId: string;
@@ -54,10 +54,10 @@ const Conversations: React.FC = () => {
     try {
       console.log('Fetching conversations...');
       
-      // First get all contacts
+      // First get all contacts with first_name and last_name
       const { data: contacts, error: contactsError } = await supabase
         .from('contacts')
-        .select('id, name');
+        .select('id, first_name, last_name');
         
       if (contactsError) {
         console.error('Error fetching contacts:', contactsError);
@@ -109,7 +109,7 @@ const Conversations: React.FC = () => {
           // Create a conversation object for this contact
           return {
             contactId: contact.id,
-            contactName: contact.name,
+            contactName: getFullName(contact),
             lastMessage: messages[0].content,
             lastMessageTime: messages[0].sent_at,
             unreadCount: 0, // Mock unread count for now

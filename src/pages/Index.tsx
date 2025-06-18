@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { Plus, MessageSquare, UserPlus, Search, Settings, X, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -199,7 +198,7 @@ const Index = () => {
           description: 'Contact updated successfully',
         });
       } else {
-        // Create new contact
+        // Create new contact - use 'add' instead of 'create'
         const { data, error } = await supabase
           .from('contacts')
           .insert([contactData])
@@ -208,7 +207,7 @@ const Index = () => {
         if (error) throw error;
         
         if (data && data[0]) {
-          await logContactAction('create', {
+          await logContactAction('add', {
             id: data[0].id,
             ...contactData
           });

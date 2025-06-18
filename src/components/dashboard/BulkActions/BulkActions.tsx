@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -97,10 +98,19 @@ const BulkActions: React.FC<BulkActionsProps> = ({
     });
   };
 
-  // Transform contacts to match the expected format
+  // Transform contacts to match the expected format for BulkActionsTab
   const transformedContacts = selectedContacts.map(contact => ({
-    ...contact,
-    name: getFullName(contact)
+    id: contact.id,
+    name: getFullName(contact),
+    first_name: contact.first_name,
+    last_name: contact.last_name,
+    email: contact.email,
+    phone: contact.phone,
+    company: contact.company,
+    status: contact.status,
+    tags: contact.tags,
+    createdAt: contact.createdAt,
+    lastActivity: contact.lastActivity
   }));
 
   if (selectedContacts.length === 0) {
@@ -170,7 +180,7 @@ const BulkActions: React.FC<BulkActionsProps> = ({
             <div className="mt-4 overflow-y-auto max-h-[60vh]">
               <TabsContent value="actions">
                 <BulkActionsTab
-                  selectedContacts={transformedContacts}
+                  selectedContacts={transformedContacts as any}
                   onContactsUpdated={onContactsUpdated}
                   onClose={() => setShowDialog(false)}
                 />
