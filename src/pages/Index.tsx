@@ -36,7 +36,6 @@ const Index = () => {
   const [showContactDetails, setShowContactDetails] = useState(false);
   const [showChatInterface, setShowChatInterface] = useState(false);
   const [showConversationsModal, setShowConversationsModal] = useState(false);
-  const [showUserProfileModal, setShowUserProfileModal] = useState(false);
   const [isCompactMode, setIsCompactMode] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -145,9 +144,9 @@ const Index = () => {
         setSelectedContacts([...selectedContacts, contact]);
       }
     } else if (activeTab === 'all') {
-      // In all contacts tab, open user profile modal
+      // In all contacts tab, open chat interface with user profile
       setSelectedContact(contact);
-      setShowUserProfileModal(true);
+      setShowChatInterface(true);
     } else {
       // In other tabs, open conversations modal
       setSelectedContact(contact);
@@ -287,15 +286,11 @@ const Index = () => {
 
   const handleCloseChatInterface = () => {
     setShowChatInterface(false);
+    setSelectedContact(null);
   };
 
   const handleCloseConversationsModal = () => {
     setShowConversationsModal(false);
-    setSelectedContact(null);
-  };
-
-  const handleCloseUserProfileModal = () => {
-    setShowUserProfileModal(false);
     setSelectedContact(null);
   };
 
@@ -309,7 +304,7 @@ const Index = () => {
       <Sidebar collapsed={sidebarCollapsed} onToggle={toggleSidebar} />
       
       {/* Main Content */}
-      <div className={`flex-1 flex flex-col transition-all duration-300 ${sidebarCollapsed ? 'ml-[63px]' : 'ml-[234px]'} ${showContactDetails ? 'mr-80' : ''} ${showChatInterface ? 'mr-96' : ''}`}>
+      <div className={`flex-1 flex flex-col transition-all duration-300 ${sidebarCollapsed ? 'ml-[63px]' : 'ml-[234px]'} ${showContactDetails ? 'mr-80' : ''}`}>
         {/* Header */}
         <header className="bg-white shadow-sm border-b px-6 py-4">
           <div className="flex items-center justify-between">
@@ -443,17 +438,12 @@ const Index = () => {
         </div>
       )}
 
-      {/* Chat Interface Sidebar */}
-      {showChatInterface && selectedContact && activeTab !== 'bulk-actions' && (
-        <div className="fixed right-0 top-0 bottom-0 w-96 bg-white shadow-lg border-l z-50">
-          <div className="flex items-center justify-between p-4 border-b">
-            <h2 className="text-lg font-semibold">Chat - {getFullName(selectedContact)}</h2>
-            <Button variant="ghost" size="sm" onClick={handleCloseChatInterface}>
-              <X size={16} />
-            </Button>
-          </div>
-          <ChatInterface contact={selectedContact} onClose={handleCloseChatInterface} />
-        </div>
+      {/* Chat Interface Modal */}
+      {showChatInterface && selectedContact && (
+        <ChatInterface 
+          contact={selectedContact} 
+          onClose={handleCloseChatInterface} 
+        />
       )}
 
       {/* Conversations Modal */}
@@ -473,25 +463,6 @@ const Index = () => {
                 selectedContactId={selectedContact.id}
                 onClose={handleCloseConversationsModal}
               />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* User Profile Modal */}
-      {showUserProfileModal && selectedContact && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 h-[80vh]">
-            <div className="flex items-center justify-between p-4 border-b">
-              <h2 className="text-lg font-semibold">
-                {getFullName(selectedContact)}
-              </h2>
-              <Button variant="ghost" size="sm" onClick={handleCloseUserProfileModal}>
-                <X size={16} />
-              </Button>
-            </div>
-            <div className="h-[calc(80vh-4rem)]">
-              <UserProfile contact={selectedContact} onSave={handleSaveProfile} />
             </div>
           </div>
         </div>
