@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { Plus, MessageSquare, UserPlus, Search, Settings, X, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -42,23 +43,50 @@ const Index = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [segmentFilter, setSegmentFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(100);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const pageSize = 20;
 
   const queryClient = useQueryClient();
 
-  // Load segment filter from localStorage on mount
+  // Load filters from localStorage on mount
   React.useEffect(() => {
     const savedSegmentFilter = localStorage.getItem('contactsSegmentFilter');
+    const savedPageSize = localStorage.getItem('contactsPageSize');
+    
     if (savedSegmentFilter && savedSegmentFilter !== 'all') {
       setSegmentFilter(savedSegmentFilter);
     }
+    if (savedPageSize) {
+      setPageSize(parseInt(savedPageSize, 10));
+    }
   }, []);
 
-  // Save segment filter to localStorage when it changes
+  // Save filters to localStorage when they change
   const handleSegmentFilterChange = (segment: string) => {
     setSegmentFilter(segment);
+    setCurrentPage(1); // Reset to first page when changing filters
     localStorage.setItem('contactsSegmentFilter', segment);
+  };
+
+  const handlePageSizeChange = (newPageSize: number) => {
+    setPageSize(newPageSize);
+    setCurrentPage(1); // Reset to first page when changing page size
+    localStorage.setItem('contactsPageSize', newPageSize.toString());
+  };
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    setCurrentPage(1); // Reset to first page when changing tabs
+  };
+
+  const handleStatusFilterChange = (status: string) => {
+    setStatusFilter(status);
+    setCurrentPage(1); // Reset to first page when changing filters
+  };
+
+  const handleSearchChange = (query: string) => {
+    setSearchQuery(query);
+    setCurrentPage(1); // Reset to first page when searching
   };
 
   // Fetch available segments
@@ -86,9 +114,9 @@ const Index = () => {
     },
   });
 
-  // Fetch contacts with pagination and segment filtering
+  // Fetch contacts with pagination and filtering
   const { data: contactsData, isLoading: isLoadingContacts, error: contactsError } = useQuery({
-    queryKey: ['contacts', activeTab, currentPage, searchQuery, statusFilter, segmentFilter],
+    queryKey: ['contacts', activeTab, currentPage, pageSize, searchQuery, statusFilter, segmentFilter],
     queryFn: async () => {
       console.log('Fetching contacts from Supabase...');
       
@@ -102,9 +130,16 @@ const Index = () => {
         query = query.or(`first_name.ilike.%${searchQuery}%,last_name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%,company.ilike.%${searchQuery}%`);
       }
 
-      // Apply status filter
-      if (statusFilter !== 'all') {
-        query = query.eq('status', statusFilter);
+      // Apply status filter (for status-specific tabs and status filter)
+      let effectiveStatusFilter = statusFilter;
+      if (activeTab === 'active') {
+        effectiveStatusFilter = 'active';
+      } else if (activeTab === 'inactive') {
+        effectiveStatusFilter = 'inactive';
+      }
+
+      if (effectiveStatusFilter !== 'all') {
+        query = query.eq('status', effectiveStatusFilter);
       }
 
       // Apply segment filter
@@ -112,12 +147,10 @@ const Index = () => {
         query = query.eq('segment_name', segmentFilter);
       }
 
-      // Apply pagination for "all" tab
-      if (activeTab === 'all') {
-        const from = (currentPage - 1) * pageSize;
-        const to = from + pageSize - 1;
-        query = query.range(from, to);
-      }
+      // Apply pagination
+      const from = (currentPage - 1) * pageSize;
+      const to = from + pageSize - 1;
+      query = query.range(from, to);
 
       const { data, error, count } = await query;
       
@@ -153,18 +186,6 @@ const Index = () => {
   const contacts = useMemo(() => contactsData?.contacts || [], [contactsData]);
   const totalContacts = contactsData?.totalCount || 0;
   const totalPages = Math.ceil(totalContacts / pageSize);
-
-  const filteredContacts = useMemo(() => {
-    let filtered = contacts;
-
-    if (activeTab === 'active') {
-      filtered = filtered.filter(contact => contact.status === 'active');
-    } else if (activeTab === 'inactive') {
-      filtered = filtered.filter(contact => contact.status === 'inactive');
-    }
-
-    return filtered;
-  }, [contacts, activeTab]);
 
   const handleContactSelect = (contacts: Contact[]) => {
     setSelectedContacts(contacts);
@@ -408,22 +429,24 @@ const Index = () => {
         {/* Content */}
         <main className="flex-1 p-6">
           <ContactsTable
-            contacts={filteredContacts}
+            contacts={contacts}
             onContactSelect={setSelectedContacts}
             onEditContact={handleEditContact}
             onContactClick={handleContactClick}
             selectedContacts={selectedContacts}
             searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
+            onSearchChange={handleSearchChange}
             statusFilter={statusFilter}
-            onStatusFilterChange={setStatusFilter}
+            onStatusFilterChange={handleStatusFilterChange}
             activeTab={activeTab}
-            onTabChange={setActiveTab}
+            onTabChange={handleTabChange}
             isLoading={isLoadingContacts}
             currentPage={currentPage}
             totalPages={totalPages}
+            totalRecords={totalContacts}
+            pageSize={pageSize}
             onPageChange={setCurrentPage}
-            showPagination={activeTab === 'all'}
+            onPageSizeChange={handlePageSizeChange}
             showCompanyColumn={false}
             showBulkActionsTab={true}
             segmentFilter={segmentFilter}
@@ -501,13 +524,6 @@ const Index = () => {
           </div>
         </div>
       )}
-
-      {/* Bulk Actions */}
-      {/* <BulkActions
-        selectedContacts={selectedContacts}
-        onContactsUpdated={handleBulkContactsUpdated}
-        onSelectionClear={handleBulkSelectionClear}
-      /> */}
     </div>
   );
 };

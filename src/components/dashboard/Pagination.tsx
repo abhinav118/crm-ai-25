@@ -2,45 +2,51 @@
 import React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import {
+  Pagination as ShadcnPagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 type PaginationProps = {
   currentPage: number;
   totalPages: number;
+  totalRecords: number;
+  pageSize: number;
   onPageChange: (page: number) => void;
-  totalRecords?: number;
-  pageSize?: number;
-  onPageSizeChange?: (size: number) => void;
+  onPageSizeChange: (size: number) => void;
   className?: string;
 };
 
 const Pagination: React.FC<PaginationProps> = ({
   currentPage,
   totalPages,
-  onPageChange,
   totalRecords,
-  pageSize = 20,
+  pageSize,
+  onPageChange,
   onPageSizeChange,
   className,
 }) => {
-  const pageSizes = [10, 20, 50, 100];
+  const pageSizes = [100, 500, 1000];
   
-  const handlePrevious = () => {
-    if (currentPage > 1) {
-      onPageChange(currentPage - 1);
-    }
-  };
-  
-  const handleNext = () => {
-    if (currentPage < totalPages) {
-      onPageChange(currentPage + 1);
-    }
-  };
+  const startRecord = totalRecords === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const endRecord = Math.min(currentPage * pageSize, totalRecords);
   
   const renderPageNumbers = () => {
-    // Always show first and last page, and up to 3 pages around current page
     const pages = [];
-    const rangeStart = Math.max(1, currentPage - 1);
-    const rangeEnd = Math.min(totalPages, currentPage + 1);
+    const rangeStart = Math.max(1, currentPage - 2);
+    const rangeEnd = Math.min(totalPages, currentPage + 2);
     
     if (rangeStart > 1) {
       pages.push(1);
@@ -59,88 +65,81 @@ const Pagination: React.FC<PaginationProps> = ({
     return pages.map((page, index) => {
       if (page === '...') {
         return (
-          <span 
-            key={`ellipsis-${index}`} 
-            className="pagination-button text-gray-500"
-          >
-            ...
-          </span>
+          <PaginationItem key={`ellipsis-${index}`}>
+            <PaginationEllipsis />
+          </PaginationItem>
         );
       }
       
       return (
-        <button
-          key={page}
-          onClick={() => onPageChange(page as number)}
-          className={cn(
-            "pagination-button",
-            page === currentPage 
-              ? "active" 
-              : "text-gray-700 hover:bg-gray-100"
-          )}
-        >
-          {page}
-        </button>
+        <PaginationItem key={page}>
+          <PaginationLink
+            onClick={() => onPageChange(page as number)}
+            isActive={page === currentPage}
+            className="cursor-pointer"
+          >
+            {page}
+          </PaginationLink>
+        </PaginationItem>
       );
     });
   };
   
   return (
-    <div className={cn("flex flex-col sm:flex-row items-center justify-between gap-4", className)}>
-      {totalRecords !== undefined && (
-        <div className="text-sm text-gray-600">
-          Total {totalRecords.toLocaleString()} records
-        </div>
-      )}
-      
-      <div className="flex items-center gap-1">
-        <button
-          onClick={handlePrevious}
-          disabled={currentPage === 1}
-          className={cn(
-            "pagination-button",
-            currentPage === 1 
-              ? "text-gray-400 cursor-not-allowed" 
-              : "text-gray-700 hover:bg-gray-100"
-          )}
-        >
-          <ChevronLeft size={16} />
-        </button>
-        
-        <div className="flex items-center gap-1">
-          {renderPageNumbers()}
-        </div>
-        
-        <button
-          onClick={handleNext}
-          disabled={currentPage === totalPages}
-          className={cn(
-            "pagination-button",
-            currentPage === totalPages
-              ? "text-gray-400 cursor-not-allowed" 
-              : "text-gray-700 hover:bg-gray-100"
-          )}
-        >
-          <ChevronRight size={16} />
-        </button>
+    <div className={cn("flex flex-col sm:flex-row items-center justify-between gap-4 py-4", className)}>
+      <div className="text-sm text-gray-600">
+        {totalRecords > 0 ? (
+          `${startRecord}–${endRecord} of ${totalRecords.toLocaleString()} contacts`
+        ) : (
+          '0 contacts'
+        )}
       </div>
       
-      {onPageSizeChange && (
+      <div className="flex items-center gap-6">
         <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-600">Show</span>
-          <select
-            value={pageSize}
-            onChange={(e) => onPageSizeChange(Number(e.target.value))}
-            className="text-sm border border-gray-300 rounded p-1 bg-white"
-          >
-            {pageSizes.map((size) => (
-              <option key={size} value={size}>
-                {size}
-              </option>
-            ))}
-          </select>
+          <span className="text-sm text-gray-600">Rows per page:</span>
+          <Select value={pageSize.toString()} onValueChange={(value) => onPageSizeChange(Number(value))}>
+            <SelectTrigger className="w-20">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {pageSizes.map((size) => (
+                <SelectItem key={size} value={size.toString()}>
+                  {size}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-      )}
+        
+        {totalPages > 1 && (
+          <ShadcnPagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  onClick={() => currentPage > 1 && onPageChange(currentPage - 1)}
+                  className={cn(
+                    "cursor-pointer",
+                    currentPage === 1 && "pointer-events-none opacity-50"
+                  )}
+                />
+              </PaginationItem>
+              
+              {renderPageNumbers()}
+              
+              <PaginationItem>
+                <PaginationNext
+                  onClick={() => currentPage < totalPages && onPageChange(currentPage + 1)}
+                  className={cn(
+                    "cursor-pointer",
+                    currentPage === totalPages && "pointer-events-none opacity-50"
+                  )}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </ShadcnPagination>
+        )}
+      </div>
     </div>
   );
 };

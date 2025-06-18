@@ -14,10 +14,11 @@ import {
 } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Edit, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { Search, Edit, X } from 'lucide-react';
 import Avatar from './Avatar';
 import { getFullName } from '@/utils/contactHelpers';
 import BulkActionsTab from './BulkActions/BulkActionsTab';
+import Pagination from './Pagination';
 
 export interface Contact {
   id: string;
@@ -48,8 +49,10 @@ interface ContactsTableProps {
   isLoading?: boolean;
   currentPage?: number;
   totalPages?: number;
+  totalRecords?: number;
+  pageSize?: number;
   onPageChange?: (page: number) => void;
-  showPagination?: boolean;
+  onPageSizeChange?: (size: number) => void;
   showCompanyColumn?: boolean;
   showBulkActionsTab?: boolean;
   showTabsHeader?: boolean;
@@ -73,8 +76,10 @@ const ContactsTable: React.FC<ContactsTableProps> = ({
   isLoading = false,
   currentPage = 1,
   totalPages = 1,
+  totalRecords = 0,
+  pageSize = 100,
   onPageChange,
-  showPagination = false,
+  onPageSizeChange,
   showCompanyColumn = true,
   showTabsHeader = true,
   showBulkActionsTab = true,
@@ -114,10 +119,6 @@ const ContactsTable: React.FC<ContactsTableProps> = ({
     }
   };
 
-  const displayedContacts = useMemo(() => {
-    return contacts;
-  }, [contacts]);
-
   React.useEffect(() => {
     setSelectAll(contacts.length > 0 && selectedContacts.length === contacts.length);
   }, [selectedContacts, contacts]);
@@ -128,124 +129,138 @@ const ContactsTable: React.FC<ContactsTableProps> = ({
 
   const renderContactsTable = () => {
     return (
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-12">
-                <Checkbox
-                  checked={selectAll}
-                  onCheckedChange={handleSelectAll}
-                />
-              </TableHead>
-              <TableHead>Contact</TableHead>
-              {showCompanyColumn && <TableHead>Company</TableHead>}
-              <TableHead>Phone</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Tags</TableHead>
-              <TableHead>Segment</TableHead>
-              <TableHead>Last Activity</TableHead>
-              <TableHead className="w-12">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              Array.from({ length: 5 }).map((_, index) => (
-                <TableRow key={index}>
-                  <TableCell><div className="w-4 h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
-                  <TableCell><div className="w-32 h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
-                  {showCompanyColumn && <TableCell><div className="w-24 h-4 bg-gray-200 rounded animate-pulse" /></TableCell>}
-                  <TableCell><div className="w-20 h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
-                  <TableCell><div className="w-16 h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
-                  <TableCell><div className="w-20 h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
-                  <TableCell><div className="w-20 h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
-                  <TableCell><div className="w-20 h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
-                  <TableCell><div className="w-8 h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
-                </TableRow>
-              ))
-            ) : displayedContacts.length > 0 ? (
-              displayedContacts.map((contact) => (
-                <TableRow key={contact.id} className="hover:bg-gray-50">
-                  <TableCell>
-                    <Checkbox
-                      checked={isContactSelected(contact)}
-                      onCheckedChange={(checked: boolean) => handleSelectContact(contact, checked)}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <div 
-                      className="flex items-center gap-3 cursor-pointer"
-                      onClick={() => onContactClick(contact)}
-                    >
-                      <Avatar name={getFullName(contact)} status={contact.status} />
-                      <div>
-                        <div className="font-medium">{getFullName(contact)}</div>
-                        <div className="text-sm text-gray-500">{contact.email}</div>
-                      </div>
-                    </div>
-                  </TableCell>
-                  {showCompanyColumn && (
-                    <TableCell className="text-sm text-gray-600">
-                      {contact.company || '-'}
-                    </TableCell>
-                  )}
-                  <TableCell className="text-sm text-gray-600">
-                    {contact.phone || '-'}
-                  </TableCell>
-                  <TableCell>
-                    <Badge 
-                      variant={contact.status === 'active' ? 'success' : 'secondary'}
-                    >
-                      {contact.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {contact.tags?.slice(0, 2).map((tag) => (
-                        <Badge key={tag} variant="outline" className="text-xs">
-                          {tag}
-                        </Badge>
-                      ))}
-                      {contact.tags && contact.tags.length > 2 && (
-                        <Badge variant="outline" className="text-xs">
-                          +{contact.tags.length - 2}
-                        </Badge>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-sm text-gray-600">
-                    {contact.segment_name ? (
-                      <Badge variant="outline" className="text-xs">
-                        {contact.segment_name}
-                      </Badge>
-                    ) : '-'}
-                  </TableCell>
-                  <TableCell className="text-sm text-gray-600">
-                    {formatDate(contact.lastActivity) || 'Never'}
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onEditContact(contact);
-                      }}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : (
+      <div className="space-y-4">
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={showCompanyColumn ? 9 : 8} className="text-center py-8 text-gray-500">
-                  No contacts found
-                </TableCell>
+                <TableHead className="w-12">
+                  <Checkbox
+                    checked={selectAll}
+                    onCheckedChange={handleSelectAll}
+                  />
+                </TableHead>
+                <TableHead>Contact</TableHead>
+                {showCompanyColumn && <TableHead>Company</TableHead>}
+                <TableHead>Phone</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Tags</TableHead>
+                <TableHead>Segment</TableHead>
+                <TableHead>Last Activity</TableHead>
+                <TableHead className="w-12">Actions</TableHead>
               </TableRow>
-            )}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                Array.from({ length: 5 }).map((_, index) => (
+                  <TableRow key={index}>
+                    <TableCell><div className="w-4 h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
+                    <TableCell><div className="w-32 h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
+                    {showCompanyColumn && <TableCell><div className="w-24 h-4 bg-gray-200 rounded animate-pulse" /></TableCell>}
+                    <TableCell><div className="w-20 h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
+                    <TableCell><div className="w-16 h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
+                    <TableCell><div className="w-20 h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
+                    <TableCell><div className="w-20 h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
+                    <TableCell><div className="w-20 h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
+                    <TableCell><div className="w-8 h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
+                  </TableRow>
+                ))
+              ) : contacts.length > 0 ? (
+                contacts.map((contact) => (
+                  <TableRow key={contact.id} className="hover:bg-gray-50">
+                    <TableCell>
+                      <Checkbox
+                        checked={isContactSelected(contact)}
+                        onCheckedChange={(checked: boolean) => handleSelectContact(contact, checked)}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <div 
+                        className="flex items-center gap-3 cursor-pointer"
+                        onClick={() => onContactClick(contact)}
+                      >
+                        <Avatar name={getFullName(contact)} status={contact.status} />
+                        <div>
+                          <div className="font-medium">{getFullName(contact)}</div>
+                          <div className="text-sm text-gray-500">{contact.email}</div>
+                        </div>
+                      </div>
+                    </TableCell>
+                    {showCompanyColumn && (
+                      <TableCell className="text-sm text-gray-600">
+                        {contact.company || '-'}
+                      </TableCell>
+                    )}
+                    <TableCell className="text-sm text-gray-600">
+                      {contact.phone || '-'}
+                    </TableCell>
+                    <TableCell>
+                      <Badge 
+                        variant={contact.status === 'active' ? 'success' : 'secondary'}
+                      >
+                        {contact.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {contact.tags?.slice(0, 2).map((tag) => (
+                          <Badge key={tag} variant="outline" className="text-xs">
+                            {tag}
+                          </Badge>
+                        ))}
+                        {contact.tags && contact.tags.length > 2 && (
+                          <Badge variant="outline" className="text-xs">
+                            +{contact.tags.length - 2}
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-sm text-gray-600">
+                      {contact.segment_name ? (
+                        <Badge variant="outline" className="text-xs">
+                          {contact.segment_name}
+                        </Badge>
+                      ) : '-'}
+                    </TableCell>
+                    <TableCell className="text-sm text-gray-600">
+                      {formatDate(contact.lastActivity) || 'Never'}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEditContact(contact);
+                        }}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={showCompanyColumn ? 9 : 8} className="text-center py-8 text-gray-500">
+                    No contacts found
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+
+        {/* Pagination */}
+        {onPageChange && onPageSizeChange && (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalRecords={totalRecords}
+            pageSize={pageSize}
+            onPageChange={onPageChange}
+            onPageSizeChange={onPageSizeChange}
+          />
+        )}
       </div>
     );
   };
