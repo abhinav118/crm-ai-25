@@ -172,6 +172,7 @@ const BulkActions: React.FC<BulkActionsProps> = ({
                 <BulkActionsTab
                   selectedContacts={selectedContacts}
                   onActionComplete={handleActionComplete}
+                  onSelectionClear={onSelectionClear}
                 />
               </TabsContent>
               

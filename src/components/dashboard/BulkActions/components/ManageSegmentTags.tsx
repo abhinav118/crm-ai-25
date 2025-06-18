@@ -126,13 +126,14 @@ const ManageSegmentTags: React.FC<ManageSegmentTagsProps> = ({ onActionComplete 
 
         if (error) throw error;
 
-        // Log the action
+        // Log the action with 2 arguments
         await logContactAction('update', {
           id: contact.id,
           first_name: contact.first_name,
           last_name: contact.last_name,
-          tags: mergedTags
-        }, `Added tags: ${newTags.join(', ')} to segment "${selectedSegment}"`);
+          tags: mergedTags,
+          description: `Added tags: ${newTags.join(', ')} to segment "${selectedSegment}"`
+        });
       });
 
       await Promise.all(updatePromises);

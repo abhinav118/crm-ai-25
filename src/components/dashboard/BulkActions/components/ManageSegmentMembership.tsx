@@ -161,7 +161,7 @@ const ManageSegmentMembership: React.FC<ManageSegmentMembershipProps> = ({ onAct
 
         if (error) throw error;
 
-        // Log the action
+        // Log the action with 2 arguments
         const actionDescription = operationType === 'add' 
           ? `Added to segment "${targetSegment}"` 
           : `Removed from segment "${contact.segment_name}"`;
@@ -170,8 +170,9 @@ const ManageSegmentMembership: React.FC<ManageSegmentMembershipProps> = ({ onAct
           id: contact.id,
           first_name: contact.first_name,
           last_name: contact.last_name,
-          segment_name: updateValue
-        }, actionDescription);
+          segment_name: updateValue,
+          description: actionDescription
+        });
       });
 
       await Promise.all(updatePromises);
