@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { Plus, MessageSquare, UserPlus, Search, Settings, X, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,6 +8,7 @@ import UserProfile from '@/components/dashboard/UserProfile';
 import ChatInterface from '@/components/dashboard/ChatInterface';
 import BulkActions from '@/components/dashboard/BulkActions/BulkActions';
 import Sidebar from '@/components/dashboard/Sidebar';
+import Conversations from '@/components/dashboard/Conversations';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -35,6 +35,7 @@ const Index = () => {
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [showContactDetails, setShowContactDetails] = useState(false);
   const [showChatInterface, setShowChatInterface] = useState(false);
+  const [showConversationsModal, setShowConversationsModal] = useState(false);
   const [isCompactMode, setIsCompactMode] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -134,8 +135,19 @@ const Index = () => {
   };
 
   const handleContactClick = (contact: Contact) => {
-    setSelectedContact(contact);
-    setShowContactDetails(true);
+    if (activeTab === 'bulk-actions') {
+      // In bulk actions tab, just select the contact
+      const isSelected = selectedContacts.some(c => c.id === contact.id);
+      if (isSelected) {
+        setSelectedContacts(selectedContacts.filter(c => c.id !== contact.id));
+      } else {
+        setSelectedContacts([...selectedContacts, contact]);
+      }
+    } else {
+      // In other tabs, open conversations modal
+      setSelectedContact(contact);
+      setShowConversationsModal(true);
+    }
   };
 
   const handleDeleteContacts = async () => {
@@ -272,6 +284,11 @@ const Index = () => {
     setShowChatInterface(false);
   };
 
+  const handleCloseConversationsModal = () => {
+    setShowConversationsModal(false);
+    setSelectedContact(null);
+  };
+
   const toggleSidebar = () => {
     setSidebarCollapsed(!sidebarCollapsed);
   };
@@ -309,17 +326,19 @@ const Index = () => {
             </div>
             
             <div className="flex items-center space-x-4">
-              <ActionButtons
-                selectedCount={selectedContacts.length}
-                onAddContact={handleAddContact}
-                onDeleteContacts={handleDeleteContacts}
-                selectedContacts={selectedContacts}
-                onTagsAdded={handleTagsAdded}
-                onContactsImported={handleContactsImported}
-                compactMode={isCompactMode}
-              />
+              {activeTab !== 'bulk-actions' && (
+                <ActionButtons
+                  selectedCount={selectedContacts.length}
+                  onAddContact={handleAddContact}
+                  onDeleteContacts={handleDeleteContacts}
+                  selectedContacts={selectedContacts}
+                  onTagsAdded={handleTagsAdded}
+                  onContactsImported={handleContactsImported}
+                  compactMode={isCompactMode}
+                />
+              )}
               
-              {selectedContact && (
+              {selectedContact && activeTab !== 'bulk-actions' && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -336,29 +355,73 @@ const Index = () => {
 
         {/* Content */}
         <main className="flex-1 p-6">
-          <ContactsTable
-            contacts={filteredContacts}
-            onContactSelect={handleContactSelect}
-            onEditContact={handleEditContact}
-            onContactClick={handleContactClick}
-            selectedContacts={selectedContacts}
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            statusFilter={statusFilter}
-            onStatusFilterChange={setStatusFilter}
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-            isLoading={isLoadingContacts}
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
-            showPagination={activeTab === 'all'}
-          />
+          {activeTab === 'bulk-actions' ? (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold">Bulk Actions</h2>
+                <p className="text-sm text-gray-500">
+                  {selectedContacts.length} contact{selectedContacts.length !== 1 ? 's' : ''} selected
+                </p>
+              </div>
+              
+              {/* Show contacts table for selection */}
+              <ContactsTable
+                contacts={filteredContacts}
+                onContactSelect={handleContactSelect}
+                onEditContact={handleEditContact}
+                onContactClick={handleContactClick}
+                selectedContacts={selectedContacts}
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                statusFilter={statusFilter}
+                onStatusFilterChange={setStatusFilter}
+                activeTab="all"
+                onTabChange={() => {}}
+                isLoading={isLoadingContacts}
+                showCompanyColumn={false}
+                showTabsHeader={false}
+              />
+              
+              {/* Bulk Actions Panel */}
+              {selectedContacts.length > 0 && (
+                <div className="bg-white rounded-lg border p-6">
+                  <h3 className="text-lg font-medium mb-4">
+                    Send Message to {selectedContacts.length} Contact{selectedContacts.length !== 1 ? 's' : ''}
+                  </h3>
+                  {/* This will be handled by the existing BulkActions component */}
+                  <div className="text-sm text-gray-500">
+                    Use the bulk actions panel at the bottom of the screen to send messages to selected contacts.
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <ContactsTable
+              contacts={filteredContacts}
+              onContactSelect={handleContactSelect}
+              onEditContact={handleEditContact}
+              onContactClick={handleContactClick}
+              selectedContacts={selectedContacts}
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              statusFilter={statusFilter}
+              onStatusFilterChange={setStatusFilter}
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+              isLoading={isLoadingContacts}
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              showPagination={activeTab === 'all'}
+              showCompanyColumn={false}
+              showBulkActionsTab={true}
+            />
+          )}
         </main>
       </div>
 
       {/* Contact Details Sidebar */}
-      {showContactDetails && selectedContact && (
+      {showContactDetails && selectedContact && activeTab !== 'bulk-actions' && (
         <div className="fixed right-0 top-0 bottom-0 w-80 bg-white shadow-lg border-l z-40">
           <div className="flex items-center justify-between p-4 border-b">
             <h2 className="text-lg font-semibold">Contact Details</h2>
@@ -371,7 +434,7 @@ const Index = () => {
       )}
 
       {/* Chat Interface Sidebar */}
-      {showChatInterface && selectedContact && (
+      {showChatInterface && selectedContact && activeTab !== 'bulk-actions' && (
         <div className="fixed right-0 top-0 bottom-0 w-96 bg-white shadow-lg border-l z-50">
           <div className="flex items-center justify-between p-4 border-b">
             <h2 className="text-lg font-semibold">Chat - {getFullName(selectedContact)}</h2>
@@ -380,6 +443,28 @@ const Index = () => {
             </Button>
           </div>
           <ChatInterface contact={selectedContact} onClose={handleCloseChatInterface} />
+        </div>
+      )}
+
+      {/* Conversations Modal */}
+      {showConversationsModal && selectedContact && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl mx-4 h-[80vh]">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h2 className="text-lg font-semibold">
+                Conversation - {getFullName(selectedContact)}
+              </h2>
+              <Button variant="ghost" size="sm" onClick={handleCloseConversationsModal}>
+                <X size={16} />
+              </Button>
+            </div>
+            <div className="h-[calc(80vh-4rem)]">
+              <Conversations 
+                selectedContactId={selectedContact.id}
+                onClose={handleCloseConversationsModal}
+              />
+            </div>
+          </div>
         </div>
       )}
 
