@@ -26,7 +26,12 @@ type Conversation = {
   messageCount: number;
 };
 
-const Conversations: React.FC = () => {
+interface ConversationsProps {
+  selectedContactId?: string;
+  onClose?: () => void;
+}
+
+const Conversations: React.FC<ConversationsProps> = ({ selectedContactId, onClose }) => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -35,7 +40,7 @@ const Conversations: React.FC = () => {
   
   useEffect(() => {
     fetchConversations();
-  }, []);
+  }, [selectedContactId]);
   
   useEffect(() => {
     if (searchQuery.trim() === '') {
@@ -52,12 +57,19 @@ const Conversations: React.FC = () => {
   const fetchConversations = async () => {
     setIsLoading(true);
     try {
-      console.log('Fetching conversations...');
+      console.log('Fetching conversations...', selectedContactId ? `for contact: ${selectedContactId}` : 'all');
       
       // First get all contacts with first_name and last_name
-      const { data: contacts, error: contactsError } = await supabase
+      let contactsQuery = supabase
         .from('contacts')
         .select('id, first_name, last_name');
+      
+      // If we have a selected contact ID, filter to just that contact
+      if (selectedContactId) {
+        contactsQuery = contactsQuery.eq('id', selectedContactId);
+      }
+      
+      const { data: contacts, error: contactsError } = await contactsQuery;
         
       if (contactsError) {
         console.error('Error fetching contacts:', contactsError);
@@ -176,7 +188,9 @@ const Conversations: React.FC = () => {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-semibold">Conversations</h2>
+        <h2 className="text-2xl font-semibold">
+          {selectedContactId ? 'Conversation' : 'Conversations'}
+        </h2>
         <div className="flex space-x-2">
           <Button size="sm" variant="outline">
             <Filter className="mr-2 h-4 w-4" />
@@ -189,15 +203,17 @@ const Conversations: React.FC = () => {
         </div>
       </div>
       
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
-        <Input
-          placeholder="Search conversations..."
-          className="pl-10"
-          value={searchQuery}
-          onChange={handleSearchChange}
-        />
-      </div>
+      {!selectedContactId && (
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+          <Input
+            placeholder="Search conversations..."
+            className="pl-10"
+            value={searchQuery}
+            onChange={handleSearchChange}
+          />
+        </div>
+      )}
       
       <Card>
         {isLoading ? (
@@ -254,8 +270,15 @@ const Conversations: React.FC = () => {
             <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
               <MessageSquare className="text-primary" size={24} />
             </div>
-            <h3 className="text-lg font-medium mb-2">No conversations yet</h3>
-            <p className="text-muted-foreground mb-4">Start messaging your contacts to begin conversations</p>
+            <h3 className="text-lg font-medium mb-2">
+              {selectedContactId ? 'No messages yet' : 'No conversations yet'}
+            </h3>
+            <p className="text-muted-foreground mb-4">
+              {selectedContactId 
+                ? 'Start messaging this contact to begin a conversation'
+                : 'Start messaging your contacts to begin conversations'
+              }
+            </p>
             <Button>Start a conversation</Button>
           </div>
         )}
