@@ -359,14 +359,99 @@ const ContactsTable: React.FC<ContactsTableProps> = ({
   return (
     <div className="space-y-6">
       {showTabsHeader && (
-        <Tabs value={activeTab} onValueChange={onTabChange}>
-          <TabsList>
-            <TabsTrigger value="all">All Contacts</TabsTrigger>
-            <TabsTrigger value="active">Active</TabsTrigger>
-            <TabsTrigger value="inactive">Inactive</TabsTrigger>
-          </TabsList>
-          <TabsContent value={activeTab}>
+        <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
+          <div className="flex items-center justify-between">
+            <TabsList className="grid grid-cols-4 w-fit">
+              <TabsTrigger value="all">All Contacts</TabsTrigger>
+              <TabsTrigger value="active">Active</TabsTrigger>
+              <TabsTrigger value="inactive">Inactive</TabsTrigger>
+              <TabsTrigger value="bulk-actions">Bulk Actions</TabsTrigger>
+            </TabsList>
+            
+            <div className="flex items-center space-x-2">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Search contacts..."
+                  value={searchQuery}
+                  onChange={(e) => onSearchChange(e.target.value)}
+                  className="pl-8 w-64"
+                />
+              </div>
+              
+              <Select value={statusFilter} onValueChange={onStatusFilterChange}>
+                <SelectTrigger className="w-32">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                  <SelectItem value="lead">Lead</SelectItem>
+                  <SelectItem value="customer">Customer</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={segmentFilter} onValueChange={onSegmentFilterChange}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Select Segment..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Segments</SelectItem>
+                  {availableSegments.map((segment) => (
+                    <SelectItem key={segment} value={segment}>
+                      {segment}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Current Filter Display */}
+          {segmentFilter && segmentFilter !== 'all' && (
+            <div className="flex items-center gap-2 mt-2">
+              <span className="text-sm text-gray-500">Showing:</span>
+              <Badge variant="secondary" className="gap-1">
+                Segment → {segmentFilter}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-4 w-4 p-0 hover:bg-transparent"
+                  onClick={clearSegmentFilter}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </Badge>
+            </div>
+          )}
+
+          <TabsContent value="all" className="mt-6">
             {renderContactsTable()}
+          </TabsContent>
+          
+          <TabsContent value="active" className="mt-6">
+            {renderContactsTable()}
+          </TabsContent>
+          
+          <TabsContent value="inactive" className="mt-6">
+            {renderContactsTable()}
+          </TabsContent>
+
+          <TabsContent value="bulk-actions" className="mt-6">
+            <BulkActionsTab
+              selectedContacts={selectedContacts}
+              onActionComplete={() => {
+                // This will be handled by the parent component
+                if (window.location.reload) {
+                  console.log('Action completed, refreshing data...');
+                }
+              }}
+              onSelectionClear={() => onContactSelect([])}
+              segmentFilter={segmentFilter}
+              availableSegments={availableSegments}
+              onSegmentFilterChange={onSegmentFilterChange}
+            />
           </TabsContent>
         </Tabs>
       )}
