@@ -78,6 +78,7 @@ interface ContactInsert {
   status?: string;
   tags?: string[];
   notes?: string | null;
+  segment_name?: string | null;
 }
 
 // Helper to validate and clean contact data
@@ -215,6 +216,22 @@ const validateAndCleanContact = (row: Record<string, any>, index: number): Valid
     errors,
     cleanedData: errors.length === 0 ? cleanedData : undefined
   };
+};
+
+// Helper function to merge segment names
+const mergeSegmentNames = (existing: string | null, newSegment: string | null): string | null => {
+  if (!newSegment) return existing;
+  if (!existing) return newSegment;
+  
+  // Split existing segments and new segment by comma, trim whitespace
+  const existingSegments = existing.split(',').map(s => s.trim()).filter(s => s.length > 0);
+  const newSegments = newSegment.split(',').map(s => s.trim()).filter(s => s.length > 0);
+  
+  // Combine and deduplicate
+  const allSegments = [...existingSegments, ...newSegments];
+  const uniqueSegments = Array.from(new Set(allSegments));
+  
+  return uniqueSegments.join(', ');
 };
 
 export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) => {
@@ -373,6 +390,7 @@ export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) =
       status: row.status || 'active',
       tags: Array.isArray(row.tags) ? row.tags : [],
       notes: row.notes || null,
+      segment_name: row.segment_name || null,
     };
   };
 
@@ -400,7 +418,7 @@ export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) =
     const batchName = file?.name || `Imported contacts ${new Date().toLocaleString()}`;
     
     try {
-      console.log("Starting import process with enhanced phone deduplication...");
+      console.log("Starting import process with upsert logic and segment merging...");
       console.log("Import batch:", { batchId, batchName });
       
       // Transform all data according to the column mapping
@@ -417,7 +435,6 @@ export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) =
       // Count validation errors
       stats.errors += invalidRows.length;
       invalidRows.forEach(row => {
-        // Type guard to check if validation errors exist
         if ('_validationErrors' in row && Array.isArray(row._validationErrors)) {
           row._validationErrors.forEach((error: string) => {
             errorDetails.push({row, error});
@@ -435,7 +452,7 @@ export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) =
         }
         
         return cleanRow;
-      }).filter(row => row.first_name); // Extra safety check
+      }).filter(row => row.first_name);
       
       // Enhanced phone number deduplication within the file
       const phoneMap = new Map<string, Record<string, any>>();
@@ -463,107 +480,164 @@ export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) =
       
       console.log(`After file deduplication: ${uniqueContactsFromFile.length} unique contacts (${stats.phoneDuplicatesInFile} phone duplicates removed from file)`);
       
-      // Check against existing database phone numbers
-      const phoneNumbers = uniqueContactsFromFile
-        .map(row => row.phone)
-        .filter(phone => phone && isValidPhoneFormat(phone))
-        .map(phone => normalizePhoneNumber(phone));
-      
-      console.log(`Checking ${phoneNumbers.length} phone numbers against database...`);
-      
-      let existingPhoneNumbers = new Set<string>();
-      
-      if (phoneNumbers.length > 0) {
-        try {
-          // Get all existing contacts with phones
-          const { data: existingContacts, error } = await supabase
-            .from('contacts')
-            .select('phone')
-            .not('phone', 'is', null);
-          
-          if (error) {
-            console.error('Error fetching existing phone numbers:', error);
-            throw error;
-          }
-          
-          if (existingContacts) {
-            existingContacts.forEach(contact => {
-              if (contact.phone && isValidPhoneFormat(contact.phone)) {
-                const normalized = normalizePhoneNumber(contact.phone);
-                existingPhoneNumbers.add(normalized);
-              }
-            });
-          }
-          
-          console.log(`Found ${existingPhoneNumbers.size} existing phone numbers in database`);
-        } catch (error) {
-          console.error('Error checking existing phone numbers:', error);
-          // Continue with import but log the error
-          errorDetails.push({row: {}, error: `Failed to check existing phone numbers: ${(error as Error).message}`});
-        }
-      }
-      
-      // Filter out contacts with phone numbers that already exist in database
-      const newContacts: Record<string, any>[] = [];
-      const phoneDuplicatesInDb: Record<string, any>[] = [];
-      
-      uniqueContactsFromFile.forEach(row => {
-        if (row.phone && isValidPhoneFormat(row.phone)) {
-          const normalizedPhone = normalizePhoneNumber(row.phone);
-          
-          if (existingPhoneNumbers.has(normalizedPhone)) {
-            phoneDuplicatesInDb.push(row);
-            stats.phoneDuplicatesInDb++;
-            console.log(`Phone number already exists in database: ${row.phone} (normalized: ${normalizedPhone})`);
-          } else {
-            newContacts.push(row);
-          }
-        } else {
-          // Contacts without valid phone numbers can still be imported
-          newContacts.push(row);
-        }
-      });
-      
-      console.log(`After database deduplication: ${newContacts.length} contacts to import (${stats.phoneDuplicatesInDb} phone duplicates found in database)`);
-      
-      // Process remaining unique contacts in smaller batches
-      const batchSize = 5; // Reduced batch size
-      const totalRows = newContacts.length;
+      // Process contacts with upsert logic
+      const batchSize = 10; // Smaller batches for better error handling
+      const totalRows = uniqueContactsFromFile.length;
       
       for (let i = 0; i < totalRows; i += batchSize) {
-        const batch = newContacts.slice(i, i + batchSize);
+        const batch = uniqueContactsFromFile.slice(i, i + batchSize);
         
-        // Process each contact individually to avoid batch failures
+        // Process each contact individually for precise control
         for (const row of batch) {
           try {
-            // Create new contact - prepare data for insert
             const insertData = prepareContactForInsert(row);
-            const { data: created, error } = await supabase
-              .from('contacts')
-              .insert(insertData)
-              .select();
             
-            if (error) {
-              console.error('Error creating contact:', error);
-              stats.errors++;
-              errorDetails.push({row, error: `Create error: ${error.message}`});
-            } else {
-              stats.created += created?.length || 0;
-              console.log(`Successfully created contact`);
+            if (insertData.phone && isValidPhoneFormat(insertData.phone)) {
+              // Check if contact with this phone already exists
+              const { data: existingContact, error: fetchError } = await supabase
+                .from('contacts')
+                .select('*')
+                .eq('phone', insertData.phone)
+                .maybeSingle();
               
-              // Log the created contact
-              if (created && created.length > 0) {
-                try {
-                  await logContactOperation(
-                    created[0].id,
-                    created[0],
-                    'Created',
-                    'Contact created via CSV import',
-                    batchId,
-                    batchName
-                  );
-                } catch (logError) {
-                  console.error('Error logging contact creation:', logError);
+              if (fetchError) {
+                console.error('Error fetching existing contact:', fetchError);
+                stats.errors++;
+                errorDetails.push({row, error: `Fetch error: ${fetchError.message}`});
+                continue;
+              }
+              
+              if (existingContact) {
+                // Contact exists - update it
+                const updateData: Partial<ContactInsert> = {};
+                
+                // Update fields if new data is provided
+                if (insertData.first_name && insertData.first_name !== 'Unknown') {
+                  updateData.first_name = insertData.first_name;
+                }
+                if (insertData.last_name) {
+                  updateData.last_name = insertData.last_name;
+                }
+                if (insertData.email) {
+                  updateData.email = insertData.email;
+                }
+                if (insertData.company) {
+                  updateData.company = insertData.company;
+                }
+                if (insertData.notes) {
+                  updateData.notes = insertData.notes;
+                }
+                
+                // Merge segment names
+                if (insertData.segment_name) {
+                  updateData.segment_name = mergeSegmentNames(existingContact.segment_name, insertData.segment_name);
+                }
+                
+                // Merge tags
+                if (insertData.tags && insertData.tags.length > 0) {
+                  const existingTags = existingContact.tags || [];
+                  const newTags = insertData.tags;
+                  const mergedTags = Array.from(new Set([...existingTags, ...newTags]));
+                  updateData.tags = mergedTags;
+                }
+                
+                // Only update if there are changes
+                if (Object.keys(updateData).length > 0) {
+                  updateData.updated_at = new Date().toISOString();
+                  
+                  const { error: updateError } = await supabase
+                    .from('contacts')
+                    .update(updateData)
+                    .eq('id', existingContact.id);
+                  
+                  if (updateError) {
+                    console.error('Error updating contact:', updateError);
+                    stats.errors++;
+                    errorDetails.push({row, error: `Update error: ${updateError.message}`});
+                  } else {
+                    stats.updated++;
+                    console.log(`Successfully updated contact with phone: ${insertData.phone}`);
+                    
+                    // Log the update
+                    try {
+                      await logContactOperation(
+                        existingContact.id,
+                        { ...existingContact, ...updateData },
+                        'Updated',
+                        'Contact updated via CSV import (merge)',
+                        batchId,
+                        batchName
+                      );
+                    } catch (logError) {
+                      console.error('Error logging contact update:', logError);
+                    }
+                  }
+                } else {
+                  // No changes needed, count as duplicate
+                  stats.duplicates++;
+                  console.log(`No changes needed for contact with phone: ${insertData.phone}`);
+                }
+              } else {
+                // Contact doesn't exist - create new one
+                const { data: created, error: createError } = await supabase
+                  .from('contacts')
+                  .insert(insertData)
+                  .select();
+                
+                if (createError) {
+                  console.error('Error creating contact:', createError);
+                  stats.errors++;
+                  errorDetails.push({row, error: `Create error: ${createError.message}`});
+                } else {
+                  stats.created++;
+                  console.log(`Successfully created contact with phone: ${insertData.phone}`);
+                  
+                  // Log the creation
+                  if (created && created.length > 0) {
+                    try {
+                      await logContactOperation(
+                        created[0].id,
+                        created[0],
+                        'Created',
+                        'Contact created via CSV import',
+                        batchId,
+                        batchName
+                      );
+                    } catch (logError) {
+                      console.error('Error logging contact creation:', logError);
+                    }
+                  }
+                }
+              }
+            } else {
+              // No phone number or invalid format - create new contact anyway
+              const { data: created, error: createError } = await supabase
+                .from('contacts')
+                .insert(insertData)
+                .select();
+              
+              if (createError) {
+                console.error('Error creating contact without phone:', createError);
+                stats.errors++;
+                errorDetails.push({row, error: `Create error: ${createError.message}`});
+              } else {
+                stats.created++;
+                console.log(`Successfully created contact without phone`);
+                
+                // Log the creation
+                if (created && created.length > 0) {
+                  try {
+                    await logContactOperation(
+                      created[0].id,
+                      created[0],
+                      'Created',
+                      'Contact created via CSV import (no phone)',
+                      batchId,
+                      batchName
+                    );
+                  } catch (logError) {
+                    console.error('Error logging contact creation:', logError);
+                  }
                 }
               }
             }
@@ -579,36 +653,30 @@ export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) =
         setImportProgress(progress);
       }
       
-      // Update total duplicates count
-      stats.duplicates = stats.phoneDuplicatesInFile + stats.phoneDuplicatesInDb;
-      
       // Import complete
-      console.log("Import completed with enhanced phone deduplication stats:", stats);
+      console.log("Import completed with upsert logic:", stats);
       if (errorDetails.length > 0) {
         console.log("Error details:", errorDetails.slice(0, 10)); // Log first 10 errors
       }
       
       setImportStats(stats);
       
-      // Show success message with detailed phone deduplication info
-      const successfulImports = stats.created;
-      const totalSkipped = stats.duplicates + stats.errors + stats.skippedInvalidPhone;
+      // Show success message with detailed information
+      const successfulImports = stats.created + stats.updated;
+      const totalSkipped = stats.duplicates + stats.errors + stats.phoneDuplicatesInFile;
       
-      let description = `Successfully imported ${successfulImports} contacts.`;
+      let description = `Successfully processed ${successfulImports} contacts (${stats.created} created, ${stats.updated} updated).`;
       
       if (totalSkipped > 0) {
         const skipReasons = [];
         if (stats.phoneDuplicatesInFile > 0) {
           skipReasons.push(`${stats.phoneDuplicatesInFile} duplicate phones in file`);
         }
-        if (stats.phoneDuplicatesInDb > 0) {
-          skipReasons.push(`${stats.phoneDuplicatesInDb} phones already in database`);
+        if (stats.duplicates > 0) {
+          skipReasons.push(`${stats.duplicates} no changes needed`);
         }
         if (stats.errors > 0) {
           skipReasons.push(`${stats.errors} errors`);
-        }
-        if (stats.skippedInvalidPhone > 0) {
-          skipReasons.push(`${stats.skippedInvalidPhone} invalid phones`);
         }
         
         description += ` ${totalSkipped} rows skipped: ${skipReasons.join(', ')}.`;

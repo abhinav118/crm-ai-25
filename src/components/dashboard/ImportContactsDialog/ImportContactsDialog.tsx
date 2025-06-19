@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useImportContacts } from './hooks/useImportContacts';
@@ -69,7 +68,7 @@ const ImportContactsDialog: React.FC<ImportContactsDialogProps> = ({
               <h3 className="text-xl font-medium">Importing Contacts...</h3>
               <Progress value={importProgress} className="w-full h-2" />
               <p className="text-sm text-muted-foreground">
-                Please wait while your contacts are being imported with phone deduplication.
+                Processing contacts with smart merge and upsert logic.
               </p>
             </>
           ) : (
@@ -84,52 +83,64 @@ const ImportContactsDialog: React.FC<ImportContactsDialogProps> = ({
                 {importStats.errors > 0 ? 'Import Completed with Errors' : 'Import Complete!'}
               </h3>
               
-              <div className="grid grid-cols-3 gap-4 max-w-2xl mx-auto">
+              <div className="grid grid-cols-4 gap-4 max-w-3xl mx-auto">
                 <div className="bg-muted/30 p-3 rounded-md">
                   <p className="text-sm text-muted-foreground">Total Processed</p>
                   <p className="text-2xl font-semibold">{importStats.total}</p>
                 </div>
                 <div className="bg-green-50 p-3 rounded-md">
-                  <p className="text-sm text-green-700">Successfully Created</p>
+                  <p className="text-sm text-green-700">Created</p>
                   <p className="text-2xl font-semibold text-green-700">{importStats.created}</p>
                 </div>
+                <div className="bg-blue-50 p-3 rounded-md">
+                  <p className="text-sm text-blue-700">Updated</p>
+                  <p className="text-2xl font-semibold text-blue-700">{importStats.updated}</p>
+                </div>
                 <div className="bg-amber-50 p-3 rounded-md">
-                  <p className="text-sm text-amber-700">Total Skipped</p>
+                  <p className="text-sm text-amber-700">Skipped</p>
                   <p className="text-2xl font-semibold text-amber-700">
-                    {importStats.duplicates + importStats.errors + importStats.skippedInvalidPhone}
+                    {importStats.duplicates + importStats.errors + importStats.phoneDuplicatesInFile}
                   </p>
                 </div>
               </div>
               
-              {/* Enhanced Phone Deduplication Details */}
-              {(importStats.phoneDuplicatesInFile > 0 || importStats.phoneDuplicatesInDb > 0) && (
-                <div className="max-w-2xl mx-auto space-y-3">
-                  <h4 className="font-medium text-amber-700">Phone Number Deduplication Summary</h4>
-                  <div className="grid grid-cols-2 gap-4">
-                    {importStats.phoneDuplicatesInFile > 0 && (
-                      <div className="bg-amber-50 p-3 rounded-md border border-amber-200">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Users className="h-4 w-4 text-amber-600" />
-                          <p className="text-sm font-medium text-amber-700">File Duplicates</p>
-                        </div>
-                        <p className="text-xl font-semibold text-amber-700">{importStats.phoneDuplicatesInFile}</p>
-                        <p className="text-xs text-amber-600">Duplicate phones within uploaded file</p>
-                      </div>
-                    )}
-                    
-                    {importStats.phoneDuplicatesInDb > 0 && (
-                      <div className="bg-red-50 p-3 rounded-md border border-red-200">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Database className="h-4 w-4 text-red-600" />
-                          <p className="text-sm font-medium text-red-700">Database Duplicates</p>
-                        </div>
-                        <p className="text-xl font-semibold text-red-700">{importStats.phoneDuplicatesInDb}</p>
-                        <p className="text-xs text-red-600">Phones already in your database</p>
-                      </div>
-                    )}
+              {/* Enhanced Import Details */}
+              <div className="max-w-2xl mx-auto space-y-3">
+                <h4 className="font-medium text-gray-700">Import Summary</h4>
+                
+                {importStats.updated > 0 && (
+                  <div className="bg-blue-50 p-3 rounded-md border border-blue-200">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Database className="h-4 w-4 text-blue-600" />
+                      <p className="text-sm font-medium text-blue-700">Contacts Updated</p>
+                    </div>
+                    <p className="text-xl font-semibold text-blue-700">{importStats.updated}</p>
+                    <p className="text-xs text-blue-600">Existing contacts merged with new data</p>
                   </div>
-                </div>
-              )}
+                )}
+                
+                {importStats.duplicates > 0 && (
+                  <div className="bg-gray-50 p-3 rounded-md border border-gray-200">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Users className="h-4 w-4 text-gray-600" />
+                      <p className="text-sm font-medium text-gray-700">No Changes Needed</p>
+                    </div>
+                    <p className="text-xl font-semibold text-gray-700">{importStats.duplicates}</p>
+                    <p className="text-xs text-gray-600">Contacts already up-to-date</p>
+                  </div>
+                )}
+                
+                {importStats.phoneDuplicatesInFile > 0 && (
+                  <div className="bg-amber-50 p-3 rounded-md border border-amber-200">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Phone className="h-4 w-4 text-amber-600" />
+                      <p className="text-sm font-medium text-amber-700">File Duplicates</p>
+                    </div>
+                    <p className="text-xl font-semibold text-amber-700">{importStats.phoneDuplicatesInFile}</p>
+                    <p className="text-xs text-amber-600">Duplicate phones within uploaded file</p>
+                  </div>
+                )}
+              </div>
               
               <div className="space-y-3 mt-4">
                 {importStats.errors > 0 && (
@@ -194,10 +205,11 @@ const ImportContactsDialog: React.FC<ImportContactsDialogProps> = ({
               <div className="text-sm text-muted-foreground mt-4 max-w-md mx-auto">
                 <p className="font-medium">Import Benefits:</p>
                 <ul className="list-disc list-inside mt-1 space-y-1 text-left">
+                  <li>Smart merge prevents duplicate contacts</li>
+                  <li>Existing contact data preserved and enhanced</li>
+                  <li>Segment names automatically merged</li>
                   <li>All phone numbers standardized to (XXX) XXX-XXXX format</li>
-                  <li>Duplicate phone numbers automatically prevented</li>
                   <li>All import actions logged for audit trail</li>
-                  <li>Database integrity maintained</li>
                 </ul>
               </div>
             </>
