@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { CsvColumn } from './types';
 import { CheckCircle, HelpCircle, XCircle, Info } from 'lucide-react';
@@ -121,6 +120,7 @@ const MapStage: React.FC<MapStageProps> = ({ columns, setColumns }) => {
       const companyFields = ['company', 'organization', 'business', 'employer', 'org', 'firm'];
       const statusFields = ['status', 'state', 'active', 'inactive'];
       const tagFields = ['tag', 'category', 'group', 'label'];
+      const segmentFields = ['segment', 'customer segment', 'contact segment', 'group name', 'segment name'];
       
       // Check for first name
       if (firstNameFields.some(term => headerLower.includes(term))) {
@@ -132,9 +132,14 @@ const MapStage: React.FC<MapStageProps> = ({ columns, setColumns }) => {
         return { ...column, selected: true, mappedTo: 'last_name' };
       }
       
-      // Check for general name field - map to first_name
+      // Check for segment
+      if (segmentFields.some(term => headerLower.includes(term))) {
+        return { ...column, selected: true, mappedTo: 'segment' };
+      }
+      
+      // Check for other fields
       if (nameFields.some(term => headerLower.includes(term))) {
-        return { ...column, selected: true, mappedTo: 'first_name' };
+        return { ...column, selected: true, mappedTo: 'name' };
       }
       
       if (emailFields.some(term => headerLower.includes(term))) {

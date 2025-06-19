@@ -1,32 +1,44 @@
-
 import React, { useState, useMemo } from 'react';
 import { Plus, MessageSquare, UserPlus, Search, Settings, X, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import ContactsTable, { Contact } from '@/components/dashboard/ContactsTable';
+import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useToast } from '@/components/ui/use-toast';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import ContactsTable from '@/components/dashboard/ContactsTable';
+import Sidebar from '@/components/dashboard/Sidebar';
 import ContactForm from '@/components/dashboard/ContactForm';
 import ActionButtons from '@/components/dashboard/ActionButtons';
 import UserProfile from '@/components/dashboard/UserProfile';
 import ChatInterface from '@/components/dashboard/ChatInterface';
-import Sidebar from '@/components/dashboard/Sidebar';
 import Conversations from '@/components/dashboard/Conversations';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
 import { logContactAction } from '@/utils/contactLogger';
 import { getFullName } from '@/utils/contactHelpers';
 
-interface ContactData {
+export interface Contact {
+  id: string;
   first_name: string;
-  last_name: string;
-  email: string | null;
-  phone: string | null;
-  company: string | null;
-  status: string;
-  tags: string[];
-  last_activity?: string | null;
-  updated_at: string;
+  last_name?: string;
+  email?: string;
+  phone?: string;
+  company?: string;
+  status: 'active' | 'inactive';
+  tags?: string[];
+  createdAt?: string;
+  segment_name?: string;
+}
+
+export interface ContactFormData {
   id?: string;
-  notes?: string | null;
+  first_name: string;
+  last_name?: string;
+  email?: string;
+  phone?: string;
+  company?: string;
+  status: 'active' | 'inactive';
+  tags?: string[];
   segment_name?: string;
 }
 
@@ -45,8 +57,12 @@ const Index = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(100);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [availableSegments, setAvailableSegments] = useState<string[]>([]);
 
   const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const location = useLocation();
+  const navigate = useNavigate();
 
   // Load filters from localStorage on mount
   React.useEffect(() => {
@@ -90,7 +106,7 @@ const Index = () => {
   };
 
   // Fetch available segments
-  const { data: segmentsData } = useQuery({
+  const { data: segmentsData } = useQueryClient({
     queryKey: ['contact-segments'],
     queryFn: async () => {
       console.log('Fetching available segments...');
@@ -122,12 +138,11 @@ const Index = () => {
       
       let query = supabase
         .from('contacts')
-        .select('*', { count: 'exact' })
-        .order('created_at', { ascending: false });
+        .select('*', { count: 'exact' });
 
       // Apply search filter
       if (searchQuery) {
-        query = query.or(`first_name.ilike.%${searchQuery}%,last_name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%,company.ilike.%${searchQuery}%`);
+        query = query.or(`first_name.ilike.%${searchQuery}%,last_name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%`);
       }
 
       // Apply status filter (for status-specific tabs and status filter)
@@ -260,55 +275,65 @@ const Index = () => {
     }
   };
 
-  const handleSubmitContact = async (contactData: ContactData) => {
+  const handleSubmitContact = async (formData: ContactFormData) => {
     try {
       if (selectedContact) {
         // Update existing contact
-        const { data, error } = await supabase
+        const { error } = await supabase
           .from('contacts')
-          .update(contactData)
-          .eq('id', selectedContact.id)
-          .select();
-        
+          .update({
+            ...formData,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', selectedContact.id);
+
         if (error) throw error;
-        
-        await logContactAction('update', {
-          id: selectedContact.id,
-          ...contactData
-        });
-        
+
         toast({
-          title: 'Success',
-          description: 'Contact updated successfully',
+          title: 'Contact updated',
+          description: 'The contact has been successfully updated.',
         });
+
+        // Log the update action
+        await logContactAction(selectedContact.id, 'update');
       } else {
-        // Create new contact - use 'add' instead of 'create'
+        // Create new contact
         const { data, error } = await supabase
           .from('contacts')
-          .insert([contactData])
-          .select();
-        
+          .insert([{
+            ...formData,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }])
+          .select()
+          .single();
+
         if (error) throw error;
-        
-        if (data && data[0]) {
-          await logContactAction('add', {
-            id: data[0].id,
-            ...contactData
-          });
-        }
-        
+
         toast({
-          title: 'Success',
-          description: 'Contact added successfully',
+          title: 'Contact created',
+          description: 'The new contact has been successfully created.',
         });
+
+        // Log the create action
+        if (data) {
+          await logContactAction(data.id, 'create');
+        }
       }
-      
+
+      // Invalidate and refetch contacts
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      
+      // Close the form
       setIsContactFormOpen(false);
       setSelectedContact(null);
     } catch (error) {
-      console.error('Error submitting contact:', error);
-      throw error;
+      console.error('Error saving contact:', error);
+      toast({
+        title: 'Error',
+        description: 'There was an error saving the contact. Please try again.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -364,6 +389,11 @@ const Index = () => {
 
   const toggleSidebar = () => {
     setSidebarCollapsed(!sidebarCollapsed);
+  };
+
+  // Handle segments load
+  const handleSegmentsLoad = (segments: string[]) => {
+    setAvailableSegments(segments);
   };
 
   return (
@@ -451,7 +481,8 @@ const Index = () => {
             showBulkActionsTab={true}
             segmentFilter={segmentFilter}
             onSegmentFilterChange={handleSegmentFilterChange}
-            availableSegments={segmentsData || []}
+            availableSegments={availableSegments}
+            onSegmentsLoad={handleSegmentsLoad}
           />
         </main>
       </div>

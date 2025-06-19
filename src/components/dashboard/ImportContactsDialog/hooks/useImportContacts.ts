@@ -72,7 +72,7 @@ interface ValidatedContact extends Record<string, any> {
 
 // Define the contact insert type to match Supabase schema
 interface ContactInsert {
-  first_name: string;
+  first_name: string;  // Required field
   last_name?: string | null;
   email?: string | null;
   phone?: string | null;
@@ -252,8 +252,24 @@ const validateAndCleanContact = (row: Record<string, any>, index: number): Valid
       .map(tag => typeof tag === 'string' ? tag.trim() : String(tag).trim())
       .filter(tag => tag.length > 0 && tag.length <= 50)
       .slice(0, 10); // Limit to 10 tags max
-  } else {
-    cleanedData.tags = [];
+  }
+  
+  // Validate and clean segment name
+  if (cleanedData.segment) {
+    if (typeof cleanedData.segment !== 'string') {
+      cleanedData.segment = String(cleanedData.segment);
+    }
+    cleanedData.segment = cleanedData.segment.trim();
+    
+    // Validate segment name length
+    if (cleanedData.segment.length > 100) {
+      errors.push(`Segment name exceeds 100 characters (row ${index + 1})`);
+    }
+    
+    // Remove if empty after trimming
+    if (cleanedData.segment === '') {
+      cleanedData.segment = null;
+    }
   }
   
   // Validate notes
@@ -284,6 +300,7 @@ export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) =
   const [data, setData] = useState<Record<string, string>[]>([]);
   const [isImporting, setIsImporting] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
+  const [segmentName, setSegmentName] = useState<string>('');
   const [importStats, setImportStats] = useState({
     total: 0,
     created: 0,
@@ -304,6 +321,7 @@ export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) =
     setData([]);
     setIsImporting(false);
     setImportProgress(0);
+    setSegmentName('');
     setImportStats({
       total: 0,
       created: 0,
@@ -389,20 +407,40 @@ export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) =
     }, {} as Record<string, string>);
 
     console.log("Header to field map:", headerToFieldMap);
-    console.log("Raw data rows to process:", data.length);
-    
+
+    // Special case for segment name
+    const segmentHeader = columns.find(col => 
+      col.selected && 
+      (col.header.toLowerCase().includes('segment') || col.mappedTo === 'segment')
+    )?.header;
+
+    // Special case for first name + last name combination
+    // ... existing code ...
+
     // Transform the data according to the mapping
     return data.map((row, index) => {
       const transformedRow: Record<string, any> = {
         // Default values
+        name: 'Imported Contact',
         status: 'active',
-        tags: [],
+        segment: null, // Default segment to null
       };
       
       // Apply mappings from CSV to database fields
       Object.keys(headerToFieldMap).forEach(header => {
         const fieldName = headerToFieldMap[header];
         const value = row[header];
+        
+        // Special handling for segment name
+        if (header === segmentHeader) {
+          if (value && typeof value === 'string') {
+            transformedRow.segment = value.trim();
+          }
+          return;
+        }
+        
+        // Special handling for combining first and last names
+        // ... existing code ...
         
         if (value !== undefined && value !== null && value !== '') {
           transformedRow[fieldName] = value;
@@ -453,8 +491,8 @@ export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) =
 
   // Helper function to ensure contact data conforms to expected type
   const prepareContactForInsert = (row: Record<string, any>): ContactInsert => {
-    return {
-      first_name: row.first_name || row.last_name || 'Unknown',
+    const insertData: ContactInsert = {
+      first_name: row.first_name || row.name || 'Unknown',  // Ensure we always have a first_name
       last_name: row.last_name || null,
       email: row.email || null,
       phone: row.phone || null,
@@ -462,8 +500,10 @@ export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) =
       status: row.status || 'active',
       tags: Array.isArray(row.tags) ? row.tags : [],
       notes: row.notes || null,
-      segment_name: row.segment_name || null,
+      segment_name: segmentName || null,
     };
+    
+    return insertData;
   };
 
   const importContacts = async () => {
@@ -576,7 +616,7 @@ export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) =
         for (const row of batch) {
           try {
             const insertData = prepareContactForInsert(row);
-            
+             console.log(`-----Merged segment process-------`,insertData);
             if (insertData.phone && isValidPhoneFormat(insertData.phone)) {
               // First, check if contact exists to handle segment_name merging
               const { data: existingContact } = await supabase
@@ -815,6 +855,8 @@ export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) =
     isImporting,
     importProgress,
     importStats,
+    segmentName,
+    setSegmentName,
     handleFileSelected,
     goToNextStage,
     goToPreviousStage,

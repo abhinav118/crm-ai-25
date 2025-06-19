@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useImportContacts } from './hooks/useImportContacts';
@@ -31,6 +30,7 @@ const ImportContactsDialog: React.FC<ImportContactsDialogProps> = ({
     goToPreviousStage,
     handleFileSelected,
     setStage,
+    setSegmentName,
   } = useImportContacts({ onImportSuccess });
 
   const [showErrorDetails, setShowErrorDetails] = useState(false);
@@ -56,6 +56,7 @@ const ImportContactsDialog: React.FC<ImportContactsDialogProps> = ({
             goToNextStage();
           }}
           fileName={file?.name}
+          setSegmentName={setSegmentName}
         />
       );
     }

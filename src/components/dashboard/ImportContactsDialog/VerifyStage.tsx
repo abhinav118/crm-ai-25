@@ -27,6 +27,7 @@ interface VerifyStageProps {
   onBack: () => void;
   setImportResult: (result: any) => void;
   fileName?: string;
+  setSegmentName: (name: string) => void;
 }
 
 const VerifyStage: React.FC<VerifyStageProps> = ({
@@ -36,9 +37,10 @@ const VerifyStage: React.FC<VerifyStageProps> = ({
   onComplete,
   onBack,
   setImportResult,
-  fileName
+  fileName,
+  setSegmentName,
 }) => {
-  const [segmentName, setSegmentName] = useState('');
+  const [localSegmentName, setLocalSegmentName] = useState('');
   const [isImporting, setIsImporting] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
 
@@ -47,11 +49,19 @@ const VerifyStage: React.FC<VerifyStageProps> = ({
     const now = new Date();
     const date = now.toISOString().split('T')[0];
     const time = now.toTimeString().split(' ')[0].replace(/:/g, '');
-    setSegmentName(`Contacts_list_${date}_${time}`);
-  }, []);
+    const defaultSegmentName = `Imported_${date}_${time}`;
+    setLocalSegmentName(defaultSegmentName);
+    setSegmentName(defaultSegmentName);
+  }, [setSegmentName]);
+
+  const handleSegmentNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newName = e.target.value;
+    setLocalSegmentName(newName);
+    setSegmentName(newName);
+  };
 
   const validateSegmentName = (name: string) => {
-    return /^[a-zA-Z0-9\s]+$/.test(name);
+    return name.length > 0 && /^[a-zA-Z0-9_\s-]+$/.test(name);
   };
 
   const formatPhoneNumber = (phone: string) => {
@@ -73,11 +83,11 @@ const VerifyStage: React.FC<VerifyStageProps> = ({
   };
 
   const handleImport = async () => {
-    if (!validateSegmentName(segmentName)) {
+    if (!validateSegmentName(localSegmentName)) {
       toast({
         title: 'Invalid Segment Name',
-        description: 'Segment name can only contain letters, numbers, and spaces.',
-        variant: 'destructive'
+        description: 'Segment name can only contain letters, numbers, spaces, underscores, and hyphens.',
+        variant: 'destructive',
       });
       return;
     }
@@ -88,7 +98,7 @@ const VerifyStage: React.FC<VerifyStageProps> = ({
     try {
       const contactsToImport = data.map(row => {
         const contact: any = {
-          segment_name: segmentName.trim(),
+          segment_name: localSegmentName.trim(),
           status: 'active',
           tags: [],
           created_at: new Date().toISOString(),
@@ -201,7 +211,7 @@ const VerifyStage: React.FC<VerifyStageProps> = ({
 
       toast({
         title: 'Import Completed',
-        description: `Successfully imported ${created} out of ${contactsToImport.length} contacts to segment "${segmentName}".`,
+        description: `Successfully imported ${created} out of ${contactsToImport.length} contacts to segment "${localSegmentName}".`,
       });
 
     } catch (error) {
@@ -220,130 +230,48 @@ const VerifyStage: React.FC<VerifyStageProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Segment Name Input */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Tag className="h-5 w-5" />
-            Segment Configuration
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="segment-name">Segment Name</Label>
-            <Input
-              id="segment-name"
-              value={segmentName}
-              onChange={(e) => setSegmentName(e.target.value)}
-              placeholder="e.g., VIP List"
-              className="max-w-md"
-            />
-            <p className="text-sm text-gray-500">
-              Optional but recommended. Use letters, numbers, and spaces only.
-            </p>
-          </div>
-          
-          {segmentName && !validateSegmentName(segmentName) && (
-            <div className="flex items-center gap-2 text-red-600">
-              <AlertCircle className="h-4 w-4" />
-              <span className="text-sm">Invalid segment name. Use only letters, numbers, and spaces.</span>
+        <CardContent className="pt-6">
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="segmentName">Segment Name</Label>
+              <Input
+                id="segmentName"
+                value={localSegmentName}
+                onChange={handleSegmentNameChange}
+                placeholder="Enter segment name"
+                className="mt-1"
+              />
+              <p className="text-sm text-muted-foreground mt-1">
+                This name will be used to identify this group of contacts
+              </p>
             </div>
-          )}
-        </CardContent>
-      </Card>
 
-      {/* Import Summary */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CheckCircle className="h-5 w-5" />
-            Import Summary
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <p className="text-sm font-medium">File Information</p>
-              <div className="text-sm text-gray-600 space-y-1">
-                <div>File: {fileName || 'Unknown'}</div>
-                <div>Total Rows: {data.length}</div>
-                <div>Segment: {segmentName}</div>
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <p className="text-sm font-medium">Mapped Fields</p>
-              <div className="flex flex-wrap gap-1">
-                {selectedColumns.map((column) => (
-                  <Badge key={column.name} variant="secondary" className="text-xs">
-                    {column.mappedTo}
-                  </Badge>
-                ))}
-              </div>
+            <div className="mt-4">
+              <h3 className="font-medium mb-2">Import Summary</h3>
+              <ul className="text-sm space-y-1">
+                <li>Total Contacts: {data.length}</li>
+                <li>Selected Fields: {selectedColumns.length}</li>
+                <li>File Name: {fileName || 'N/A'}</li>
+              </ul>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Data Preview */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Data Preview</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ScrollArea className="h-64 border rounded-md">
-            <div className="p-4">
-              <div className="space-y-4">
-                {previewData.map((row, index) => (
-                  <div key={index} className="border-b pb-3 last:border-b-0">
-                    <div className="font-medium text-sm">Row {index + 1}</div>
-                    <div className="grid grid-cols-2 gap-2 mt-2 text-sm">
-                      {selectedColumns.map((column) => (
-                        <div key={column.name}>
-                          <span className="font-medium">{column.mappedTo}:</span>
-                          <span className="ml-2 text-gray-600">
-                            {column.mappedTo === 'phone' 
-                              ? formatPhoneNumber(row[column.name] || '') 
-                              : row[column.name] || '-'
-                            }
-                          </span>
-                        </div>
-                      ))}
-                      <div>
-                        <span className="font-medium">segment:</span>
-                        <span className="ml-2 text-gray-600">{segmentName}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </ScrollArea>
-        </CardContent>
-      </Card>
+      <ScrollArea className="h-[300px] rounded-md border">
+        {/* Preview table content */}
+      </ScrollArea>
 
-      {/* Action Buttons */}
       <div className="flex justify-between">
-        <Button variant="outline" onClick={onBack} disabled={isImporting}>
+        <Button variant="outline" onClick={onBack}>
           Back
         </Button>
-        
         <Button 
           onClick={handleImport} 
-          disabled={isImporting || !segmentName.trim() || !validateSegmentName(segmentName)}
-          className="gap-2"
+          disabled={isImporting || !validateSegmentName(localSegmentName)}
         >
-          {isImporting ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Importing... {importProgress}%
-            </>
-          ) : (
-            <>
-              <Upload className="h-4 w-4" />
-              Import {data.length} Contacts
-            </>
-          )}
+          {isImporting ? 'Importing...' : 'Import Contacts'}
         </Button>
       </div>
     </div>
