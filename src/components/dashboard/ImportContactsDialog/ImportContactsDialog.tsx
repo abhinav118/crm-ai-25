@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useImportContacts } from './hooks/useImportContacts';
@@ -8,7 +9,7 @@ import ImportBreadcrumbs from './ImportBreadcrumbs';
 import ImportDialogActions from './ImportDialogActions';
 import { ImportContactsDialogProps } from './types';
 import { Progress } from '@/components/ui/progress';
-import { CheckCircle, Loader2, AlertCircle, Phone, ChevronDown, ChevronUp, Users, Database } from 'lucide-react';
+import { CheckCircle, Loader2, AlertCircle, Phone, ChevronDown, ChevronUp, Users, Database, Tag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const ImportContactsDialog: React.FC<ImportContactsDialogProps> = ({ 
@@ -119,6 +120,17 @@ const ImportContactsDialog: React.FC<ImportContactsDialogProps> = ({
                   </div>
                 )}
                 
+                {importStats.segmentMerges > 0 && (
+                  <div className="bg-purple-50 p-3 rounded-md border border-purple-200">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Tag className="h-4 w-4 text-purple-600" />
+                      <p className="text-sm font-medium text-purple-700">Segment Merges</p>
+                    </div>
+                    <p className="text-xl font-semibold text-purple-700">{importStats.segmentMerges}</p>
+                    <p className="text-xs text-purple-600">Segment names merged without duplicates</p>
+                  </div>
+                )}
+                
                 {importStats.duplicates > 0 && (
                   <div className="bg-gray-50 p-3 rounded-md border border-gray-200">
                     <div className="flex items-center gap-2 mb-1">
@@ -134,7 +146,7 @@ const ImportContactsDialog: React.FC<ImportContactsDialogProps> = ({
                   <div className="bg-amber-50 p-3 rounded-md border border-amber-200">
                     <div className="flex items-center gap-2 mb-1">
                       <Phone className="h-4 w-4 text-amber-600" />
-                      <p className="text-sm font-medium text-amber-700">File Duplicates</p>
+                      <p className="text-sm font-medium text-amber-700">File Duplicates Skipped</p>
                     </div>
                     <p className="text-xl font-semibold text-amber-700">{importStats.phoneDuplicatesInFile}</p>
                     <p className="text-xs text-amber-600">Duplicate phones within uploaded file</p>
@@ -207,7 +219,7 @@ const ImportContactsDialog: React.FC<ImportContactsDialogProps> = ({
                 <ul className="list-disc list-inside mt-1 space-y-1 text-left">
                   <li>Smart merge prevents duplicate contacts</li>
                   <li>Existing contact data preserved and enhanced</li>
-                  <li>Segment names automatically merged</li>
+                  <li>Segment names automatically merged without duplicates</li>
                   <li>All phone numbers standardized to (XXX) XXX-XXXX format</li>
                   <li>All import actions logged for audit trail</li>
                 </ul>
@@ -227,7 +239,7 @@ const ImportContactsDialog: React.FC<ImportContactsDialogProps> = ({
         <DialogHeader>
           <DialogTitle>Import Contacts</DialogTitle>
           <DialogDescription>
-            Upload a CSV file to import contacts with enhanced phone number deduplication.
+            Upload a CSV file to import contacts with enhanced phone number deduplication and segment merging.
           </DialogDescription>
         </DialogHeader>
         

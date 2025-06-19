@@ -83,6 +83,22 @@ interface ContactInsert {
   segment_name?: string | null;
 }
 
+// Helper to merge segment names properly
+const mergeSegmentNames = (existing: string | null, newSegment: string | null): string | null => {
+  if (!newSegment) return existing;
+  if (!existing) return newSegment;
+  
+  // Split existing segments and new segment by comma, trim whitespace
+  const existingSegments = existing.split(',').map(s => s.trim()).filter(s => s.length > 0);
+  const newSegments = newSegment.split(',').map(s => s.trim()).filter(s => s.length > 0);
+  
+  // Combine and deduplicate
+  const allSegments = [...existingSegments, ...newSegments];
+  const uniqueSegments = Array.from(new Set(allSegments));
+  
+  return uniqueSegments.join(', ');
+};
+
 // Enhanced helper to validate and clean contact data with name processing
 const validateAndCleanContact = (row: Record<string, any>, index: number): ValidationResult => {
   const errors: string[] = [];
@@ -261,22 +277,6 @@ const validateAndCleanContact = (row: Record<string, any>, index: number): Valid
   };
 };
 
-// Helper to merge segment names
-const mergeSegmentNames = (existing: string | null, newSegment: string | null): string | null => {
-  if (!newSegment) return existing;
-  if (!existing) return newSegment;
-  
-  // Split existing segments and new segment by comma, trim whitespace
-  const existingSegments = existing.split(',').map(s => s.trim()).filter(s => s.length > 0);
-  const newSegments = newSegment.split(',').map(s => s.trim()).filter(s => s.length > 0);
-  
-  // Combine and deduplicate
-  const allSegments = [...existingSegments, ...newSegments];
-  const uniqueSegments = Array.from(new Set(allSegments));
-  
-  return uniqueSegments.join(', ');
-};
-
 export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) => {
   const [stage, setStage] = useState<ImportStage>('upload');
   const [file, setFile] = useState<File | null>(null);
@@ -294,6 +294,7 @@ export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) =
     phoneDuplicatesInFile: 0,
     phoneDuplicatesInDb: 0,
     namesSplit: 0,
+    segmentMerges: 0,
   });
 
   const resetState = () => {
@@ -313,6 +314,7 @@ export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) =
       phoneDuplicatesInFile: 0,
       phoneDuplicatesInDb: 0,
       namesSplit: 0,
+      segmentMerges: 0,
     });
   };
 
@@ -479,6 +481,7 @@ export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) =
       phoneDuplicatesInFile: 0,
       phoneDuplicatesInDb: 0,
       namesSplit: 0,
+      segmentMerges: 0,
     };
     
     // Keep track of specific error details
@@ -535,7 +538,7 @@ export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) =
         return cleanRow;
       }).filter(row => row.first_name);
 
-      // IMPROVED: Enhanced phone number deduplication within the file using formatted phone numbers
+      // Enhanced phone number deduplication within the file using formatted phone numbers
       const phoneMap = new Map<string, Record<string, any>>();
       const phoneDuplicatesInFile: Record<string, any>[] = [];
       
@@ -562,7 +565,7 @@ export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) =
       
       console.log(`After file deduplication: ${uniqueContactsFromFile.length} unique contacts (${stats.phoneDuplicatesInFile} phone duplicates removed from file)`);
       
-      // IMPROVED: Process contacts with proper upsert logic using database upsert
+      // Process contacts with proper upsert logic using database upsert
       const batchSize = 20; // Reasonable batch size for upserts
       const totalRows = uniqueContactsFromFile.length;
       
@@ -575,6 +578,23 @@ export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) =
             const insertData = prepareContactForInsert(row);
             
             if (insertData.phone && isValidPhoneFormat(insertData.phone)) {
+              // First, check if contact exists to handle segment_name merging
+              const { data: existingContact } = await supabase
+                .from('contacts')
+                .select('id, segment_name')
+                .eq('phone', insertData.phone)
+                .maybeSingle();
+              
+              // Handle segment name merging if contact exists
+              if (existingContact && insertData.segment_name) {
+                const mergedSegmentName = mergeSegmentNames(existingContact.segment_name, insertData.segment_name);
+                if (mergedSegmentName !== existingContact.segment_name) {
+                  insertData.segment_name = mergedSegmentName;
+                  stats.segmentMerges++;
+                  console.log(`Merged segment names for ${insertData.phone}: "${existingContact.segment_name}" + "${row.segment_name}" = "${mergedSegmentName}"`);
+                }
+              }
+              
               // Use proper upsert with ON CONFLICT to handle duplicates atomically
               const { data: upsertResult, error: upsertError } = await supabase
                 .from('contacts')
@@ -597,27 +617,8 @@ export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) =
               if (upsertResult && upsertResult.length > 0) {
                 const contact = upsertResult[0];
                 
-                // Check if this was an insert or update by comparing created_at and updated_at
-                const wasCreated = new Date(contact.created_at).getTime() === new Date(contact.updated_at).getTime();
-                
-                if (wasCreated) {
-                  stats.created++;
-                  console.log(`Successfully created contact with phone: ${insertData.phone}`);
-                  
-                  // Log the creation
-                  try {
-                    await logContactOperation(
-                      contact.id,
-                      contact,
-                      'Created',
-                      'Contact created via CSV import (upsert)',
-                      batchId,
-                      batchName
-                    );
-                  } catch (logError) {
-                    console.error('Error logging contact creation:', logError);
-                  }
-                } else {
+                // Check if this was an insert or update by comparing with existing contact
+                if (existingContact) {
                   stats.updated++;
                   console.log(`Successfully updated contact with phone: ${insertData.phone}`);
                   
@@ -633,6 +634,23 @@ export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) =
                     );
                   } catch (logError) {
                     console.error('Error logging contact update:', logError);
+                  }
+                } else {
+                  stats.created++;
+                  console.log(`Successfully created contact with phone: ${insertData.phone}`);
+                  
+                  // Log the creation
+                  try {
+                    await logContactOperation(
+                      contact.id,
+                      contact,
+                      'Created',
+                      'Contact created via CSV import (upsert)',
+                      batchId,
+                      batchName
+                    );
+                  } catch (logError) {
+                    console.error('Error logging contact creation:', logError);
                   }
                 }
               }
@@ -696,6 +714,10 @@ export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) =
       
       if (stats.namesSplit > 0) {
         description += ` ${stats.namesSplit} names were automatically split.`;
+      }
+      
+      if (stats.segmentMerges > 0) {
+        description += ` ${stats.segmentMerges} segment names were merged.`;
       }
       
       if (totalSkipped > 0) {
