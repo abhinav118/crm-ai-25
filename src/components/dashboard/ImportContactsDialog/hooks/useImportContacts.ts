@@ -4,6 +4,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { CsvColumn, ImportStage } from '../types';
 import { splitFullName, looksLikeFullName, processContactRowForNames } from '@/utils/nameHelpers';
 
+// Define the props interface for the hook
+interface UseImportContactsProps {
+  onImportSuccess?: () => void;
+}
+
 // Helper function to format phone numbers consistently to (XXX) XXX-XXXX format
 export const formatPhoneNumber = (phone: string): string => {
   if (!phone) return '';
