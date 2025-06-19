@@ -303,7 +303,7 @@ const ContactsTable: React.FC<ContactsTableProps> = ({
 
               <Select value={segmentFilter} onValueChange={onSegmentFilterChange}>
                 <SelectTrigger className="w-48">
-                  <SelectValue placeholder="All Segments" />
+                  <SelectValue placeholder="Select Segment..." />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Segments</SelectItem>
@@ -357,6 +357,9 @@ const ContactsTable: React.FC<ContactsTableProps> = ({
                 }
               }}
               onSelectionClear={() => onContactSelect([])}
+              segmentFilter={segmentFilter}
+              availableSegments={availableSegments}
+              onSegmentFilterChange={onSegmentFilterChange}
             />
           </TabsContent>
         </Tabs>

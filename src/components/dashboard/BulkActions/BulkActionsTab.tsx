@@ -10,12 +10,18 @@ interface BulkActionsTabProps {
   selectedContacts: Contact[];
   onActionComplete: () => void;
   onSelectionClear: () => void;
+  segmentFilter?: string;
+  availableSegments?: string[];
+  onSegmentFilterChange?: (segment: string) => void;
 }
 
 const BulkActionsTab: React.FC<BulkActionsTabProps> = ({
   selectedContacts,
   onActionComplete,
-  onSelectionClear
+  onSelectionClear,
+  segmentFilter = 'all',
+  availableSegments = [],
+  onSegmentFilterChange
 }) => {
   const [activeSubTab, setActiveSubTab] = useState('segment-tags');
 
@@ -29,15 +35,29 @@ const BulkActionsTab: React.FC<BulkActionsTabProps> = ({
         </TabsList>
 
         <TabsContent value="segment-tags" className="mt-6">
-          <ManageSegmentTags onActionComplete={onActionComplete} />
+          <ManageSegmentTags 
+            onActionComplete={onActionComplete}
+            segmentFilter={segmentFilter}
+            availableSegments={availableSegments}
+            onSegmentFilterChange={onSegmentFilterChange}
+          />
         </TabsContent>
 
         <TabsContent value="segment-membership" className="mt-6">
-          <ManageSegmentMembership onActionComplete={onActionComplete} />
+          <ManageSegmentMembership 
+            onActionComplete={onActionComplete}
+            segmentFilter={segmentFilter}
+            availableSegments={availableSegments}
+            onSegmentFilterChange={onSegmentFilterChange}
+          />
         </TabsContent>
 
         <TabsContent value="activity-log" className="mt-6">
-          <BulkActionsTable />
+          <BulkActionsTable 
+            segmentFilter={segmentFilter}
+            availableSegments={availableSegments}
+            onSegmentFilterChange={onSegmentFilterChange}
+          />
         </TabsContent>
       </Tabs>
     </div>
