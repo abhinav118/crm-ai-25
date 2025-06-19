@@ -543,8 +543,6 @@ export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) =
                 
                 // Only update if there are changes
                 if (Object.keys(updateData).length > 0) {
-                  updateData.updated_at = new Date().toISOString();
-                  
                   const { error: updateError } = await supabase
                     .from('contacts')
                     .update(updateData)
