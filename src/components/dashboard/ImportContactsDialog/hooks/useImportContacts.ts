@@ -2,10 +2,7 @@ import { useState } from 'react';
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { CsvColumn, ImportStage } from '../types';
-
-interface UseImportContactsProps {
-  onImportSuccess?: () => void;
-}
+import { splitFullName, looksLikeFullName, processContactRowForNames } from '@/utils/nameHelpers';
 
 // Helper function to format phone numbers consistently to (XXX) XXX-XXXX format
 export const formatPhoneNumber = (phone: string): string => {
@@ -81,10 +78,51 @@ interface ContactInsert {
   segment_name?: string | null;
 }
 
-// Helper to validate and clean contact data
+// Enhanced helper to validate and clean contact data with name processing
 const validateAndCleanContact = (row: Record<string, any>, index: number): ValidationResult => {
   const errors: string[] = [];
-  const cleanedData: Record<string, any> = { ...row };
+  let cleanedData: Record<string, any> = { ...row };
+  
+  // Process names first - look for full names and split them
+  cleanedData = processContactRowForNames(cleanedData, true);
+  
+  // Try to populate first_name and last_name if missing but we have split names
+  if (!cleanedData.first_name || !cleanedData.last_name) {
+    // Look for any split name fields we created
+    Object.keys(cleanedData).forEach(key => {
+      if (key.includes('_first_name') && cleanedData[key] && !cleanedData.first_name) {
+        cleanedData.first_name = cleanedData[key];
+        console.log(`Mapped ${key} to first_name: ${cleanedData[key]}`);
+      }
+      if (key.includes('_last_name') && cleanedData[key] && !cleanedData.last_name) {
+        cleanedData.last_name = cleanedData[key];
+        console.log(`Mapped ${key} to last_name: ${cleanedData[key]}`);
+      }
+    });
+  }
+  
+  // If we still don't have first_name, try to find it in any column that looks like a name
+  if (!cleanedData.first_name) {
+    Object.keys(cleanedData).forEach(key => {
+      const value = cleanedData[key];
+      if (value && typeof value === 'string' && !key.includes('email') && !key.includes('phone') && !key.includes('company')) {
+        if (looksLikeFullName(value)) {
+          const { firstName, lastName } = splitFullName(value);
+          if (firstName && !cleanedData.first_name) {
+            cleanedData.first_name = firstName;
+            if (lastName && !cleanedData.last_name) {
+              cleanedData.last_name = lastName;
+            }
+            console.log(`Auto-detected name from ${key}: "${value}" → first: "${firstName}", last: "${lastName}"`);
+          }
+        } else if (value.trim() && !cleanedData.first_name) {
+          // Single word that could be a first name
+          cleanedData.first_name = value.trim();
+          console.log(`Used ${key} as first_name: ${value.trim()}`);
+        }
+      }
+    });
+  }
   
   // Validate and clean first_name
   if (cleanedData.first_name) {
@@ -218,7 +256,7 @@ const validateAndCleanContact = (row: Record<string, any>, index: number): Valid
   };
 };
 
-// Helper function to merge segment names
+// Helper to merge segment names
 const mergeSegmentNames = (existing: string | null, newSegment: string | null): string | null => {
   if (!newSegment) return existing;
   if (!existing) return newSegment;
@@ -250,6 +288,7 @@ export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) =
     skippedInvalidPhone: 0,
     phoneDuplicatesInFile: 0,
     phoneDuplicatesInDb: 0,
+    namesSplit: 0,
   });
 
   const resetState = () => {
@@ -268,6 +307,7 @@ export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) =
       skippedInvalidPhone: 0,
       phoneDuplicatesInFile: 0,
       phoneDuplicatesInDb: 0,
+      namesSplit: 0,
     });
   };
 
@@ -324,6 +364,7 @@ export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) =
     console.log("File selected:", selectedFile.name);
     console.log("Parsed columns:", parsedColumns);
     console.log("Sample data:", parsedData.slice(0, 2));
+    console.log("Total rows received:", parsedData.length);
     
     setFile(selectedFile);
     setColumns(parsedColumns);
@@ -341,6 +382,7 @@ export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) =
     }, {} as Record<string, string>);
 
     console.log("Header to field map:", headerToFieldMap);
+    console.log("Raw data rows to process:", data.length);
     
     // Transform the data according to the mapping
     return data.map((row, index) => {
@@ -359,6 +401,29 @@ export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) =
           transformedRow[fieldName] = value;
         }
       });
+      
+      // If no specific mapping but data exists, try to auto-assign
+      if (Object.keys(headerToFieldMap).length === 0) {
+        // No specific column mapping, try to auto-assign based on position and content
+        const rowValues = Object.values(row);
+        const rowKeys = Object.keys(row);
+        
+        // Try to assign first non-empty value as first_name
+        if (rowValues.length > 0 && rowValues[0]) {
+          transformedRow.first_name = rowValues[0];
+        }
+        if (rowValues.length > 1 && rowValues[1]) {
+          transformedRow.last_name = rowValues[1];
+        }
+        if (rowValues.length > 2 && rowValues[2]) {
+          transformedRow.phone = rowValues[2];
+        }
+        if (rowValues.length > 3 && rowValues[3]) {
+          transformedRow.email = rowValues[3];
+        }
+        
+        console.log(`Auto-assigned row ${index + 1}:`, transformedRow);
+      }
       
       // Validate and clean the data
       const validation = validateAndCleanContact(transformedRow, index);
@@ -408,6 +473,7 @@ export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) =
       skippedInvalidPhone: 0,
       phoneDuplicatesInFile: 0,
       phoneDuplicatesInDb: 0,
+      namesSplit: 0,
     };
     
     // Keep track of specific error details
@@ -418,7 +484,7 @@ export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) =
     const batchName = file?.name || `Imported contacts ${new Date().toLocaleString()}`;
     
     try {
-      console.log("Starting import process with upsert logic and segment merging...");
+      console.log("Starting import process with enhanced name processing...");
       console.log("Import batch:", { batchId, batchName });
       
       // Transform all data according to the column mapping
@@ -426,11 +492,21 @@ export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) =
       stats.total = transformedData.length;
       console.log(`Transformed ${stats.total} rows of data`);
       
+      // Count name splits that occurred
+      transformedData.forEach(row => {
+        Object.keys(row).forEach(key => {
+          if (key.includes('_first_name') || key.includes('_last_name')) {
+            stats.namesSplit++;
+          }
+        });
+      });
+      
       // Separate valid and invalid rows
       const validRows = transformedData.filter(row => row._isValid);
       const invalidRows = transformedData.filter(row => !row._isValid);
       
       console.log(`${validRows.length} valid rows, ${invalidRows.length} invalid rows`);
+      console.log(`${stats.namesSplit} names were automatically split`);
       
       // Count validation errors
       stats.errors += invalidRows.length;
@@ -453,7 +529,7 @@ export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) =
         
         return cleanRow;
       }).filter(row => row.first_name);
-      
+
       // Enhanced phone number deduplication within the file
       const phoneMap = new Map<string, Record<string, any>>();
       const phoneDuplicatesInFile: Record<string, any>[] = [];
@@ -652,7 +728,7 @@ export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) =
       }
       
       // Import complete
-      console.log("Import completed with upsert logic:", stats);
+      console.log("Import completed with enhanced name processing:", stats);
       if (errorDetails.length > 0) {
         console.log("Error details:", errorDetails.slice(0, 10)); // Log first 10 errors
       }
@@ -664,6 +740,10 @@ export const useImportContacts = ({ onImportSuccess }: UseImportContactsProps) =
       const totalSkipped = stats.duplicates + stats.errors + stats.phoneDuplicatesInFile;
       
       let description = `Successfully processed ${successfulImports} contacts (${stats.created} created, ${stats.updated} updated).`;
+      
+      if (stats.namesSplit > 0) {
+        description += ` ${stats.namesSplit} names were automatically split.`;
+      }
       
       if (totalSkipped > 0) {
         const skipReasons = [];

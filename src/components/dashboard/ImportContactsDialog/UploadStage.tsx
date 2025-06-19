@@ -4,9 +4,9 @@ import { Input } from '@/components/ui/input';
 import { Upload, FileUp, X, FileCheck, DownloadCloud, AlertCircle } from 'lucide-react';
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Checkbox } from "@/components/ui/checkbox";
 import { CsvColumn } from './types';
 import Papa from 'papaparse';
-import { Select, SelectItem } from "@/components/ui/select";
 
 interface UploadStageProps {
   onFileSelected: (file: File, columns: CsvColumn[], data: Record<string, string>[]) => void;
@@ -18,6 +18,8 @@ const UploadStage: React.FC<UploadStageProps> = ({ onFileSelected }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [hasHeaders, setHasHeaders] = useState(true);
+  const [enableNameSplitting, setEnableNameSplitting] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -84,7 +86,8 @@ const UploadStage: React.FC<UploadStageProps> = ({ onFileSelected }) => {
       const content = e.target?.result as string;
       console.log("CSV content preview:", content.substring(0, 200) + "...");
       
-      let delimiter = ','; // default
+      // Auto-detect delimiter
+      let delimiter = ',';
       const firstLines = content.split('\n').slice(0, 3).join('\n');
       const commaCount = (firstLines.match(/,/g) || []).length;
       const tabCount = (firstLines.match(/\t/g) || []).length;
@@ -97,36 +100,10 @@ const UploadStage: React.FC<UploadStageProps> = ({ onFileSelected }) => {
       }
       
       console.log(`Detected delimiter: ${delimiter === '\t' ? 'tab' : delimiter}`);
-      
-      const lines = content.split('\n').filter(line => line.trim());
-      let firstRowMightBeHeaders = true;
-      
-      if (lines.length >= 2) {
-        const firstRow = lines[0].split(delimiter);
-        const secondRow = lines[1].split(delimiter);
-        
-        const firstRowContainsOnlyText = firstRow.every(item => {
-          const trimmed = item.trim();
-          return trimmed !== '' && isNaN(Number(trimmed));
-        });
-        
-        console.log("First row text only:", firstRowContainsOnlyText);
-        
-        if (firstRowContainsOnlyText) {
-          firstRowMightBeHeaders = true;
-        } 
-        else {
-          const firstRowNumerical = firstRow.every(item => !isNaN(Number(item.trim())));
-          const secondRowNumerical = secondRow.every(item => !isNaN(Number(item.trim())));
-          
-          if (firstRowNumerical && !secondRowNumerical) {
-            firstRowMightBeHeaders = false;
-          }
-        }
-      }
+      console.log(`User specified headers: ${hasHeaders}`);
       
       Papa.parse(content, {
-        header: firstRowMightBeHeaders,
+        header: hasHeaders,
         skipEmptyLines: true,
         delimiter: delimiter,
         transformHeader: header => header.trim(),
@@ -154,80 +131,42 @@ const UploadStage: React.FC<UploadStageProps> = ({ onFileSelected }) => {
           let csvHeaders: string[] = [];
           let csvData: Record<string, string>[] = [];
           
-          if (results.meta.fields && results.meta.fields.length > 0) {
+          if (hasHeaders && results.meta.fields && results.meta.fields.length > 0) {
+            // CSV has headers
             csvHeaders = results.meta.fields;
             csvData = results.data as Record<string, string>[];
-          } 
-          else if (Array.isArray(results.data) && results.data.length > 0) {
-            if (Array.isArray(results.data[0])) {
-              const data = results.data as unknown as string[][];
+          } else if (!hasHeaders && Array.isArray(results.data) && results.data.length > 0) {
+            // CSV has no headers - create generic column names
+            const firstRow = results.data[0] as string[];
+            if (Array.isArray(firstRow)) {
+              csvHeaders = firstRow.map((_, i) => `Column${i + 1}`);
               
-              if (data[0] && data[0].length > 0) {
-                csvHeaders = data[0].map((_, i) => `Column${i + 1}`);
-                
-                csvData = data.map(row => {
-                  const rowObj: Record<string, string> = {};
-                  row.forEach((value, index) => {
-                    if (index < csvHeaders.length) {
-                      rowObj[csvHeaders[index]] = value;
-                    }
-                  });
-                  return rowObj;
-                });
-              }
-            }
-            else if (typeof results.data[0] === 'object' && results.data[0] !== null) {
-              const firstRow = results.data[0] as Record<string, any>;
-              
-              try {
-                csvHeaders = Object.keys(firstRow);
-                csvData = results.data.map((item: any) => {
-                  const stringRecord: Record<string, string> = {};
-                  for (const key of csvHeaders) {
-                    stringRecord[key] = item[key]?.toString() || '';
+              // Convert all rows to objects with generic column names
+              csvData = (results.data as string[][]).map(row => {
+                const rowObj: Record<string, string> = {};
+                row.forEach((value, index) => {
+                  if (index < csvHeaders.length) {
+                    rowObj[csvHeaders[index]] = value || '';
                   }
-                  return stringRecord;
                 });
-              } catch (e) {
-                console.error("Error extracting headers from first row:", e);
-                
-                csvHeaders = ["Data"];
-                csvData = results.data.map((item: any) => ({ 
-                  "Data": typeof item === 'string' ? item : JSON.stringify(item) 
-                }));
-              }
-            }
-          }
-          
-          console.log("Raw parsed data structure:", JSON.stringify(results.data).substring(0, 500));
-          
-          if ((csvHeaders.length === 0 || !csvHeaders) && lines.length > 0) {
-            console.log("Using manual parsing as fallback");
-            
-            const headers = lines[0].split(delimiter).map(h => h.trim() || `Column${h.length + 1}`);
-            
-            csvHeaders = headers.filter(h => h);
-            
-            const dataLines = firstRowMightBeHeaders ? lines.slice(1) : lines;
-            csvData = dataLines.map(line => {
-              const values = line.split(delimiter);
-              const row: Record<string, string> = {};
-              
-              csvHeaders.forEach((header, index) => {
-                if (index < values.length) {
-                  row[header] = values[index]?.trim() || '';
-                } else {
-                  row[header] = '';
-                }
+                return rowObj;
               });
-              
-              return row;
+            }
+          } else if (hasHeaders && typeof results.data[0] === 'object' && results.data[0] !== null) {
+            // Fallback for object-based parsing
+            const firstRow = results.data[0] as Record<string, any>;
+            csvHeaders = Object.keys(firstRow);
+            csvData = results.data.map((item: any) => {
+              const stringRecord: Record<string, string> = {};
+              for (const key of csvHeaders) {
+                stringRecord[key] = item[key]?.toString() || '';
+              }
+              return stringRecord;
             });
           }
           
           if (!csvHeaders || csvHeaders.length === 0) {
-            console.error("No columns found after all parsing attempts");
-            setError('No columns found in the CSV file. Please make sure your CSV has headers or contains data in a recognized format.');
+            setError('No columns found in the CSV file. Please make sure your CSV contains data.');
             setIsUploading(false);
             return;
           }
@@ -238,32 +177,48 @@ const UploadStage: React.FC<UploadStageProps> = ({ onFileSelected }) => {
             return;
           }
           
-          const validHeaders = csvHeaders.filter(h => h && h.trim() !== '');
-          
-          if (validHeaders.length === 0) {
-            setError('No valid headers found in the CSV file. Please make sure your headers don\'t contain only whitespace.');
-            setIsUploading(false);
-            return;
-          }
-          
-          if (validHeaders.length !== csvHeaders.length) {
-            const newData: Record<string, string>[] = [];
-            csvData.forEach(row => {
-              const newRow: Record<string, string> = {};
-              validHeaders.forEach(header => {
-                if (header in row) {
-                  newRow[header] = row[header];
+          // Apply name splitting if enabled and appropriate
+          if (enableNameSplitting) {
+            csvData = csvData.map(row => {
+              const processedRow = { ...row };
+              
+              // Look for full name patterns in any column
+              Object.keys(processedRow).forEach(key => {
+                const value = processedRow[key];
+                if (value && typeof value === 'string' && value.includes(' ')) {
+                  // Check if this looks like a full name (has space and no other obvious data)
+                  const parts = value.trim().split(/\s+/);
+                  if (parts.length >= 2 && parts.every(part => /^[A-Za-z'-]+$/.test(part))) {
+                    // This looks like a full name, split it
+                    processedRow[`${key}_first`] = parts[0];
+                    processedRow[`${key}_last`] = parts.slice(1).join(' ');
+                    console.log(`Split "${value}" into first: "${parts[0]}" and last: "${parts.slice(1).join(' ')}"`);
+                  }
                 }
               });
-              newData.push(newRow);
+              
+              return processedRow;
             });
-            csvData = newData;
+            
+            // Update headers to include split names
+            const additionalHeaders: string[] = [];
+            csvHeaders.forEach(header => {
+              const sampleValue = csvData[0]?.[header];
+              if (sampleValue && typeof sampleValue === 'string' && sampleValue.includes(' ')) {
+                const parts = sampleValue.trim().split(/\s+/);
+                if (parts.length >= 2 && parts.every(part => /^[A-Za-z'-]+$/.test(part))) {
+                  additionalHeaders.push(`${header}_first`, `${header}_last`);
+                }
+              }
+            });
+            csvHeaders = [...csvHeaders, ...additionalHeaders];
           }
           
-          console.log("Final parsed headers:", validHeaders);
+          console.log("Final parsed headers:", csvHeaders);
           console.log("Final data sample:", csvData.slice(0, 2));
+          console.log(`Total contacts to import: ${csvData.length}`);
           
-          createColumnsAndProceed(file, validHeaders, csvData);
+          createColumnsAndProceed(file, csvHeaders, csvData);
         },
         error: (error) => {
           console.error("CSV parsing error:", error);
@@ -312,9 +267,9 @@ const UploadStage: React.FC<UploadStageProps> = ({ onFileSelected }) => {
   };
 
   const handleDownloadTemplate = () => {
-    const headers = 'name,email,phone,company,status,tags\n';
-    const row1 = 'John Doe,john@example.com,(555) 123-4567,Acme Inc,active,"lead,website"\n';
-    const row2 = 'Jane Smith,jane@example.com,(555) 987-6543,XYZ Corp,active,"customer,referral"';
+    const headers = 'first_name,last_name,email,phone,company,status,tags\n';
+    const row1 = 'John,Doe,john@example.com,(555) 123-4567,Acme Inc,active,"lead,website"\n';
+    const row2 = 'Jane,Smith,jane@example.com,(555) 987-6543,XYZ Corp,active,"customer,referral"';
     const csvContent = headers + row1 + row2;
     
     const blob = new Blob([csvContent], { type: 'text/csv' });
@@ -326,78 +281,6 @@ const UploadStage: React.FC<UploadStageProps> = ({ onFileSelected }) => {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-  };
-
-  const handleParseFile = (file: File) => {
-    setIsUploading(true);
-    setError(null);
-    
-    if (!file) {
-      setError("No file selected");
-      setIsUploading(false);
-      return;
-    }
-    
-    console.log("Parsing file:", file.name);
-    
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: (results) => {
-        console.log("Parse complete:", results);
-        
-        if (results.errors.length > 0) {
-          console.error("Parse errors:", results.errors);
-          setError(`Error parsing CSV: ${results.errors[0].message}`);
-          setIsUploading(false);
-          return;
-        }
-        
-        if (!results.meta.fields || results.meta.fields.length === 0) {
-          setError("No headers found in CSV file");
-          setIsUploading(false);
-          return;
-        }
-        
-        const sampleValues: Record<string, string[]> = {};
-        
-        if (results.data.length > 0) {
-          const fields = results.meta.fields;
-          
-          fields.forEach(field => {
-            sampleValues[field] = [];
-          });
-          
-          const sampleSize = Math.min(5, results.data.length);
-          for (let i = 0; i < sampleSize; i++) {
-            const row = results.data[i] as Record<string, string>;
-            fields.forEach(field => {
-              if (row[field] && sampleValues[field].length < 5) {
-                sampleValues[field].push(row[field]);
-              }
-            });
-          }
-        }
-        
-        const columns: CsvColumn[] = results.meta.fields.map(header => ({
-          header,
-          name: header,
-          selected: false,
-          mappedTo: null,
-          updateEmptyValues: false,
-          sampleValues: sampleValues[header] || []
-        }));
-        
-        const typedData = results.data as Record<string, string>[];
-        onFileSelected(file, columns, typedData);
-        setIsUploading(false);
-      },
-      error: (error) => {
-        console.error("Parse error:", error);
-        setError(`Error parsing CSV: ${error.message}`);
-        setIsUploading(false);
-      }
-    });
   };
 
   return (
@@ -419,6 +302,47 @@ const UploadStage: React.FC<UploadStageProps> = ({ onFileSelected }) => {
           <DownloadCloud size={14} className="mr-1" />
           Download Template
         </Button>
+      </div>
+
+      {/* CSV Import Options */}
+      <div className="bg-muted/40 p-4 rounded-md space-y-3">
+        <h4 className="text-sm font-medium">Import Options</h4>
+        
+        <div className="flex items-center space-x-2">
+          <Checkbox 
+            id="hasHeaders" 
+            checked={hasHeaders} 
+            onCheckedChange={(checked) => setHasHeaders(checked as boolean)}
+          />
+          <label htmlFor="hasHeaders" className="text-sm">
+            My CSV file has headers in the first row
+          </label>
+        </div>
+        
+        <div className="flex items-center space-x-2">
+          <Checkbox 
+            id="enableNameSplitting" 
+            checked={enableNameSplitting} 
+            onCheckedChange={(checked) => setEnableNameSplitting(checked as boolean)}
+          />
+          <label htmlFor="enableNameSplitting" className="text-sm">
+            Automatically split full names into first and last names
+          </label>
+        </div>
+        
+        {!hasHeaders && (
+          <div className="text-xs text-amber-600 bg-amber-50 p-2 rounded">
+            <strong>No headers mode:</strong> The first row will be treated as contact data. 
+            Columns will be named Column1, Column2, etc.
+          </div>
+        )}
+        
+        {enableNameSplitting && (
+          <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded">
+            <strong>Name splitting enabled:</strong> Full names like "David Clark" will be automatically 
+            split into separate first and last name fields.
+          </div>
+        )}
       </div>
       
       {error && (
@@ -524,10 +448,13 @@ const UploadStage: React.FC<UploadStageProps> = ({ onFileSelected }) => {
             File must be in CSV format (comma, tab, or semicolon separated values)
           </li>
           <li>
-            First row should contain column headers (e.g., name, email, phone)
+            Headers are optional - you can import data-only CSV files
           </li>
           <li>
             Required fields: at least one of name, email, or phone
+          </li>
+          <li>
+            Full names will be automatically split if name splitting is enabled
           </li>
           <li>
             For tags, separate multiple values with commas inside quotes (e.g., "tag1,tag2")
