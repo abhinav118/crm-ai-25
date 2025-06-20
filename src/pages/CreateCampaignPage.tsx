@@ -746,13 +746,11 @@ const CreateCampaignPage: React.FC = () => {
   };
 
   const handleBulkConfirmationSend = async () => {
-    console.log('handleBulkConfirmationSend called, closing modal and proceeding');
+    console.log('handleBulkConfirmationSend called - executing bulk send directly');
     setShowBulkConfirmation(false);
     
-    // Small delay to ensure modal state is updated
-    setTimeout(() => {
-      handleSendCampaign();
-    }, 100);
+    // Call the extracted bulk sending function directly
+    await executeBulkSend();
   };
 
   const getSmsSegments = () => Math.ceil(charCount / 160);
