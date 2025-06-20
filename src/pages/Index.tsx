@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { Plus, MessageSquare, UserPlus, Search, Settings, X, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -297,7 +296,11 @@ const Index = () => {
         });
 
         // Log the update action
-        await logContactAction('update', selectedContact);
+        await logContactAction('update', {
+          id: selectedContact.id,
+          first_name: selectedContact.first_name,
+          last_name: selectedContact.last_name
+        });
       } else {
         // Create new contact
         const { data: newContact, error } = await supabase
@@ -319,7 +322,11 @@ const Index = () => {
 
         // Log the create action
         if (newContact) {
-          await logContactAction('create', newContact);
+          await logContactAction('create', {
+            id: newContact.id,
+            first_name: newContact.first_name,
+            last_name: newContact.last_name
+          });
         }
       }
 
