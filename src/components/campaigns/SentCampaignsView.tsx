@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -94,6 +95,8 @@ const SentCampaignsView: React.FC = () => {
   const navigate = useNavigate();
 
   const { data: sentCampaigns = [], isLoading, error } = useSentTelnyxCampaigns();
+
+  console.log('SentCampaignsView - recipientsFilter value:', recipientsFilter);
 
   const handleClearFilters = () => {
     setSearchQuery('');
@@ -195,7 +198,7 @@ const SentCampaignsView: React.FC = () => {
 
           {/* Recipients Filter */}
           <div>
-            <Select value={recipientsFilter} onValueChange={setRecipientsFilter}>
+            <Select value={recipientsFilter || 'all'} onValueChange={setRecipientsFilter}>
               <SelectTrigger>
                 <SelectValue placeholder="Recipients: All" />
               </SelectTrigger>

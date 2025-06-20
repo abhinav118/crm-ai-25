@@ -30,6 +30,9 @@ const SettingsNumbers: React.FC = () => {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [filterValue, setFilterValue] = useState('all');
 
+  console.log('SettingsNumbers - filterValue:', filterValue);
+  console.log('SettingsNumbers - itemsPerPage:', itemsPerPage);
+
   const filteredNumbers = sampleNumbers.filter(number => {
     if (filterValue === 'all') return true;
     return number.number.includes(filterValue);
@@ -52,15 +55,15 @@ const SettingsNumbers: React.FC = () => {
       <Card className="bg-white border border-gray-200">
         <CardContent className="p-4">
           <div className="flex items-center gap-4">
-            <Select value={filterValue} onValueChange={setFilterValue}>
+            <Select value={filterValue || 'all'} onValueChange={setFilterValue}>
               <SelectTrigger className="w-48">
                 <SelectValue placeholder="Number 0–9" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Numbers</SelectItem>
-                <SelectItem value="0">Number 0–9</SelectItem>
-                <SelectItem value="1">Number 1–9</SelectItem>
-                <SelectItem value="2">Number 2–9</SelectItem>
+                <SelectItem value="zero">Number 0–9</SelectItem>
+                <SelectItem value="one">Number 1–9</SelectItem>
+                <SelectItem value="two">Number 2–9</SelectItem>
               </SelectContent>
             </Select>
             
