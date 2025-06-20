@@ -227,7 +227,7 @@ const Index = () => {
       
       // Log deletion for each contact
       for (const contact of selectedContacts) {
-        await logContactAction(contact.id, 'delete');
+        await logContactAction('delete', contact);
       }
       
       toast({
@@ -274,7 +274,7 @@ const Index = () => {
         });
 
         // Log the update action
-        await logContactAction(selectedContact.id, 'update');
+        await logContactAction('update', { ...data, id: selectedContact.id });
       } else {
         // Create new contact
         const { data: newContact, error } = await supabase
@@ -303,7 +303,7 @@ const Index = () => {
 
         // Log the create action
         if (newContact) {
-          await logContactAction(newContact.id, 'create');
+          await logContactAction('add', newContact);
         }
       }
 
