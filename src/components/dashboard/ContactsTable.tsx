@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { ChevronDown, ChevronUp, Search, Filter, Users, Plus, MessageSquare, Edit2, Eye, Calendar, Mail, Phone, Building, Tag, Trash2, MoreHorizontal, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -25,6 +26,8 @@ import Pagination from './Pagination';
 import BulkActionsTab from './BulkActions/BulkActionsTab';
 import BulkActions from './BulkActions/BulkActions';
 import { getFullName, getInitials } from '@/utils/contactHelpers';
+import { supabase } from '@/integrations/supabase/client';
+import { Database } from '@/types/database.types';
 
 type ContactSegment = Database['public']['Tables']['contacts_segments']['Row'];
 
@@ -292,7 +295,11 @@ const ContactsTable: React.FC<ContactsTableProps> = ({
                         className="flex items-center gap-3 cursor-pointer"
                         onClick={() => onContactClick(contact)}
                       >
-                        <Avatar name={getFullName(contact)} status={contact.status} />
+                        <Avatar className="h-8 w-8">
+                          <AvatarFallback className="text-xs">
+                            {getInitials(getFullName(contact))}
+                          </AvatarFallback>
+                        </Avatar>
                         <div>
                           <div className="font-medium">{getFullName(contact)}</div>
                           <div className="text-sm text-gray-500">{contact.email}</div>
@@ -465,9 +472,14 @@ const ContactsTable: React.FC<ContactsTableProps> = ({
       {!showTabsHeader && renderContactsTable()}
 
       {showBulkActionsTab && selectedContacts.length > 0 && (
-        <BulkActionsTab
+        <BulkActions
           selectedContacts={selectedContacts}
-          onClearSelection={() => onContactSelect([])}
+          onContactsUpdated={() => {
+            if (window.location.reload) {
+              console.log('Contacts updated, refreshing data...');
+            }
+          }}
+          onSelectionClear={() => onContactSelect([])}
         />
       )}
     </div>

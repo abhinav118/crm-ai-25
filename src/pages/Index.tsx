@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { Plus, MessageSquare, UserPlus, Search, Settings, X, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -276,14 +277,14 @@ const Index = () => {
     }
   };
 
-  const handleSubmitContact = async (formData: ContactFormData) => {
+  const handleSubmitContact = async (data: ContactFormData) => {
     try {
       if (selectedContact) {
         // Update existing contact
         const { error } = await supabase
           .from('contacts')
           .update({
-            ...formData,
+            ...data,
             updated_at: new Date().toISOString()
           })
           .eq('id', selectedContact.id);
@@ -296,13 +297,13 @@ const Index = () => {
         });
 
         // Log the update action
-        await logContactAction(selectedContact.id, 'update');
+        await logContactAction('update', selectedContact);
       } else {
         // Create new contact
-        const { data, error } = await supabase
+        const { data: newContact, error } = await supabase
           .from('contacts')
           .insert([{
-            ...formData,
+            ...data,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           }])
@@ -317,8 +318,8 @@ const Index = () => {
         });
 
         // Log the create action
-        if (data) {
-          await logContactAction(data.id, 'create');
+        if (newContact) {
+          await logContactAction('create', newContact);
         }
       }
 
