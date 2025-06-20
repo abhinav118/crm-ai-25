@@ -540,6 +540,8 @@ const CreateCampaignPage: React.FC = () => {
   };
 
   const handleSendCampaign = async () => {
+    console.log('handleSendCampaign called, isLoading:', isLoading, 'isFormValid:', isFormValid());
+    
     if (!isFormValid()) {
       if (recipients.length === 0) {
         toast({
@@ -577,10 +579,12 @@ const CreateCampaignPage: React.FC = () => {
 
     // Show confirmation modal for bulk sends
     if (showSegmentSelection && selectedSegment && segmentContactCount > 1) {
+      console.log('Showing bulk confirmation modal');
       setShowBulkConfirmation(true);
       return;
     }
 
+    console.log('Starting campaign send process');
     setIsLoading(true);
 
     try {
@@ -739,6 +743,16 @@ const CreateCampaignPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleBulkConfirmationSend = async () => {
+    console.log('handleBulkConfirmationSend called, closing modal and proceeding');
+    setShowBulkConfirmation(false);
+    
+    // Small delay to ensure modal state is updated
+    setTimeout(() => {
+      handleSendCampaign();
+    }, 100);
   };
 
   const getSmsSegments = () => Math.ceil(charCount / 160);
@@ -1358,8 +1372,19 @@ const CreateCampaignPage: React.FC = () => {
 
       {/* Bulk Send Confirmation Modal */}
       {showBulkConfirmation && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg max-w-md w-full mx-4">
+        <div 
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          onClick={(e) => {
+            // Only close if clicking the overlay, not the modal content
+            if (e.target === e.currentTarget) {
+              setShowBulkConfirmation(false);
+            }
+          }}
+        >
+          <div 
+            className="bg-white p-6 rounded-lg max-w-md w-full mx-4 relative z-60"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 className="text-lg font-semibold mb-4">Confirm Bulk Campaign</h3>
             <p className="text-gray-600 mb-4">
               You're about to send this message to <strong>{segmentContactCount} contacts</strong> in the 
@@ -1375,15 +1400,25 @@ const CreateCampaignPage: React.FC = () => {
             <div className="flex gap-3">
               <Button
                 variant="outline"
-                onClick={() => setShowBulkConfirmation(false)}
+                onClick={() => {
+                  console.log('Cancel button clicked');
+                  setShowBulkConfirmation(false);
+                }}
                 disabled={isLoading}
+                className="flex-1"
               >
                 Cancel
               </Button>
               <Button
-                onClick={handleSendCampaign}
+                onClick={(e) => {
+                  console.log('Send button clicked, event:', e);
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleBulkConfirmationSend();
+                }}
                 disabled={isLoading}
-                className="bg-blue-600 hover:bg-blue-700"
+                className="bg-blue-600 hover:bg-blue-700 flex-1 relative z-70"
+                style={{ pointerEvents: 'auto' }}
               >
                 {isLoading ? (
                   <>
