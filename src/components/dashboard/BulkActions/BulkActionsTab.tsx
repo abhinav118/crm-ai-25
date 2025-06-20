@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Contact } from '../ContactsTable';
@@ -10,7 +11,6 @@ interface BulkActionsTabProps {
   selectedContacts: Contact[];
   onActionComplete: () => void;
   onSelectionClear: () => void;
-  onClearSelection: () => void;
   segmentFilter?: string;
   availableSegments?: string[];
   onSegmentFilterChange?: (segment: string) => void;
@@ -19,7 +19,6 @@ interface BulkActionsTabProps {
 const BulkActionsTab: React.FC<BulkActionsTabProps> = ({
   selectedContacts,
   onActionComplete,
-  onClearSelection,
   onSelectionClear,
   segmentFilter = 'all',
   availableSegments = [],
@@ -28,8 +27,8 @@ const BulkActionsTab: React.FC<BulkActionsTabProps> = ({
   const [activeSubTab, setActiveSubTab] = useState('segment-tags');
 
   const handleClearSelection = () => {
-    if (onClearSelection) {
-      onClearSelection();
+    if (onSelectionClear) {
+      onSelectionClear();
     }
   };
 

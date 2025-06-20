@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -137,7 +136,6 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
         email: data[0].email || '',
         phone: data[0].phone || '',
         company: data[0].company || '',
-        lastActivity: data[0].last_activity || '',
         status: data[0].status as 'active' | 'inactive',
         tags: data[0].tags || [],
         createdAt: data[0].created_at
@@ -312,7 +310,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
               <ProfileItem 
                 icon={<Calendar className="h-5 w-5" />}
                 label="Last Activity" 
-                value={formatDate(contact.lastActivity)} 
+                value={formatDate(contact.lastActivity || '')} 
               />
               <ProfileItem 
                 icon={<MapPin className="h-5 w-5" />} 
@@ -326,7 +324,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
               <ProfileItem 
                 icon={<AtSign className="h-5 w-5" />} 
                 label="Created" 
-                value={formatDate(contact.createdAt)} 
+                value={formatDate(contact.createdAt || '')} 
               />
               <div className="flex items-start gap-3">
                 <div className="text-gray-400 mt-1"><Tag className="h-5 w-5" /></div>

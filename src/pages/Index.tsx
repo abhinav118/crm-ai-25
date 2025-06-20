@@ -27,6 +27,7 @@ export interface Contact {
   status: 'active' | 'inactive';
   tags?: string[];
   createdAt?: string;
+  lastActivity?: string;
   segment_name?: string;
 }
 
@@ -106,7 +107,7 @@ const Index = () => {
   };
 
   // Fetch available segments
-  const { data: segmentsData } = useQueryClient({
+  const { data: segmentsData } = useQuery({
     queryKey: ['contact-segments'],
     queryFn: async () => {
       console.log('Fetching available segments...');

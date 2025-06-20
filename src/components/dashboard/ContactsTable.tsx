@@ -1,25 +1,30 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { ChevronDown, ChevronUp, Search, Filter, Users, Plus, MessageSquare, Edit2, Eye, Calendar, Mail, Phone, Building, Tag, Trash2, MoreHorizontal, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Edit, X } from 'lucide-react';
-import Avatar from './Avatar';
-import { getFullName } from '@/utils/contactHelpers';
-import BulkActionsTab from './BulkActions/BulkActionsTab';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import Pagination from './Pagination';
-import { supabase } from '@/integrations/supabase/client';
-import type { Database } from '@/types/database.types';
+import BulkActionsTab from './BulkActions/BulkActionsTab';
+import BulkActions from './BulkActions/BulkActions';
+import { getFullName, getInitials } from '@/utils/contactHelpers';
 
 type ContactSegment = Database['public']['Tables']['contacts_segments']['Row'];
 
@@ -33,6 +38,7 @@ export interface Contact {
   status: 'active' | 'inactive';
   tags?: string[];
   createdAt?: string;
+  lastActivity?: string;
   segment_name?: string;
 }
 
@@ -312,14 +318,14 @@ const ContactsTable: React.FC<ContactsTableProps> = ({
                       </div>
                     </TableCell>
                     <TableCell>{contact.segment_name || '—'}</TableCell>
-                    <TableCell>{formatDate(contact.createdAt)}</TableCell>
+                    <TableCell>{formatDate(contact.lastActivity)}</TableCell>
                     <TableCell>
                       <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => onEditContact(contact)}
                       >
-                        <Edit className="h-4 w-4" />
+                        <Edit2 className="h-4 w-4" />
                       </Button>
                     </TableCell>
                   </TableRow>
