@@ -15,8 +15,7 @@ import {
   Clock,
   Info,
   X,
-  ImageIcon,
-  Users
+  ImageIcon
 } from 'lucide-react';
 import { useNavigate, Link, useLocation, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -33,7 +32,6 @@ import Picker from '@emoji-mart/react';
 import data from '@emoji-mart/data';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { useTelnyxCampaignById } from '@/hooks/useTelnyxCampaigns';
 
 // Sample audience segments for the dropdown
@@ -98,9 +96,6 @@ const CreateCampaignPage: React.FC = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [recipients, setRecipients] = useState<string[]>([]);
   const [recipientInput, setRecipientInput] = useState('');
-  const [selectedSegment, setSelectedSegment] = useState<string>('');
-  const [availableSegments, setAvailableSegments] = useState<string[]>([]);
-  const [isLoadingSegments, setIsLoadingSegments] = useState(false);
   const [campaignName, setCampaignName] = useState('');
   const [message, setMessage] = useState('');
   const [scheduleType, setScheduleType] = useState<'now' | 'later' | 'recurring'>('now');
@@ -114,8 +109,6 @@ const CreateCampaignPage: React.FC = () => {
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [showPromptInput, setShowPromptInput] = useState(false);
   const [calendarInfo, setCalendarInfo] = useState<string | null>(null);
-  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-  const [segmentContactCount, setSegmentContactCount] = useState<number>(0);
   
   // Image attachment states
   const [attachedImage, setAttachedImage] = useState<{name: string, url: string, file: File} | null>(null);
@@ -254,68 +247,6 @@ const CreateCampaignPage: React.FC = () => {
     }
   }, [campaignId, telnyxPrefillCampaign, location.state, searchParams]);
 
-  // Load available segments from Supabase
-  useEffect(() => {
-    const loadSegments = async () => {
-      setIsLoadingSegments(true);
-      try {
-        const { data, error } = await supabase
-          .from('contacts_segments')
-          .select('segment_name, contacts_membership')
-          .neq('segment_name', null)
-          .order('segment_name');
-
-        if (error) throw error;
-
-        const segments = data?.map(segment => segment.segment_name) || [];
-        setAvailableSegments(segments);
-      } catch (error) {
-        console.error('Error loading segments:', error);
-        toast({
-          title: "Error loading segments",
-          description: "Failed to load contact segments. Please try again.",
-          variant: "destructive"
-        });
-      } finally {
-        setIsLoadingSegments(false);
-      }
-    };
-
-    loadSegments();
-  }, []);
-
-  // Get contact count for selected segment
-  useEffect(() => {
-    const getSegmentContactCount = async () => {
-      if (!selectedSegment) {
-        setSegmentContactCount(0);
-        return;
-      }
-
-      try {
-        const { data, error } = await supabase
-          .from('contacts_segments')
-          .select('contacts_membership')
-          .eq('segment_name', selectedSegment)
-          .single();
-
-        if (error) throw error;
-
-        const contacts = data?.contacts_membership || [];
-        const validPhoneCount = contacts.filter(c => 
-          c.phone?.replace(/\D/g, '')?.length === 10
-        ).length;
-        
-        setSegmentContactCount(validPhoneCount);
-      } catch (error) {
-        console.error('Error getting segment contact count:', error);
-        setSegmentContactCount(0);
-      }
-    };
-
-    getSegmentContactCount();
-  }, [selectedSegment]);
-
   useEffect(() => {
     setCharCount(message.length);
     setWordCount(message.trim() ? message.trim().split(/\s+/).length : 0);
@@ -349,7 +280,7 @@ const CreateCampaignPage: React.FC = () => {
 
   // Check if form is valid for submission
   const isFormValid = (): boolean => {
-    if (recipients.length === 0 && !selectedSegment) return false;
+    if (recipients.length === 0) return false;
     if (!campaignName.trim()) return false;
     if (!message.trim()) return false;
     
@@ -371,8 +302,7 @@ const CreateCampaignPage: React.FC = () => {
   };
 
   const handleSegmentSelect = (segment: string) => {
-    setSelectedSegment(segment);
-    setRecipientInput('');
+    setRecipientInput(segment);
     setShowSegmentDropdown(false);
     recipientInputRef.current?.blur();
   };
@@ -559,7 +489,7 @@ const CreateCampaignPage: React.FC = () => {
 
   const handleSendCampaign = async () => {
     if (!isFormValid()) {
-      if (recipients.length === 0 && !selectedSegment) {
+      if (recipients.length === 0) {
         toast({
           title: "Recipients required",
           description: "Please add at least one recipient or audience segment",
@@ -593,25 +523,14 @@ const CreateCampaignPage: React.FC = () => {
       return;
     }
 
-    // Show confirmation dialog for segment sends
-    if (selectedSegment && segmentContactCount > 0) {
-      setShowConfirmDialog(true);
-      return;
-    }
-
-    await processCampaignSend();
-  };
-
-  const processCampaignSend = async () => {
     setIsLoading(true);
-    setShowConfirmDialog(false);
 
     try {
       // Save campaign to database first
       const campaignData = {
         campaign_name: campaignName,
         message: message,
-        recipients: selectedSegment ? [selectedSegment] : recipients,
+        recipients: recipients,
         schedule_type: scheduleType,
         schedule_time: scheduleType === 'later' ? scheduleTime?.toISOString() : null,
         repeat_frequency: scheduleType === 'recurring' ? repeatFrequency : null,
@@ -632,127 +551,76 @@ const CreateCampaignPage: React.FC = () => {
         throw campaignError;
       }
 
-      // Handle segment-based sending
-      if (selectedSegment) {
-        if (scheduleType === 'later') {
-          // Just save as scheduled for segment sends
-          await supabase
-            .from('telnyx_campaigns')
-            .update({ status: 'scheduled' })
-            .eq('id', campaign.id);
+      // Filter to only phone numbers for actual SMS sending
+      const phoneRecipients = recipients.filter(recipient => 
+        recipient.match(/^\+?\d{10,15}$/)
+      );
 
-          const scheduledTime = format(scheduleTime!, 'MMMM d \'at\' h:mm a');
-          toast({
-            title: "Campaign scheduled successfully",
-            description: `Bulk SMS campaign scheduled for ${scheduledTime} to ${segmentContactCount} contacts in "${selectedSegment}"`,
-          });
-        } else {
-          // Send immediately via bulk SMS function
-          const bulkPayload = {
-            segment_name: selectedSegment,
-            text: message,
-            from: "+17733897839",
-            ...(attachedImage && { media_urls: [attachedImage.url] })
-          };
-
-          console.log('Sending bulk SMS with payload:', bulkPayload);
-
-          const { data: bulkResponse, error: bulkError } = await supabase.functions.invoke('send-bulk-sms-via-telnyx', {
-            body: bulkPayload
-          });
-
-          if (bulkError) {
-            console.error('Bulk SMS error:', bulkError);
-            throw new Error(bulkError.message || 'Failed to send bulk SMS');
-          }
-
-          if (!bulkResponse?.success_count) {
-            throw new Error(bulkResponse?.error || 'Bulk SMS delivery failed');
-          }
-
-          // Update campaign status
-          await supabase
-            .from('telnyx_campaigns')
-            .update({ status: 'sent' })
-            .eq('id', campaign.id);
-
-          toast({
-            title: "Bulk SMS sent successfully",
-            description: `${bulkResponse.success_count} ${attachedImage ? 'MMS' : 'SMS'} messages sent to "${selectedSegment}" segment`,
-          });
-        }
-      } else {
-        // Handle individual phone number sends (existing logic)
-        const phoneRecipients = recipients.filter(recipient => 
-          recipient.match(/^\+?\d{10,15}$/)
-        );
-
-        if (phoneRecipients.length === 0) {
-          // If no phone numbers, just save as scheduled
-          await supabase
-            .from('telnyx_campaigns')
-            .update({ status: 'scheduled' })
-            .eq('id', campaign.id);
-
-          toast({
-            title: "Campaign saved",
-            description: "Campaign saved successfully (no phone numbers to send to)",
-          });
-          navigate('/campaigns');
-          return;
-        }
-
-        // Prepare payload for Telnyx edge function
-        const telnyxPayload = {
-          to: phoneRecipients,
-          from: "+17733897839", // Default Telnyx number
-          text: message,
-          schedule_type: scheduleType === 'later' ? 'later' : 'now',
-          ...(scheduleType === 'later' && scheduleTime && {
-            schedule_time: scheduleTime.toISOString()
-          }),
-          ...(attachedImage && { media_url: attachedImage.url })
-        };
-
-        console.log('Sending to Telnyx with payload:', telnyxPayload);
-
-        // Send to Telnyx via edge function
-        const { data: telnyxResponse, error: telnyxError } = await supabase.functions.invoke('send-via-telnyx', {
-          body: telnyxPayload
-        });
-
-        if (telnyxError) {
-          console.error('Telnyx edge function error:', telnyxError);
-          throw new Error(telnyxError.message || 'Failed to process with Telnyx');
-        }
-
-        if (!telnyxResponse?.success) {
-          throw new Error(telnyxResponse?.error || 'Telnyx delivery failed');
-        }
-
-        // Update campaign status based on schedule type
-        const finalStatus = scheduleType === 'later' ? 'scheduled' : 'sent';
+      if (phoneRecipients.length === 0) {
+        // If no phone numbers, just save as scheduled
         await supabase
           .from('telnyx_campaigns')
-          .update({ status: finalStatus })
+          .update({ status: 'scheduled' })
           .eq('id', campaign.id);
 
-        // Show appropriate success message
-        if (scheduleType === 'later') {
-          const scheduledTime = format(scheduleTime!, 'MMMM d \'at\' h:mm a');
-          toast({
-            title: "Campaign scheduled successfully",
-            description: `Campaign scheduled for ${scheduledTime}`,
-          });
-        } else {
-          toast({
-            title: "Campaign sent successfully",
-            description: `${phoneRecipients.length} ${attachedImage ? 'MMS' : 'SMS'} message${phoneRecipients.length > 1 ? 's' : ''} sent successfully`,
-          });
-        }
-
+        toast({
+          title: "Campaign saved",
+          description: "Campaign saved successfully (no phone numbers to send to)",
+        });
         navigate('/campaigns');
+        return;
       }
+
+      // Prepare payload for Telnyx edge function
+      const telnyxPayload = {
+        to: phoneRecipients,
+        from: "+17733897839", // Default Telnyx number
+        text: message,
+        schedule_type: scheduleType === 'later' ? 'later' : 'now',
+        ...(scheduleType === 'later' && scheduleTime && {
+          schedule_time: scheduleTime.toISOString()
+        }),
+        ...(attachedImage && { media_url: attachedImage.url })
+      };
+
+      console.log('Sending to Telnyx with payload:', telnyxPayload);
+
+      // Send to Telnyx via edge function
+      const { data: telnyxResponse, error: telnyxError } = await supabase.functions.invoke('send-via-telnyx', {
+        body: telnyxPayload
+      });
+
+      if (telnyxError) {
+        console.error('Telnyx edge function error:', telnyxError);
+        throw new Error(telnyxError.message || 'Failed to process with Telnyx');
+      }
+
+      if (!telnyxResponse?.success) {
+        throw new Error(telnyxResponse?.error || 'Telnyx delivery failed');
+      }
+
+      // Update campaign status based on schedule type
+      const finalStatus = scheduleType === 'later' ? 'scheduled' : 'sent';
+      await supabase
+        .from('telnyx_campaigns')
+        .update({ status: finalStatus })
+        .eq('id', campaign.id);
+
+      // Show appropriate success message
+      if (scheduleType === 'later') {
+        const scheduledTime = format(scheduleTime!, 'MMMM d \'at\' h:mm a');
+        toast({
+          title: "Campaign scheduled successfully",
+          description: `Campaign scheduled for ${scheduledTime}`,
+        });
+      } else {
+        toast({
+          title: "Campaign sent successfully",
+          description: `${phoneRecipients.length} ${attachedImage ? 'MMS' : 'SMS'} message${phoneRecipients.length > 1 ? 's' : ''} sent successfully`,
+        });
+      }
+
+      navigate('/campaigns');
     } catch (error) {
       console.error("Error processing campaign:", error);
       toast({
@@ -838,113 +706,61 @@ const CreateCampaignPage: React.FC = () => {
                 </Alert>
               )}
               
-              {/* Recipients Field - Updated for Segments */}
+              {/* Recipients Field */}
               <div className="space-y-2">
                 <Label htmlFor="recipients" className="text-sm font-medium">
-                  Send To <span className="text-red-500">*</span>
+                  Recipients <span className="text-red-500">*</span>
                 </Label>
-                
-                <div className="space-y-3">
-                  {/* Segment Selection */}
-                  <div>
-                    <Label className="text-sm text-gray-600 mb-2 block">Select Contact Segment</Label>
-                    <Select value={selectedSegment} onValueChange={setSelectedSegment}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select a segment to send SMS..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {isLoadingSegments ? (
-                          <SelectItem value="loading" disabled>
-                            <div className="flex items-center gap-2">
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                              Loading segments...
-                            </div>
-                          </SelectItem>
-                        ) : availableSegments.length > 0 ? (
-                          availableSegments.map((segment) => (
-                            <SelectItem key={segment} value={segment}>
-                              {segment}
-                            </SelectItem>
-                          ))
-                        ) : (
-                          <SelectItem value="no-segments" disabled>
-                            No segments found
-                          </SelectItem>
-                        )}
-                      </SelectContent>
-                    </Select>
-                    
-                    {selectedSegment && segmentContactCount > 0 && (
-                      <div className="mt-2 flex items-center gap-2 text-sm text-blue-600">
-                        <Users className="h-4 w-4" />
-                        <span>{segmentContactCount} contacts with valid phone numbers</span>
-                      </div>
-                    )}
+                <div className="relative" ref={dropdownRef}>
+                  <div className="flex gap-2">
+                    <Input 
+                      ref={recipientInputRef}
+                      id="recipients"
+                      placeholder="Enter phone numbers (+1234567890) or segments" 
+                      value={recipientInput}
+                      onChange={handleRecipientInputChange}
+                      onFocus={() => setShowSegmentDropdown(recipientInput.length > 0)}
+                      onKeyPress={(e) => e.key === 'Enter' && handleAddRecipient()}
+                    />
+                    <Button type="button" onClick={handleAddRecipient} variant="outline">
+                      Add
+                    </Button>
                   </div>
-
-                  {/* OR Divider */}
-                  <div className="flex items-center gap-4">
-                    <div className="flex-1 border-t border-gray-200"></div>
-                    <span className="text-sm text-gray-500 bg-white px-2">OR</span>
-                    <div className="flex-1 border-t border-gray-200"></div>
-                  </div>
-
-                  {/* Individual Recipients */}
-                  <div className="relative" ref={dropdownRef}>
-                    <div className="flex gap-2">
-                      <Input 
-                        ref={recipientInputRef}
-                        id="recipients"
-                        placeholder="Enter individual phone numbers (+1234567890)" 
-                        value={recipientInput}
-                        onChange={handleRecipientInputChange}
-                        onFocus={() => setShowSegmentDropdown(recipientInput.length > 0)}
-                        onKeyPress={(e) => e.key === 'Enter' && handleAddRecipient()}
-                        disabled={!!selectedSegment}
-                      />
-                      <Button type="button" onClick={handleAddRecipient} variant="outline" disabled={!!selectedSegment}>
-                        Add
-                      </Button>
-                    </div>
-                    
-                    {selectedSegment && (
-                      <p className="text-xs text-gray-500 mt-1">
-                        Individual recipients disabled when segment is selected
-                      </p>
-                    )}
-                    
-                    {/* Recipients List */}
-                    {recipients.length > 0 && !selectedSegment && (
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {recipients.map((recipient, index) => (
-                          <div key={index} className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm flex items-center gap-1">
-                            {recipient}
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveRecipient(index)}
-                              className="text-blue-600 hover:text-blue-800"
-                            >
-                              ×
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    
-                    {showSegmentDropdown && filteredSegments.length > 0 && (
-                      <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-md shadow-lg z-50 max-h-48 overflow-y-auto">
-                        {filteredSegments.map((segment, index) => (
-                          <div
-                            key={index}
-                            className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm"
-                            onClick={() => handleSegmentSelect(segment)}
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Enter phone numbers or select audience segments
+                  </p>
+                  
+                  {/* Recipients List */}
+                  {recipients.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {recipients.map((recipient, index) => (
+                        <div key={index} className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm flex items-center gap-1">
+                          {recipient}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveRecipient(index)}
+                            className="text-blue-600 hover:text-blue-800"
                           >
-                            {segment}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {showSegmentDropdown && filteredSegments.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-md shadow-lg z-50 max-h-48 overflow-y-auto">
+                      {filteredSegments.map((segment, index) => (
+                        <div
+                          key={index}
+                          className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+                          onClick={() => handleSegmentSelect(segment)}
+                        >
+                          {segment}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1358,56 +1174,6 @@ const CreateCampaignPage: React.FC = () => {
           </div>
         </div>
       </div>
-
-      {/* Confirmation Dialog for Bulk Sends */}
-      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirm Bulk SMS Send</DialogTitle>
-            <DialogDescription>
-              You are about to send a bulk SMS to <strong>{segmentContactCount} contacts</strong> in the "{selectedSegment}" segment.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4 py-4">
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <div className="flex items-center gap-2 text-blue-800 mb-2">
-                <Users className="h-5 w-5" />
-                <span className="font-medium">Campaign Details</span>
-              </div>
-              <div className="space-y-1 text-sm text-blue-700">
-                <p><strong>Segment:</strong> {selectedSegment}</p>
-                <p><strong>Recipients:</strong> {segmentContactCount} contacts</p>
-                <p><strong>Message Type:</strong> {attachedImage ? 'MMS (with image)' : 'SMS'}</p>
-                <p><strong>Send Time:</strong> {scheduleType === 'now' ? 'Immediately' : format(scheduleTime!, 'MMMM d \'at\' h:mm a')}</p>
-              </div>
-            </div>
-            
-            <Alert>
-              <Info className="h-4 w-4" />
-              <AlertDescription>
-                This action cannot be undone. Each contact will receive the message individually.
-              </AlertDescription>
-            </Alert>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowConfirmDialog(false)}>
-              Cancel
-            </Button>
-            <Button onClick={processCampaignSend} disabled={isLoading}>
-              {isLoading ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  {scheduleType === 'now' ? 'Sending...' : 'Scheduling...'}
-                </>
-              ) : (
-                scheduleType === 'now' ? 'Send Bulk SMS' : 'Schedule Bulk SMS'
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </TooltipProvider>
   );
 };
