@@ -34,12 +34,14 @@ export interface Contact {
 export interface ContactFormData {
   id?: string;
   first_name: string;
-  last_name?: string;
-  email?: string;
-  phone?: string;
-  company?: string;
-  status: 'active' | 'inactive';
-  tags?: string[];
+  last_name: string;
+  email: string | null;
+  phone: string | null;
+  company: string | null;
+  status: string;
+  tags: string[];
+  notes?: string | null;
+  updated_at: string;
   segment_name?: string;
 }
 
@@ -306,7 +308,15 @@ const Index = () => {
         const { data: newContact, error } = await supabase
           .from('contacts')
           .insert([{
-            ...data,
+            first_name: data.first_name,
+            last_name: data.last_name,
+            email: data.email,
+            phone: data.phone,
+            company: data.company,
+            status: data.status,
+            tags: data.tags,
+            notes: data.notes,
+            segment_name: data.segment_name,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           }])
@@ -558,6 +568,7 @@ const Index = () => {
                 company: selectedContact.company,
                 status: selectedContact.status,
                 tags: selectedContact.tags,
+                notes: selectedContact.notes,
                 segment_name: selectedContact.segment_name
               } : undefined}
             />
