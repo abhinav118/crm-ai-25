@@ -40,20 +40,12 @@ const Index = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  console.log('Index page - Current states:', {
-    activeTab,
-    statusFilter,
-    segmentFilter,
-    searchQuery
-  });
-
   // Load filters from localStorage on mount
   React.useEffect(() => {
     const savedSegmentFilter = localStorage.getItem('contactsSegmentFilter');
     const savedPageSize = localStorage.getItem('contactsPageSize');
     
     if (savedSegmentFilter && savedSegmentFilter !== 'all') {
-      console.log('Index - Loading saved segment filter:', savedSegmentFilter);
       setSegmentFilter(savedSegmentFilter);
     }
     if (savedPageSize) {
@@ -63,15 +55,9 @@ const Index = () => {
 
   // Save filters to localStorage when they change
   const handleSegmentFilterChange = (segment: string) => {
-    console.log('Index - Segment filter changing to:', segment);
-    // Ensure the segment value is valid and not empty
-    if (segment && typeof segment === 'string') {
-      setSegmentFilter(segment);
-      setCurrentPage(1); // Reset to first page when changing filters
-      localStorage.setItem('contactsSegmentFilter', segment);
-    } else {
-      console.error('Index - Invalid segment filter value:', segment);
-    }
+    setSegmentFilter(segment);
+    setCurrentPage(1); // Reset to first page when changing filters
+    localStorage.setItem('contactsSegmentFilter', segment);
   };
 
   const handlePageSizeChange = (newPageSize: number) => {
@@ -86,14 +72,8 @@ const Index = () => {
   };
 
   const handleStatusFilterChange = (status: string) => {
-    console.log('Index - Status filter changing to:', status);
-    // Ensure the status value is valid and not empty
-    if (status && typeof status === 'string') {
-      setStatusFilter(status);
-      setCurrentPage(1); // Reset to first page when changing filters
-    } else {
-      console.error('Index - Invalid status filter value:', status);
-    }
+    setStatusFilter(status);
+    setCurrentPage(1); // Reset to first page when changing filters
   };
 
   const handleSearchChange = (query: string) => {
@@ -105,7 +85,7 @@ const Index = () => {
   const { data: segmentsData } = useQuery({
     queryKey: ['contact-segments'],
     queryFn: async () => {
-      console.log('Index - Fetching available segments...');
+      console.log('Fetching available segments...');
       
       const { data, error } = await supabase
         .from('contacts')
@@ -114,17 +94,13 @@ const Index = () => {
         .order('segment_name');
       
       if (error) {
-        console.error('Index - Error fetching segments:', error);
+        console.error('Error fetching segments:', error);
         throw error;
       }
 
-      // Get unique segments and filter out empty values
-      const uniqueSegments = [...new Set(data?.map(item => item.segment_name).filter(segment => 
-        segment && 
-        typeof segment === 'string' && 
-        segment.trim().length > 0
-      ))] as string[];
-      console.log('Index - Available segments:', uniqueSegments);
+      // Get unique segments
+      const uniqueSegments = [...new Set(data?.map(item => item.segment_name).filter(Boolean))] as string[];
+      console.log('Available segments:', uniqueSegments);
       
       return uniqueSegments;
     },
@@ -134,7 +110,7 @@ const Index = () => {
   const { data: contactsData, isLoading: isLoadingContacts, error: contactsError } = useQuery({
     queryKey: ['contacts', activeTab, currentPage, pageSize, searchQuery, statusFilter, segmentFilter],
     queryFn: async () => {
-      console.log('Index - Fetching contacts from Supabase...');
+      console.log('Fetching contacts from Supabase...');
       
       let query = supabase
         .from('contacts')
@@ -170,11 +146,11 @@ const Index = () => {
       const { data, error, count } = await query;
       
       if (error) {
-        console.error('Index - Error fetching contacts:', error);
+        console.error('Error fetching contacts:', error);
         throw error;
       }
 
-      console.log('Index - Fetched contacts:', data?.length, 'Total count:', count);
+      console.log('Fetched contacts:', data?.length, 'Total count:', count);
       
       // Transform the data to match our Contact interface
       const transformedContacts: Contact[] = (data || []).map(contact => ({
