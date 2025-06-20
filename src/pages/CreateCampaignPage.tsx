@@ -59,10 +59,14 @@ const CreateCampaignPage = () => {
 
   // Add console logging to debug the suggestions
   console.log('Prompt suggestions:', promptSuggestions);
+  console.log('Channel value:', channel);
 
   const handleChannelChange = (value: MarketingChannel) => {
     console.log('Channel changed to:', value);
-    setChannel(value);
+    // Ensure the value is valid before setting
+    if (value === 'SMS Marketing' || value === 'Email Marketing') {
+      setChannel(value);
+    }
   };
 
   const handleGenerateClick = async () => {
