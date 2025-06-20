@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { Plus, MessageSquare, UserPlus, Search, Settings, X, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -29,6 +30,7 @@ export interface Contact {
   createdAt?: string;
   lastActivity?: string;
   segment_name?: string;
+  notes?: string;
 }
 
 export interface ContactFormData {
