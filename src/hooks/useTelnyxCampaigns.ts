@@ -1,3 +1,4 @@
+
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -13,7 +14,7 @@ export interface TelnyxCampaign {
   created_at: string;
   updated_at: string;
   media_url?: string | null;
-  segment_name?: string | null; // Add segment_name field
+  segment_name?: string | null;
   [key: string]: any;
 }
 

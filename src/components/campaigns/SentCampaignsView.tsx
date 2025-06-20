@@ -268,7 +268,6 @@ const SentCampaignsView: React.FC = () => {
           </Table>
         </div>
       ) : (
-        /* Empty State */
         <div className="bg-white rounded-lg border border-gray-200 p-12">
           <div className="text-center">
             <div className="mb-6">

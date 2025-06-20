@@ -929,6 +929,7 @@ export type Database = {
           repeat_frequency: string | null
           schedule_time: string | null
           schedule_type: string
+          segment_name: string | null
           status: string | null
           updated_at: string | null
         }
@@ -943,6 +944,7 @@ export type Database = {
           repeat_frequency?: string | null
           schedule_time?: string | null
           schedule_type: string
+          segment_name?: string | null
           status?: string | null
           updated_at?: string | null
         }
@@ -957,6 +959,7 @@ export type Database = {
           repeat_frequency?: string | null
           schedule_time?: string | null
           schedule_type?: string
+          segment_name?: string | null
           status?: string | null
           updated_at?: string | null
         }
