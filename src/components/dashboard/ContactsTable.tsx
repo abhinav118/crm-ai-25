@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -59,7 +58,7 @@ const ContactsTable: React.FC<DataTableProps> = ({ initialContacts }) => {
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [isBulkActionsOpen, setIsBulkActionsOpen] = useState(false);
   const [availableSegments, setAvailableSegments] = useState<string[]>([]);
-  const [segmentFilter, setSegmentFilter] = useState('');
+  const [segmentFilter, setSegmentFilter] = useState('all_segments');
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [filters, setFilters] = useState<FilterState>({});
 
@@ -97,7 +96,8 @@ const ContactsTable: React.FC<DataTableProps> = ({ initialContacts }) => {
         query = query.ilike('first_name', `%${searchTerm}%`);
       }
 
-      if (segmentFilter) {
+      // Updated to handle the new "all_segments" value
+      if (segmentFilter && segmentFilter !== 'all_segments') {
         query = query.eq('segment_name', segmentFilter);
       }
 
@@ -389,13 +389,13 @@ const ContactsTable: React.FC<DataTableProps> = ({ initialContacts }) => {
             setPage(1);
           }}
         />
-        <Select onValueChange={setSegmentFilter}>
+        <Select value={segmentFilter} onValueChange={setSegmentFilter}>
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Filter by Segment" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Segments</SelectItem>
-            {availableSegments.map(segment => (
+            <SelectItem value="all_segments">All Segments</SelectItem>
+            {availableSegments.filter(segment => segment && segment.trim().length > 0).map(segment => (
               <SelectItem key={segment} value={segment}>
                 {segment}
               </SelectItem>
