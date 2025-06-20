@@ -322,7 +322,7 @@ const Index = () => {
 
         // Log the create action
         if (newContact) {
-          await logContactAction('create', {
+          await logContactAction('add', {
             id: newContact.id,
             first_name: newContact.first_name,
             last_name: newContact.last_name
