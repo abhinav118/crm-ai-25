@@ -31,7 +31,9 @@ const SettingsNumbers: React.FC = () => {
   const [filterValue, setFilterValue] = useState('all');
 
   console.log('SettingsNumbers - filterValue:', filterValue);
+  console.log('SettingsNumbers - filterValue type:', typeof filterValue);
   console.log('SettingsNumbers - itemsPerPage:', itemsPerPage);
+  console.log('SettingsNumbers - itemsPerPage type:', typeof itemsPerPage);
 
   const filteredNumbers = sampleNumbers.filter(number => {
     if (filterValue === 'all') return true;
@@ -41,6 +43,11 @@ const SettingsNumbers: React.FC = () => {
   const totalPages = Math.ceil(filteredNumbers.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedNumbers = filteredNumbers.slice(startIndex, startIndex + itemsPerPage);
+
+  // Ensure filterValue is never empty or undefined
+  const safeFilterValue = filterValue && filterValue.trim() !== '' ? filterValue : 'all';
+  // Ensure itemsPerPage is a valid number string
+  const safeItemsPerPage = itemsPerPage && itemsPerPage > 0 ? itemsPerPage.toString() : '10';
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">
@@ -55,7 +62,7 @@ const SettingsNumbers: React.FC = () => {
       <Card className="bg-white border border-gray-200">
         <CardContent className="p-4">
           <div className="flex items-center gap-4">
-            <Select value={filterValue || 'all'} onValueChange={setFilterValue}>
+            <Select value={safeFilterValue} onValueChange={setFilterValue}>
               <SelectTrigger className="w-48">
                 <SelectValue placeholder="Number 0–9" />
               </SelectTrigger>
@@ -67,7 +74,7 @@ const SettingsNumbers: React.FC = () => {
               </SelectContent>
             </Select>
             
-            <Select value={itemsPerPage.toString()} onValueChange={(value) => setItemsPerPage(Number(value))}>
+            <Select value={safeItemsPerPage} onValueChange={(value) => setItemsPerPage(Number(value))}>
               <SelectTrigger className="w-32">
                 <SelectValue />
               </SelectTrigger>

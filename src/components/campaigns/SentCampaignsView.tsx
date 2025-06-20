@@ -97,6 +97,7 @@ const SentCampaignsView: React.FC = () => {
   const { data: sentCampaigns = [], isLoading, error } = useSentTelnyxCampaigns();
 
   console.log('SentCampaignsView - recipientsFilter value:', recipientsFilter);
+  console.log('SentCampaignsView - recipientsFilter type:', typeof recipientsFilter);
 
   const handleClearFilters = () => {
     setSearchQuery('');
@@ -126,6 +127,9 @@ const SentCampaignsView: React.FC = () => {
       campaign.message?.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesSearch;
   });
+
+  // Ensure recipientsFilter is never empty or undefined
+  const safeRecipientsFilter = recipientsFilter && recipientsFilter.trim() !== '' ? recipientsFilter : 'all';
 
   return (
     <div>
@@ -198,7 +202,7 @@ const SentCampaignsView: React.FC = () => {
 
           {/* Recipients Filter */}
           <div>
-            <Select value={recipientsFilter || 'all'} onValueChange={setRecipientsFilter}>
+            <Select value={safeRecipientsFilter} onValueChange={setRecipientsFilter}>
               <SelectTrigger>
                 <SelectValue placeholder="Recipients: All" />
               </SelectTrigger>
