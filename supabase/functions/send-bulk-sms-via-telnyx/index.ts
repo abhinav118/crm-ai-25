@@ -1,0 +1,196 @@
+
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+serve(async (req) => {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const TELNYX_API_KEY = Deno.env.get('TELNYX_API_KEY');
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+    if (!TELNYX_API_KEY) {
+      throw new Error('TELNYX_API_KEY not configured');
+    }
+
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+      throw new Error('Supabase configuration missing');
+    }
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    const payload = await req.json();
+    const { segment_name, text, from, media_urls } = payload;
+
+    // Validate required fields
+    if (!segment_name || !text) {
+      throw new Error('Missing required parameters: segment_name and text');
+    }
+
+    console.log(`Processing bulk SMS for segment: ${segment_name}`);
+
+    // Query contacts by segment
+    const { data: segmentData, error: segmentError } = await supabase
+      .from('contacts_segments')
+      .select('contacts_membership')
+      .eq('segment_name', segment_name)
+      .single();
+
+    if (segmentError || !segmentData) {
+      console.error('Segment query error:', segmentError);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Segment not found',
+          segment_name 
+        }), 
+        { 
+          status: 404, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    const contacts = segmentData.contacts_membership || [];
+    console.log(`Found ${contacts.length} contacts in segment`);
+
+    // Extract and format phone numbers
+    const phoneNumbers = contacts
+      .map(contact => {
+        if (!contact.phone) return null;
+        
+        // Clean phone number (remove all non-digits)
+        const cleaned = contact.phone.replace(/\D/g, '');
+        
+        // Handle different formats
+        if (cleaned.length === 10) {
+          return `+1${cleaned}`;
+        } else if (cleaned.length === 11 && cleaned.startsWith('1')) {
+          return `+${cleaned}`;
+        }
+        
+        return null;
+      })
+      .filter(phone => phone !== null);
+
+    console.log(`Extracted ${phoneNumbers.length} valid phone numbers`);
+
+    if (phoneNumbers.length === 0) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'No valid phone numbers found in segment',
+          segment_name,
+          total_contacts: contacts.length
+        }), 
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    const results = [];
+    const fromNumber = from || '+17733897839';
+
+    // Send SMS to each contact individually
+    for (const phoneNumber of phoneNumbers) {
+      try {
+        console.log(`Sending SMS to ${phoneNumber}`);
+        
+        const telnyxPayload = {
+          to: phoneNumber,
+          from: fromNumber,
+          text: text,
+          ...(media_urls && media_urls.length > 0 && { media_urls })
+        };
+
+        const telnyxResponse = await fetch('https://api.telnyx.com/v2/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Authorization': `Bearer ${TELNYX_API_KEY}`
+          },
+          body: JSON.stringify(telnyxPayload)
+        });
+
+        const responseData = await telnyxResponse.json();
+
+        if (!telnyxResponse.ok) {
+          console.error(`Telnyx error for ${phoneNumber}:`, responseData);
+          results.push({ 
+            to: phoneNumber, 
+            status: 'error', 
+            error: responseData.errors?.[0]?.detail || 'Telnyx API error',
+            telnyx_response: responseData
+          });
+        } else {
+          console.log(`SMS sent successfully to ${phoneNumber}:`, responseData.data?.id);
+          results.push({ 
+            to: phoneNumber, 
+            status: 'sent', 
+            message_id: responseData.data?.id,
+            telnyx_response: responseData.data
+          });
+        }
+
+        // Small delay to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+      } catch (error) {
+        console.error(`Error sending to ${phoneNumber}:`, error.message);
+        results.push({ 
+          to: phoneNumber, 
+          status: 'error', 
+          error: error.message 
+        });
+      }
+    }
+
+    const successCount = results.filter(r => r.status === 'sent').length;
+    const errorCount = results.filter(r => r.status === 'error').length;
+
+    console.log(`Bulk SMS completed: ${successCount} sent, ${errorCount} failed`);
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        segment_name,
+        message: `Bulk SMS completed: ${successCount} sent, ${errorCount} failed`,
+        total_contacts: contacts.length,
+        valid_phone_numbers: phoneNumbers.length,
+        sent_count: successCount,
+        error_count: errorCount,
+        results
+      }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      }
+    );
+
+  } catch (error) {
+    console.error('Bulk SMS function error:', error.message);
+    
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: error.message,
+        message: 'Failed to process bulk SMS campaign'
+      }),
+      {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      }
+    );
+  }
+});
