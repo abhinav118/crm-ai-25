@@ -1,6 +1,5 @@
 
 import React, { useState } from 'react';
-import { EmailBuilderCanvas, EmailSectionData } from '@/components/campaigns/EmailBuilderCanvas';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -36,7 +35,7 @@ export const EmailCampaignEditor: React.FC<EmailCampaignEditorProps> = ({
   };
   
   // Handle save campaign
-  const handleSaveCampaign = async (sections: EmailSectionData[]) => {
+  const handleSaveCampaign = async () => {
     if (!campaignName) {
       toast({
         title: 'Campaign name required',
@@ -53,19 +52,6 @@ export const EmailCampaignEditor: React.FC<EmailCampaignEditorProps> = ({
       const emailData = {
         name: campaignName,
         tags: campaignTags.split(',').map(tag => tag.trim()),
-        subject: sections.find(s => s.type === 'subject')?.content || '',
-        content: sections.find(s => s.type === 'copy')?.content || '',
-        image: sections.find(s => s.type === 'image')?.imageUrl || '',
-        ctaButtons: sections.find(s => s.type === 'button')?.buttons || {
-          primary: { text: 'Order Now', url: '#' },
-          secondary: { text: 'View Menu', url: '#' }
-        },
-        footer: sections.find(s => s.type === 'footer')?.content || '',
-        structure: sections.map(s => ({
-          id: s.id,
-          type: s.type,
-          order: sections.findIndex(section => section.id === s.id)
-        }))
       };
       
       console.log('Saving campaign:', emailData);
@@ -120,7 +106,10 @@ export const EmailCampaignEditor: React.FC<EmailCampaignEditorProps> = ({
         </Button>
       </div>
       
-      <EmailBuilderCanvas />
+      <div className="text-center py-12 text-gray-500">
+        <p>Email builder functionality has been removed.</p>
+        <p>Use the dedicated campaign creation flow instead.</p>
+      </div>
       
       {/* Save Campaign Dialog */}
       <Dialog open={isSaveDialogOpen} onOpenChange={setIsSaveDialogOpen}>
@@ -160,12 +149,7 @@ export const EmailCampaignEditor: React.FC<EmailCampaignEditorProps> = ({
               Cancel
             </Button>
             <Button 
-              onClick={() => {
-                const sections = document.querySelectorAll('[data-section-id]');
-                // This is just a placeholder since we can't directly access the EmailBuilderCanvas state
-                // In a real implementation, you'd pass a callback to the EmailBuilderCanvas component
-                handleSaveCampaign([]);
-              }} 
+              onClick={handleSaveCampaign} 
               disabled={isSaving || !campaignName}
             >
               {isSaving ? (

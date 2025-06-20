@@ -8,7 +8,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { useAiGeneration } from '@/hooks/useAiGeneration';
 import { useToast } from '@/hooks/use-toast';
-import { EmailPreview } from '@/components/campaigns/EmailPreview';
 
 interface GeneratedPreviewProps {
   channel: 'SMS' | 'Email';
@@ -158,44 +157,6 @@ export const GeneratedPreview: React.FC<GeneratedPreviewProps> = ({
       setSectionLoading(prev => ({
         ...prev,
         [section]: false
-      }));
-    }
-  };
-
-  // Make sure this function uses 'content' consistently
-  const handleEmailSectionRegenerate = async (section: 'subject' | 'content', prompt: string) => {
-    if (!prompt) return;
-
-    const sectionKey = section === 'subject' ? 'emailSubject' : 'emailBody';
-    const type = section === 'subject' ? 'email_subject' : 'email';
-
-    setSectionLoading(prev => ({
-      ...prev,
-      [sectionKey]: true
-    }));
-
-    try {
-      const result = await generateContent(prompt, type);
-      if (result) {
-        const field = section === 'subject' ? 'emailSubject' : 'emailBody';
-        onUpdate?.(field, result);
-        
-        toast({
-          title: 'Generation successful',
-          description: `Your email ${section} has been updated.`,
-        });
-      }
-    } catch (error: any) {
-      console.error(`Error regenerating email ${section}:`, error);
-      toast({
-        title: 'Generation failed',
-        description: error.message || `Failed to regenerate email ${section}. API quota may be exceeded.`,
-        variant: 'destructive'
-      });
-    } finally {
-      setSectionLoading(prev => ({
-        ...prev,
-        [sectionKey]: false
       }));
     }
   };
@@ -355,19 +316,14 @@ export const GeneratedPreview: React.FC<GeneratedPreviewProps> = ({
   
   const renderEmailPreview = () => {
     return (
-      <EmailPreview
-        subject={emailSubject}
-        content={emailBody}
-        image={imageUrl}
-        isGeneratingImage={isLoading || sectionLoading.image}
-        onSubjectChange={(value) => onUpdate?.('emailSubject', value)}
-        onContentChange={(value) => onUpdate?.('emailBody', value)}
-        onRegenerate={handleEmailSectionRegenerate}
-        ctaButtons={{
-          primary: { text: 'Order Now', url: '#order' },
-          secondary: { text: 'View Menu', url: '#menu' }
-        }}
-      />
+      <div className="mx-auto max-w-md bg-white border border-gray-200 rounded-lg shadow-lg">
+        <div className="p-6">
+          <div className="text-center py-12 text-gray-500">
+            <p>Email preview functionality has been removed.</p>
+            <p>Use the dedicated campaign creation flow instead.</p>
+          </div>
+        </div>
+      </div>
     );
   };
   
