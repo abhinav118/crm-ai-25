@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +12,7 @@ import { useNavigate } from 'react-router-dom';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useSentTelnyxCampaigns, TelnyxCampaign } from '@/hooks/useTelnyxCampaigns';
 import { toast } from '@/hooks/use-toast';
+import { CampaignProgressDialog } from './CampaignProgressDialog';
 
 // Simple inline MessageCell component
 interface MessageCellProps {
@@ -91,6 +91,9 @@ const SentCampaignsView: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [recipientsFilter, setRecipientsFilter] = useState('all');
+  const [progressDialogOpen, setProgressDialogOpen] = useState(false);
+  const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null);
+  const [selectedCampaignName, setSelectedCampaignName] = useState<string>('');
   
   const navigate = useNavigate();
 
@@ -119,6 +122,38 @@ const SentCampaignsView: React.FC = () => {
         mediaUrl: campaign.media_url,
       }
     });
+  };
+
+  const handleViewProgress = (campaign: TelnyxCampaign) => {
+    setSelectedCampaignId(campaign.id);
+    setSelectedCampaignName(campaign.campaign_name);
+    setProgressDialogOpen(true);
+  };
+
+  const renderStatusCell = (campaign: TelnyxCampaign) => {
+    if (campaign.status === 'sending') {
+      return (
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+            {campaign.status}
+          </span>
+          <Button
+            variant="link"
+            size="sm"
+            onClick={() => handleViewProgress(campaign)}
+            className="text-blue-600 hover:text-blue-700 text-xs"
+          >
+            View Progress
+          </Button>
+        </div>
+      );
+    }
+    
+    return (
+      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+        {campaign.status}
+      </span>
+    );
   };
 
   // Filtering logic (search + recipients)
@@ -257,11 +292,7 @@ const SentCampaignsView: React.FC = () => {
                   </TableCell>
                   <TableCell>{campaign.segment_name || 'N/A'}</TableCell>
                   <TableCell>{campaign.created_at ? format(new Date(campaign.created_at), 'MMM d, yyyy, h:mm a') : ''}</TableCell>
-                  <TableCell>
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                      {campaign.status}
-                    </span>
-                  </TableCell>
+                  <TableCell>{renderStatusCell(campaign)}</TableCell>
                   <TableCell>
                     <MessageCell
                       message={campaign.message}
@@ -296,6 +327,12 @@ const SentCampaignsView: React.FC = () => {
           </div>
         </div>
       )}
+      <CampaignProgressDialog
+        isOpen={progressDialogOpen}
+        onClose={() => setProgressDialogOpen(false)}
+        campaignId={selectedCampaignId}
+        campaignName={selectedCampaignName}
+      />
     </div>
   );
 };

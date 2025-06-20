@@ -32,11 +32,11 @@ serve(async (req) => {
     const { segment_name, text, from, media_urls, campaign_id } = payload;
 
     // Validate required fields
-    if (!segment_name || !text) {
-      throw new Error('Missing required parameters: segment_name and text');
+    if (!segment_name || !text || !campaign_id) {
+      throw new Error('Missing required parameters: segment_name, text, and campaign_id');
     }
 
-    console.log(`Processing bulk SMS for segment: ${segment_name}`);
+    console.log(`Processing bulk SMS for segment: ${segment_name}, campaign: ${campaign_id}`);
 
     // Query contacts by segment
     const { data: segmentData, error: segmentError } = await supabase
@@ -99,97 +99,143 @@ serve(async (req) => {
       );
     }
 
-    // Update campaign with actual phone numbers and segment name if campaign_id is provided
-    if (campaign_id) {
-      console.log(`Updating campaign ${campaign_id} with actual recipients and segment name`);
-      const { error: updateError } = await supabase
-        .from('telnyx_campaigns')
-        .update({
-          recipients: phoneNumbers,
-          segment_name: segment_name
-        })
-        .eq('id', campaign_id);
-      
-      if (updateError) {
-        console.error('Error updating campaign:', updateError);
-      } else {
-        console.log('Campaign updated successfully with actual recipients');
-      }
+    // Update campaign with initial progress and set status to sending
+    const { error: initUpdateError } = await supabase
+      .from('telnyx_campaigns')
+      .update({
+        recipients: phoneNumbers,
+        segment_name: segment_name,
+        status: 'sending',
+        total_count: phoneNumbers.length,
+        sent_count: 0,
+        error_count: 0,
+        progress_percentage: 0
+      })
+      .eq('id', campaign_id);
+    
+    if (initUpdateError) {
+      console.error('Error initializing campaign progress:', initUpdateError);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Failed to initialize campaign progress' 
+        }), 
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
     }
 
-    const results = [];
-    const fromNumber = from || '+17733897839';
+    // Start background SMS sending process
+    const backgroundSendProcess = async () => {
+      const fromNumber = from || '+17733897839';
+      let sentCount = 0;
+      let errorCount = 0;
+      const batchSize = 10; // Process 10 messages at a time
+      
+      console.log(`Starting background SMS sending for ${phoneNumbers.length} recipients`);
 
-    // Send SMS to each contact individually
-    for (const phoneNumber of phoneNumbers) {
-      try {
-        console.log(`Sending SMS to ${phoneNumber}`);
+      for (let i = 0; i < phoneNumbers.length; i += batchSize) {
+        const batch = phoneNumbers.slice(i, i + batchSize);
         
-        const telnyxPayload = {
-          to: phoneNumber,
-          from: fromNumber,
-          text: text,
-          ...(media_urls && media_urls.length > 0 && { media_urls })
-        };
+        // Process batch
+        for (const phoneNumber of batch) {
+          try {
+            console.log(`Sending SMS to ${phoneNumber}`);
+            
+            const telnyxPayload = {
+              to: phoneNumber,
+              from: fromNumber,
+              text: text,
+              ...(media_urls && media_urls.length > 0 && { media_urls })
+            };
 
-        const telnyxResponse = await fetch('https://api.telnyx.com/v2/messages', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'Authorization': `Bearer ${TELNYX_API_KEY}`
-          },
-          body: JSON.stringify(telnyxPayload)
-        });
+            const telnyxResponse = await fetch('https://api.telnyx.com/v2/messages', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${TELNYX_API_KEY}`
+              },
+              body: JSON.stringify(telnyxPayload)
+            });
 
-        const responseData = await telnyxResponse.json();
+            const responseData = await telnyxResponse.json();
 
-        if (!telnyxResponse.ok) {
-          console.error(`Telnyx error for ${phoneNumber}:`, responseData);
-          results.push({ 
-            to: phoneNumber, 
-            status: 'error', 
-            error: responseData.errors?.[0]?.detail || 'Telnyx API error',
-            telnyx_response: responseData
-          });
-        } else {
-          console.log(`SMS sent successfully to ${phoneNumber}:`, responseData.data?.id);
-          results.push({ 
-            to: phoneNumber, 
-            status: 'sent', 
-            message_id: responseData.data?.id,
-            telnyx_response: responseData.data
-          });
+            if (!telnyxResponse.ok) {
+              console.error(`Telnyx error for ${phoneNumber}:`, responseData);
+              errorCount++;
+            } else {
+              console.log(`SMS sent successfully to ${phoneNumber}:`, responseData.data?.id);
+              sentCount++;
+            }
+
+            // Small delay to avoid rate limiting
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+          } catch (error) {
+            console.error(`Error sending to ${phoneNumber}:`, error.message);
+            errorCount++;
+          }
         }
 
-        // Small delay to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 100));
+        // Update progress after each batch
+        const totalProcessed = sentCount + errorCount;
+        const progressPercentage = Math.round((totalProcessed / phoneNumbers.length) * 100);
+        
+        const { error: progressError } = await supabase
+          .from('telnyx_campaigns')
+          .update({
+            sent_count: sentCount,
+            error_count: errorCount,
+            progress_percentage: progressPercentage
+          })
+          .eq('id', campaign_id);
 
-      } catch (error) {
-        console.error(`Error sending to ${phoneNumber}:`, error.message);
-        results.push({ 
-          to: phoneNumber, 
-          status: 'error', 
-          error: error.message 
-        });
+        if (progressError) {
+          console.error('Error updating progress:', progressError);
+        }
+
+        console.log(`Progress: ${totalProcessed}/${phoneNumbers.length} (${progressPercentage}%)`);
       }
+
+      // Final status update
+      const finalStatus = errorCount === phoneNumbers.length ? 'failed' : 'completed';
+      const { error: finalError } = await supabase
+        .from('telnyx_campaigns')
+        .update({
+          status: finalStatus,
+          progress_percentage: 100,
+          sent_count: sentCount,
+          error_count: errorCount
+        })
+        .eq('id', campaign_id);
+
+      if (finalError) {
+        console.error('Error updating final status:', finalError);
+      }
+
+      console.log(`Bulk SMS completed: ${sentCount} sent, ${errorCount} failed`);
+    };
+
+    // Use EdgeRuntime.waitUntil to run the background process
+    if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
+      EdgeRuntime.waitUntil(backgroundSendProcess());
+    } else {
+      // Fallback for environments that don't support EdgeRuntime.waitUntil
+      backgroundSendProcess().catch(console.error);
     }
 
-    const successCount = results.filter(r => r.status === 'sent').length;
-    const errorCount = results.filter(r => r.status === 'error').length;
-
-    console.log(`Bulk SMS completed: ${successCount} sent, ${errorCount} failed`);
-
+    // Return immediate response indicating the process has started
     return new Response(
       JSON.stringify({
         success: true,
+        message: 'Bulk SMS sending started',
+        campaign_id,
         segment_name,
-        message: `Bulk SMS completed: ${successCount} sent, ${errorCount} failed`,
-        total_contacts: contacts.length,
-        valid_phone_numbers: phoneNumbers.length,
-        sent_count: successCount,
-        error_count: errorCount,
-        results
+        total_recipients: phoneNumbers.length,
+        status: 'sending'
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

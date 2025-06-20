@@ -921,46 +921,58 @@ export type Database = {
         Row: {
           campaign_name: string
           created_at: string | null
+          error_count: number | null
           id: string
           media_url: string | null
           message: string
+          progress_percentage: number | null
           recipients: string[]
           repeat_days: string[] | null
           repeat_frequency: string | null
           schedule_time: string | null
           schedule_type: string
           segment_name: string | null
+          sent_count: number | null
           status: string | null
+          total_count: number | null
           updated_at: string | null
         }
         Insert: {
           campaign_name: string
           created_at?: string | null
+          error_count?: number | null
           id?: string
           media_url?: string | null
           message: string
+          progress_percentage?: number | null
           recipients: string[]
           repeat_days?: string[] | null
           repeat_frequency?: string | null
           schedule_time?: string | null
           schedule_type: string
           segment_name?: string | null
+          sent_count?: number | null
           status?: string | null
+          total_count?: number | null
           updated_at?: string | null
         }
         Update: {
           campaign_name?: string
           created_at?: string | null
+          error_count?: number | null
           id?: string
           media_url?: string | null
           message?: string
+          progress_percentage?: number | null
           recipients?: string[]
           repeat_days?: string[] | null
           repeat_frequency?: string | null
           schedule_time?: string | null
           schedule_type?: string
           segment_name?: string | null
+          sent_count?: number | null
           status?: string | null
+          total_count?: number | null
           updated_at?: string | null
         }
         Relationships: []

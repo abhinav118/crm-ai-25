@@ -15,6 +15,10 @@ export interface TelnyxCampaign {
   updated_at: string;
   media_url?: string | null;
   segment_name?: string | null;
+  progress_percentage?: number;
+  sent_count?: number;
+  total_count?: number;
+  error_count?: number;
   [key: string]: any;
 }
 
