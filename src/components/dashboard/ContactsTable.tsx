@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { ChevronDown, ChevronUp, Search, Filter, Users, Plus, MessageSquare, Edit2, Eye, Calendar, Mail, Phone, Building, Tag, Trash2, MoreHorizontal, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -297,7 +296,7 @@ const ContactsTable: React.FC<ContactsTableProps> = ({
                       >
                         <Avatar className="h-8 w-8">
                           <AvatarFallback className="text-xs">
-                            {getInitials(getFullName(contact))}
+                            {getInitials(contact)}
                           </AvatarFallback>
                         </Avatar>
                         <div>

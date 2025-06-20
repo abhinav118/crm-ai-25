@@ -551,7 +551,7 @@ const Index = () => {
                 company: selectedContact.company,
                 status: selectedContact.status,
                 tags: selectedContact.tags,
-                updated_at: new Date().toISOString()
+                segment_name: selectedContact.segment_name
               } : undefined}
             />
           </div>
