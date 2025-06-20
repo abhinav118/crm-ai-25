@@ -53,6 +53,7 @@ const Index = () => {
     const savedPageSize = localStorage.getItem('contactsPageSize');
     
     if (savedSegmentFilter && savedSegmentFilter !== 'all') {
+      console.log('Index - Loading saved segment filter:', savedSegmentFilter);
       setSegmentFilter(savedSegmentFilter);
     }
     if (savedPageSize) {
