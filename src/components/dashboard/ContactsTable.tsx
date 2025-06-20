@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,7 +11,7 @@ import { toast } from '@/hooks/use-toast';
 import UserProfile from './UserProfile';
 import UserProfileModal from './UserProfileModal';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Pagination } from './Pagination';
+import Pagination from './Pagination';
 import SearchBar from './SearchBar';
 import Filters from './Filters/FilterDialog';
 import { logContactAction } from '@/utils/contactLogger';
@@ -26,9 +27,9 @@ export interface Contact {
   phone: string | null;
   company: string | null;
   status: 'active' | 'inactive';
-  last_activity: string | null; // Changed from lastActivity to last_activity
+  last_activity: string | null;
   tags: string[] | null;
-  createdAt: string; // This maps to created_at from DB
+  createdAt: string;
   segment_name?: string | null;
 }
 
@@ -48,13 +49,6 @@ interface UpdateContact {
   updated_at?: string;
 }
 
-interface BulkActionsTabProps {
-  selectedContacts: Contact[];
-  onActionComplete: () => void;
-  onSelectionClear: () => void;
-  onClearSelection: () => void;
-}
-
 const ContactsTable: React.FC<DataTableProps> = ({ initialContacts }) => {
   const [contacts, setContacts] = useState<Contact[]>(initialContacts);
   const [selectedContacts, setSelectedContacts] = useState<Contact[]>([]);
@@ -63,7 +57,7 @@ const ContactsTable: React.FC<DataTableProps> = ({ initialContacts }) => {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [openProfile, setOpenProfile] = useState(false);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
-    const [isBulkActionsOpen, setIsBulkActionsOpen] = useState(false);
+  const [isBulkActionsOpen, setIsBulkActionsOpen] = useState(false);
   const [availableSegments, setAvailableSegments] = useState<string[]>([]);
   const [segmentFilter, setSegmentFilter] = useState('');
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
@@ -140,8 +134,8 @@ const ContactsTable: React.FC<DataTableProps> = ({ initialContacts }) => {
     setPage(newPage);
   };
 
-  const handleItemsPerPageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setItemsPerPage(Number(e.target.value));
+  const handleItemsPerPageChange = (value: string) => {
+    setItemsPerPage(Number(value));
     setPage(1);
   };
 
@@ -230,7 +224,6 @@ const ContactsTable: React.FC<DataTableProps> = ({ initialContacts }) => {
   };
 
   const handleAddContact = () => {
-    // Logic to open a modal or navigate to a form for adding a new contact
     toast({
       title: 'Add Contact',
       description: 'Navigating to add contact form...',
@@ -238,7 +231,6 @@ const ContactsTable: React.FC<DataTableProps> = ({ initialContacts }) => {
   };
 
   const handleSendMessage = () => {
-    // Logic to open a modal or navigate to a form for sending a message
     toast({
       title: 'Send Message',
       description: 'Opening message composer...',
@@ -246,8 +238,8 @@ const ContactsTable: React.FC<DataTableProps> = ({ initialContacts }) => {
   };
 
   const clearSelection = () => {
-        setSelectedContacts([]);
-    };
+    setSelectedContacts([]);
+  };
 
   const handleFiltersChange = (newFilters: { status?: string; tags?: string[] }) => {
     setFilters(newFilters);
@@ -296,7 +288,7 @@ const ContactsTable: React.FC<DataTableProps> = ({ initialContacts }) => {
   return (
     <div>
       <div className="flex flex-col md:flex-row justify-between items-center mb-4">
-        <SearchBar onSearch={setSearchTerm} />
+        <SearchBar onSearch={setSearchTerm} onFilterChange={handleFiltersChange} />
         <div className="flex items-center space-x-2">
           <Select value={String(itemsPerPage)} onValueChange={handleItemsPerPageChange}>
             <SelectTrigger className="w-[120px]">
