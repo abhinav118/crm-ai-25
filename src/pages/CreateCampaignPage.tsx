@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Paperclip, ArrowUp, MessageSquare, Mail, Image } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -58,7 +57,11 @@ const CreateCampaignPage = () => {
     []
   );
 
+  // Add console logging to debug the suggestions
+  console.log('Prompt suggestions:', promptSuggestions);
+
   const handleChannelChange = (value: MarketingChannel) => {
+    console.log('Channel changed to:', value);
     setChannel(value);
   };
 
@@ -317,17 +320,19 @@ const CreateCampaignPage = () => {
           </div>
         ) : promptSuggestions.length > 0 ? (
           <div className="text-gray-600 mb-2 flex flex-wrap gap-2">
-            {promptSuggestions.map((suggestion, index) => (
-              <Button 
-                key={index} 
-                variant="outline" 
-                size="sm" 
-                className="text-xs"
-                onClick={() => setPrompt(suggestion)}
-              >
-                {suggestion.length > 30 ? `${suggestion.substring(0, 30)}...` : suggestion}
-              </Button>
-            ))}
+            {promptSuggestions
+              .filter(suggestion => suggestion && suggestion.trim().length > 0)
+              .map((suggestion, index) => (
+                <Button 
+                  key={index} 
+                  variant="outline" 
+                  size="sm" 
+                  className="text-xs"
+                  onClick={() => setPrompt(suggestion)}
+                >
+                  {suggestion.length > 30 ? `${suggestion.substring(0, 30)}...` : suggestion}
+                </Button>
+              ))}
           </div>
         ) : (
           <p className="text-gray-600 mb-2">
