@@ -549,13 +549,14 @@ const CreateCampaignPage: React.FC = () => {
       const campaignData = {
         campaign_name: campaignName,
         message: message,
-        recipients: [selectedSegment],
+        recipients: [selectedSegment], // This will be updated by the edge function with actual phone numbers
         schedule_type: scheduleType,
         schedule_time: scheduleType === 'later' ? scheduleTime?.toISOString() : null,
         repeat_frequency: scheduleType === 'recurring' ? repeatFrequency : null,
         repeat_days: scheduleType === 'recurring' ? repeatDays : null,
         status: 'pending',
-        media_url: attachedImage?.url || null
+        media_url: attachedImage?.url || null,
+        segment_name: selectedSegment // Store segment name directly
       };
 
       console.log('Saving campaign:', campaignData);
@@ -570,13 +571,14 @@ const CreateCampaignPage: React.FC = () => {
         throw campaignError;
       }
 
-      // Handle bulk SMS for segments
+      // Handle bulk SMS for segments - now pass campaign_id
       console.log(`Sending bulk SMS to segment: ${selectedSegment}`);
       
       const bulkPayload = {
         segment_name: selectedSegment,
         text: message,
         from: "+17733897839",
+        campaign_id: campaign.id, // Pass campaign ID to update with actual recipients
         ...(attachedImage && { media_urls: [attachedImage.url] })
       };
 

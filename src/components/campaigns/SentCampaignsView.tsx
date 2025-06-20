@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -234,6 +233,7 @@ const SentCampaignsView: React.FC = () => {
               <TableRow>
                 <TableHead>Campaign Name</TableHead>
                 <TableHead>Recipients</TableHead>
+                <TableHead>Segment</TableHead>
                 <TableHead>Sent Date</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Message</TableHead>
@@ -243,7 +243,12 @@ const SentCampaignsView: React.FC = () => {
               {filteredCampaigns.map((campaign) => (
                 <TableRow key={campaign.id}>
                   <TableCell className="font-medium">{campaign.campaign_name}</TableCell>
-                  <TableCell>{campaign.recipients?.length || 0}</TableCell>
+                  <TableCell>
+                    {Array.isArray(campaign.recipients) && typeof campaign.recipients[0] === 'string' && campaign.recipients[0].startsWith('+') 
+                      ? campaign.recipients.length 
+                      : campaign.recipients?.length || 0}
+                  </TableCell>
+                  <TableCell>{campaign.segment_name || 'N/A'}</TableCell>
                   <TableCell>{campaign.created_at ? format(new Date(campaign.created_at), 'MMM d, yyyy, h:mm a') : ''}</TableCell>
                   <TableCell>
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">

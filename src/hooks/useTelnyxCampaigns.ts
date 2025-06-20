@@ -13,6 +13,7 @@ export interface TelnyxCampaign {
   created_at: string;
   updated_at: string;
   media_url?: string | null;
+  segment_name?: string | null; // Add segment_name field
   [key: string]: any;
 }
 

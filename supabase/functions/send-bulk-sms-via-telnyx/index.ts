@@ -29,7 +29,7 @@ serve(async (req) => {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     const payload = await req.json();
-    const { segment_name, text, from, media_urls } = payload;
+    const { segment_name, text, from, media_urls, campaign_id } = payload;
 
     // Validate required fields
     if (!segment_name || !text) {
@@ -97,6 +97,24 @@ serve(async (req) => {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
       );
+    }
+
+    // Update campaign with actual phone numbers and segment name if campaign_id is provided
+    if (campaign_id) {
+      console.log(`Updating campaign ${campaign_id} with actual recipients and segment name`);
+      const { error: updateError } = await supabase
+        .from('telnyx_campaigns')
+        .update({
+          recipients: phoneNumbers,
+          segment_name: segment_name
+        })
+        .eq('id', campaign_id);
+      
+      if (updateError) {
+        console.error('Error updating campaign:', updateError);
+      } else {
+        console.log('Campaign updated successfully with actual recipients');
+      }
     }
 
     const results = [];
