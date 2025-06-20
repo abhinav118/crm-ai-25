@@ -1,32 +1,25 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ChevronDown, ChevronUp, Search, Filter, Users, Plus, MessageSquare, Edit2, Eye, Calendar, Mail, Phone, Building, Tag, Trash2, MoreHorizontal, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
 } from '@/components/ui/table';
-import Pagination from './Pagination';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Search, Edit, X } from 'lucide-react';
+import Avatar from './Avatar';
+import { getFullName } from '@/utils/contactHelpers';
 import BulkActionsTab from './BulkActions/BulkActionsTab';
-import BulkActions from './BulkActions/BulkActions';
-import { getFullName, getInitials } from '@/utils/contactHelpers';
+import Pagination from './Pagination';
 import { supabase } from '@/integrations/supabase/client';
-import { Database } from '@/types/database.types';
+import type { Database } from '@/types/database.types';
 
 type ContactSegment = Database['public']['Tables']['contacts_segments']['Row'];
 
@@ -40,7 +33,6 @@ export interface Contact {
   status: 'active' | 'inactive';
   tags?: string[];
   createdAt?: string;
-  lastActivity?: string;
   segment_name?: string;
 }
 
@@ -294,11 +286,7 @@ const ContactsTable: React.FC<ContactsTableProps> = ({
                         className="flex items-center gap-3 cursor-pointer"
                         onClick={() => onContactClick(contact)}
                       >
-                        <Avatar className="h-8 w-8">
-                          <AvatarFallback className="text-xs">
-                            {getInitials(contact)}
-                          </AvatarFallback>
-                        </Avatar>
+                        <Avatar name={getFullName(contact)} status={contact.status} />
                         <div>
                           <div className="font-medium">{getFullName(contact)}</div>
                           <div className="text-sm text-gray-500">{contact.email}</div>
@@ -324,14 +312,14 @@ const ContactsTable: React.FC<ContactsTableProps> = ({
                       </div>
                     </TableCell>
                     <TableCell>{contact.segment_name || '—'}</TableCell>
-                    <TableCell>{formatDate(contact.lastActivity)}</TableCell>
+                    <TableCell>{formatDate(contact.createdAt)}</TableCell>
                     <TableCell>
                       <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => onEditContact(contact)}
                       >
-                        <Edit2 className="h-4 w-4" />
+                        <Edit className="h-4 w-4" />
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -471,14 +459,9 @@ const ContactsTable: React.FC<ContactsTableProps> = ({
       {!showTabsHeader && renderContactsTable()}
 
       {showBulkActionsTab && selectedContacts.length > 0 && (
-        <BulkActions
+        <BulkActionsTab
           selectedContacts={selectedContacts}
-          onContactsUpdated={() => {
-            if (window.location.reload) {
-              console.log('Contacts updated, refreshing data...');
-            }
-          }}
-          onSelectionClear={() => onContactSelect([])}
+          onClearSelection={() => onContactSelect([])}
         />
       )}
     </div>

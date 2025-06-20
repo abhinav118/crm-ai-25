@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -311,7 +312,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ contact, onSave }) 
               <ProfileItem 
                 icon={<Calendar className="h-5 w-5" />}
                 label="Last Activity" 
-                value={formatDate(contact.lastActivity || '')} 
+                value={formatDate(contact.lastActivity)} 
               />
               <ProfileItem 
                 icon={<MapPin className="h-5 w-5" />} 
@@ -325,7 +326,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ contact, onSave }) 
               <ProfileItem 
                 icon={<AtSign className="h-5 w-5" />} 
                 label="Created" 
-                value={formatDate(contact.createdAt || '')} 
+                value={formatDate(contact.createdAt)} 
               />
               <div className="flex items-start gap-3">
                 <div className="text-gray-400 mt-1"><Tag className="h-5 w-5" /></div>

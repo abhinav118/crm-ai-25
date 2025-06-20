@@ -27,22 +27,18 @@ export interface Contact {
   status: 'active' | 'inactive';
   tags?: string[];
   createdAt?: string;
-  lastActivity?: string;
   segment_name?: string;
-  notes?: string;
 }
 
 export interface ContactFormData {
   id?: string;
   first_name: string;
-  last_name: string;
-  email: string | null;
-  phone: string | null;
-  company: string | null;
-  status: string;
-  tags: string[];
-  notes?: string | null;
-  updated_at: string;
+  last_name?: string;
+  email?: string;
+  phone?: string;
+  company?: string;
+  status: 'active' | 'inactive';
+  tags?: string[];
   segment_name?: string;
 }
 
@@ -110,7 +106,7 @@ const Index = () => {
   };
 
   // Fetch available segments
-  const { data: segmentsData } = useQuery({
+  const { data: segmentsData } = useQueryClient({
     queryKey: ['contact-segments'],
     queryFn: async () => {
       console.log('Fetching available segments...');
@@ -279,14 +275,14 @@ const Index = () => {
     }
   };
 
-  const handleSubmitContact = async (data: ContactFormData) => {
+  const handleSubmitContact = async (formData: ContactFormData) => {
     try {
       if (selectedContact) {
         // Update existing contact
         const { error } = await supabase
           .from('contacts')
           .update({
-            ...data,
+            ...formData,
             updated_at: new Date().toISOString()
           })
           .eq('id', selectedContact.id);
@@ -299,25 +295,13 @@ const Index = () => {
         });
 
         // Log the update action
-        await logContactAction('update', {
-          id: selectedContact.id,
-          first_name: selectedContact.first_name,
-          last_name: selectedContact.last_name
-        });
+        await logContactAction(selectedContact.id, 'update');
       } else {
         // Create new contact
-        const { data: newContact, error } = await supabase
+        const { data, error } = await supabase
           .from('contacts')
           .insert([{
-            first_name: data.first_name,
-            last_name: data.last_name,
-            email: data.email,
-            phone: data.phone,
-            company: data.company,
-            status: data.status,
-            tags: data.tags,
-            notes: data.notes,
-            segment_name: data.segment_name,
+            ...formData,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           }])
@@ -332,12 +316,8 @@ const Index = () => {
         });
 
         // Log the create action
-        if (newContact) {
-          await logContactAction('add', {
-            id: newContact.id,
-            first_name: newContact.first_name,
-            last_name: newContact.last_name
-          });
+        if (data) {
+          await logContactAction(data.id, 'create');
         }
       }
 
@@ -569,8 +549,7 @@ const Index = () => {
                 company: selectedContact.company,
                 status: selectedContact.status,
                 tags: selectedContact.tags,
-                notes: selectedContact.notes,
-                segment_name: selectedContact.segment_name
+                updated_at: new Date().toISOString()
               } : undefined}
             />
           </div>
