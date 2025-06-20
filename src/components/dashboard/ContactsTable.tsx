@@ -13,7 +13,7 @@ import UserProfileModal from './UserProfileModal';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import Pagination from './Pagination';
 import SearchBar from './SearchBar';
-import { FilterDialog, FilterState } from './Filters/FilterDialog';
+import FilterDialog, { FilterState } from './Filters/FilterDialog';
 import { logContactAction } from '@/utils/contactLogger';
 import BulkActionsTab from './BulkActions/BulkActionsTab';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -319,7 +319,11 @@ const ContactsTable: React.FC<DataTableProps> = ({ initialContacts }) => {
   return (
     <div>
       <div className="flex flex-col md:flex-row justify-between items-center mb-4">
-        <SearchBar onSearch={setSearchTerm} />
+        <SearchBar 
+          onSearch={setSearchTerm} 
+          onFilterChange={handleFiltersChange}
+          totalCount={contacts.length}
+        />
         <div className="flex items-center space-x-2">
           <Select value={String(itemsPerPage)} onValueChange={handleItemsPerPageChange}>
             <SelectTrigger className="w-[120px]">
@@ -380,7 +384,10 @@ const ContactsTable: React.FC<DataTableProps> = ({ initialContacts }) => {
           onPageChange={handlePageChange}
           totalRecords={contacts.length}
           pageSize={itemsPerPage}
-          onPageSizeChange={handleItemsPerPageChange}
+          onPageSizeChange={(size: number) => {
+            setItemsPerPage(size);
+            setPage(1);
+          }}
         />
         <Select onValueChange={setSegmentFilter}>
           <SelectTrigger className="w-[180px]">

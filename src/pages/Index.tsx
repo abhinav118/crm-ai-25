@@ -28,6 +28,7 @@ export interface ContactFormData {
   status: 'active' | 'inactive';
   tags?: string[];
   segment_name?: string;
+  updated_at: string;
 }
 
 const Index = () => {
@@ -239,7 +240,7 @@ const Index = () => {
       
       // Log deletion for each contact
       for (const contact of selectedContacts) {
-        await logContactAction(contact.id, 'delete');
+        await logContactAction(contact.id, 'delete' as any);
       }
       
       toast({
@@ -279,7 +280,7 @@ const Index = () => {
         });
 
         // Log the update action
-        await logContactAction(selectedContact.id, 'update');
+        await logContactAction(selectedContact.id, 'update' as any);
       } else {
         // Create new contact
         const { data: newContact, error } = await supabase
@@ -301,7 +302,7 @@ const Index = () => {
 
         // Log the create action
         if (newContact) {
-          await logContactAction(newContact.id, 'create');
+          await logContactAction(newContact.id, 'create' as any);
         }
       }
 
@@ -510,6 +511,7 @@ const Index = () => {
                 company: selectedContact.company || undefined,
                 status: selectedContact.status,
                 tags: selectedContact.tags || undefined,
+                updated_at: new Date().toISOString()
               } : undefined}
             />
           </div>
