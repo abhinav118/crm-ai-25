@@ -249,6 +249,24 @@ export type Database = {
         }
         Relationships: []
       }
+      contacts_segments: {
+        Row: {
+          contacts_membership: Json
+          segment_name: string
+          updated_at: string | null
+        }
+        Insert: {
+          contacts_membership?: Json
+          segment_name: string
+          updated_at?: string | null
+        }
+        Update: {
+          contacts_membership?: Json
+          segment_name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       favorite_recipes: {
         Row: {
           calories: number | null
@@ -1100,6 +1118,10 @@ export type Database = {
       format_phone_number: {
         Args: { phone: string }
         Returns: string
+      }
+      update_contacts_segments: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
     }
     Enums: {

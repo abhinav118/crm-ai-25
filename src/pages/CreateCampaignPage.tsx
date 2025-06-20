@@ -32,7 +32,9 @@ import Picker from '@emoji-mart/react';
 import data from '@emoji-mart/data';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useTelnyxCampaignById } from '@/hooks/useTelnyxCampaigns';
+import { useQuery } from '@tanstack/react-query';
 
 // Sample audience segments for the dropdown
 const sampleSegments = [
@@ -96,6 +98,7 @@ const CreateCampaignPage: React.FC = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [recipients, setRecipients] = useState<string[]>([]);
   const [recipientInput, setRecipientInput] = useState('');
+  const [selectedSegment, setSelectedSegment] = useState<string>('');
   const [campaignName, setCampaignName] = useState('');
   const [message, setMessage] = useState('');
   const [scheduleType, setScheduleType] = useState<'now' | 'later' | 'recurring'>('now');
@@ -109,6 +112,7 @@ const CreateCampaignPage: React.FC = () => {
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [showPromptInput, setShowPromptInput] = useState(false);
   const [calendarInfo, setCalendarInfo] = useState<string | null>(null);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   
   // Image attachment states
   const [attachedImage, setAttachedImage] = useState<{name: string, url: string, file: File} | null>(null);
@@ -133,6 +137,21 @@ const CreateCampaignPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const campaignId = searchParams.get('id');
   const { toast } = useToast();
+
+  // Query contact segments from Supabase
+  const { data: contactSegments, isLoading: isLoadingSegments } = useQuery({
+    queryKey: ['contact_segments'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('contacts_segments')
+        .select('segment_name, contacts_membership')
+        .neq('segment_name', null)
+        .order('segment_name');
+      
+      if (error) throw error;
+      return data;
+    },
+  });
 
   const { data: telnyxPrefillCampaign, isLoading: isLoadingPrefillCampaign, error: prefillError } = useTelnyxCampaignById(campaignId);
 
@@ -301,10 +320,12 @@ const CreateCampaignPage: React.FC = () => {
     setShowSegmentDropdown(value.length > 0);
   };
 
-  const handleSegmentSelect = (segment: string) => {
-    setRecipientInput(segment);
+  // Handle segment selection
+  const handleSegmentSelect = (segmentName: string) => {
+    setSelectedSegment(segmentName);
+    setRecipients([segmentName]);
+    setRecipientInput(segmentName);
     setShowSegmentDropdown(false);
-    recipientInputRef.current?.blur();
   };
 
   const handleAddRecipient = () => {
@@ -523,7 +544,17 @@ const CreateCampaignPage: React.FC = () => {
       return;
     }
 
+    if (selectedSegment) {
+      setShowConfirmDialog(true);
+      return;
+    }
+
+    await executeSendCampaign();
+  };
+
+  const executeSendCampaign = async () => {
     setIsLoading(true);
+    setShowConfirmDialog(false);
 
     try {
       // Save campaign to database first
@@ -551,13 +582,51 @@ const CreateCampaignPage: React.FC = () => {
         throw campaignError;
       }
 
-      // Filter to only phone numbers for actual SMS sending
+      // Handle segment-based campaigns
+      if (selectedSegment) {
+        console.log('Sending bulk SMS to segment:', selectedSegment);
+        
+        const bulkPayload = {
+          segment_name: selectedSegment,
+          text: message,
+          from: "+17733897839",
+          ...(attachedImage && { media_urls: [attachedImage.url] })
+        };
+
+        const { data: bulkResponse, error: bulkError } = await supabase.functions.invoke('send-bulk-sms-via-telnyx', {
+          body: bulkPayload
+        });
+
+        if (bulkError) {
+          console.error('Bulk SMS error:', bulkError);
+          throw new Error(bulkError.message || 'Failed to send bulk SMS');
+        }
+
+        if (!bulkResponse?.success) {
+          throw new Error(bulkResponse?.error || 'Bulk SMS delivery failed');
+        }
+
+        // Update campaign status
+        await supabase
+          .from('telnyx_campaigns')
+          .update({ status: 'sent' })
+          .eq('id', campaign.id);
+
+        toast({
+          title: "Bulk SMS sent successfully",
+          description: bulkResponse.message || `Campaign sent to segment "${selectedSegment}"`,
+        });
+
+        navigate('/campaigns');
+        return;
+      }
+
+      // Handle individual phone number campaigns (existing logic)
       const phoneRecipients = recipients.filter(recipient => 
         recipient.match(/^\+?\d{10,15}$/)
       );
 
       if (phoneRecipients.length === 0) {
-        // If no phone numbers, just save as scheduled
         await supabase
           .from('telnyx_campaigns')
           .update({ status: 'scheduled' })
@@ -661,6 +730,15 @@ const CreateCampaignPage: React.FC = () => {
     return newText;
   };
 
+  // Get contact count for selected segment
+  const getSegmentContactCount = () => {
+    if (!selectedSegment || !contactSegments) return 0;
+    const segment = contactSegments.find(s => s.segment_name === selectedSegment);
+    if (!segment?.contacts_membership) return 0;
+    const contacts = Array.isArray(segment.contacts_membership) ? segment.contacts_membership : [];
+    return contacts.filter((contact: any) => contact?.phone).length;
+  };
+
   // Loading skeleton for prefilling (optional, show basic loading if fetching real campaign)
   if (isLoadingPrefillCampaign && campaignId) {
     return (
@@ -706,60 +784,82 @@ const CreateCampaignPage: React.FC = () => {
                 </Alert>
               )}
               
-              {/* Recipients Field */}
+              {/* Recipients Field - Updated */}
               <div className="space-y-2">
                 <Label htmlFor="recipients" className="text-sm font-medium">
-                  Recipients <span className="text-red-500">*</span>
+                  Send To <span className="text-red-500">*</span>
                 </Label>
-                <div className="relative" ref={dropdownRef}>
-                  <div className="flex gap-2">
-                    <Input 
-                      ref={recipientInputRef}
-                      id="recipients"
-                      placeholder="Enter phone numbers (+1234567890) or segments" 
-                      value={recipientInput}
-                      onChange={handleRecipientInputChange}
-                      onFocus={() => setShowSegmentDropdown(recipientInput.length > 0)}
-                      onKeyPress={(e) => e.key === 'Enter' && handleAddRecipient()}
-                    />
-                    <Button type="button" onClick={handleAddRecipient} variant="outline">
-                      Add
-                    </Button>
+                <div className="space-y-3">
+                  {/* Segment Selection */}
+                  <div>
+                    <Label className="text-xs text-gray-600 mb-1 block">Contact Segment</Label>
+                    <Select value={selectedSegment} onValueChange={handleSegmentSelect} disabled={isLoadingSegments}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a segment to send SMS..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {contactSegments?.map((segment) => {
+                          const contactCount = Array.isArray(segment.contacts_membership) 
+                            ? segment.contacts_membership.filter((contact: any) => contact?.phone).length 
+                            : 0;
+                          return (
+                            <SelectItem key={segment.segment_name} value={segment.segment_name}>
+                              {segment.segment_name} ({contactCount} contacts)
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                    {selectedSegment && (
+                      <p className="text-xs text-blue-600 mt-1">
+                        Will send to {getSegmentContactCount()} contacts in "{selectedSegment}"
+                      </p>
+                    )}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Enter phone numbers or select audience segments
-                  </p>
-                  
-                  {/* Recipients List */}
-                  {recipients.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {recipients.map((recipient, index) => (
-                        <div key={index} className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm flex items-center gap-1">
-                          {recipient}
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveRecipient(index)}
-                            className="text-blue-600 hover:text-blue-800"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ))}
+
+                  <div className="text-center text-gray-400 text-sm">or</div>
+
+                  {/* Individual Recipients */}
+                  <div>
+                    <Label className="text-xs text-gray-600 mb-1 block">Individual Recipients</Label>
+                    <div className="flex gap-2">
+                      <Input 
+                        ref={recipientInputRef}
+                        placeholder="Enter phone numbers (+1234567890)" 
+                        value={recipientInput}
+                        onChange={handleRecipientInputChange}
+                        onKeyPress={(e) => e.key === 'Enter' && handleAddRecipient()}
+                        disabled={!!selectedSegment}
+                      />
+                      <Button 
+                        type="button" 
+                        onClick={handleAddRecipient} 
+                        variant="outline"
+                        disabled={!!selectedSegment}
+                      >
+                        Add
+                      </Button>
                     </div>
-                  )}
-                  
-                  {showSegmentDropdown && filteredSegments.length > 0 && (
-                    <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-md shadow-lg z-50 max-h-48 overflow-y-auto">
-                      {filteredSegments.map((segment, index) => (
-                        <div
-                          key={index}
-                          className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm"
-                          onClick={() => handleSegmentSelect(segment)}
-                        >
-                          {segment}
-                        </div>
-                      ))}
-                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Enter phone numbers individually
+                    </p>
+                  </div>
+
+                  {/* Clear Selection */}
+                  {(selectedSegment || recipients.length > 0) && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedSegment('');
+                        setRecipients([]);
+                        setRecipientInput('');
+                      }}
+                      className="text-gray-500 hover:text-gray-700"
+                    >
+                      Clear selection
+                    </Button>
                   )}
                 </div>
               </div>
@@ -1174,6 +1274,46 @@ const CreateCampaignPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Confirmation Dialog for Segment Campaigns */}
+      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Bulk SMS Campaign</DialogTitle>
+            <DialogDescription>
+              You are about to send a bulk SMS campaign to the segment "{selectedSegment}" 
+              which contains {getSegmentContactCount()} contacts with phone numbers.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="bg-gray-50 p-3 rounded">
+              <p className="text-sm font-medium">Campaign: {campaignName}</p>
+              <p className="text-sm text-gray-600 mt-1">Message: {message.substring(0, 100)}...</p>
+              {attachedImage && (
+                <p className="text-sm text-blue-600 mt-1">📎 Image attachment included (MMS)</p>
+              )}
+            </div>
+            <p className="text-sm text-yellow-600">
+              ⚠️ This action cannot be undone. The SMS will be sent immediately to all contacts.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowConfirmDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={executeSendCampaign} disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Sending...
+                </>
+              ) : (
+                'Send Bulk SMS'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </TooltipProvider>
   );
 };
