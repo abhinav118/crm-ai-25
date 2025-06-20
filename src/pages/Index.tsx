@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { Plus, MessageSquare, UserPlus, Search, Settings, X, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -17,7 +16,7 @@ import Conversations from '@/components/dashboard/Conversations';
 import { supabase } from '@/integrations/supabase/client';
 import { logContactAction } from '@/utils/contactLogger';
 import { getFullName } from '@/utils/contactHelpers';
-import { ContactFormData } from '@/components/dashboard/ContactForm/types';
+import { ContactData } from '@/components/dashboard/ContactForm/types';
 
 const Index = () => {
   const [selectedContacts, setSelectedContacts] = useState<Contact[]>([]);
@@ -248,7 +247,7 @@ const Index = () => {
     }
   };
 
-  const handleSubmitContact = async (data: ContactFormData) => {
+  const handleSubmitContact = async (data: ContactData) => {
     try {
       if (selectedContact) {
         // Update existing contact
@@ -262,7 +261,7 @@ const Index = () => {
             company: data.company,
             status: data.status,
             tags: data.tags,
-            segment_name: data.segment_name,
+            segment_name: data.segment_name || null,
             updated_at: new Date().toISOString()
           })
           .eq('id', selectedContact.id);
@@ -288,7 +287,7 @@ const Index = () => {
             company: data.company,
             status: data.status,
             tags: data.tags,
-            segment_name: data.segment_name,
+            segment_name: data.segment_name || null,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           }])
@@ -512,8 +511,7 @@ const Index = () => {
                 company: selectedContact.company,
                 status: selectedContact.status,
                 tags: selectedContact.tags || [],
-                updated_at: new Date().toISOString(),
-                segment_name: selectedContact.segment_name
+                updated_at: new Date().toISOString()
               } : undefined}
             />
           </div>
