@@ -539,6 +539,85 @@ const CreateCampaignPage: React.FC = () => {
     }
   };
 
+  // Extract bulk sending logic into a separate function
+  const executeBulkSend = async () => {
+    console.log('executeBulkSend called - starting bulk send process');
+    setIsLoading(true);
+
+    try {
+      // Save campaign to database first
+      const campaignData = {
+        campaign_name: campaignName,
+        message: message,
+        recipients: [selectedSegment],
+        schedule_type: scheduleType,
+        schedule_time: scheduleType === 'later' ? scheduleTime?.toISOString() : null,
+        repeat_frequency: scheduleType === 'recurring' ? repeatFrequency : null,
+        repeat_days: scheduleType === 'recurring' ? repeatDays : null,
+        status: 'pending',
+        media_url: attachedImage?.url || null
+      };
+
+      console.log('Saving campaign:', campaignData);
+      
+      const { data: campaign, error: campaignError } = await supabase
+        .from('telnyx_campaigns')
+        .insert(campaignData)
+        .select()
+        .single();
+
+      if (campaignError) {
+        throw campaignError;
+      }
+
+      // Handle bulk SMS for segments
+      console.log(`Sending bulk SMS to segment: ${selectedSegment}`);
+      
+      const bulkPayload = {
+        segment_name: selectedSegment,
+        text: message,
+        from: "+17733897839",
+        ...(attachedImage && { media_urls: [attachedImage.url] })
+      };
+
+      const { data: bulkResponse, error: bulkError } = await supabase.functions.invoke('send-bulk-sms-via-telnyx', {
+        body: bulkPayload
+      });
+
+      if (bulkError) {
+        console.error('Bulk SMS error:', bulkError);
+        throw new Error(bulkError.message || 'Failed to send bulk SMS');
+      }
+
+      if (!bulkResponse?.success) {
+        throw new Error(bulkResponse?.error || 'Bulk SMS delivery failed');
+      }
+
+      // Update campaign status
+      await supabase
+        .from('telnyx_campaigns')
+        .update({ status: 'sent' })
+        .eq('id', campaign.id);
+
+      const messageType = attachedImage ? 'MMS' : 'SMS';
+      toast({
+        title: "Bulk campaign sent successfully",
+        description: `${bulkResponse.sent_count} ${messageType} messages sent to ${selectedSegment} segment`,
+      });
+
+      navigate('/campaigns');
+    } catch (error) {
+      console.error("Error processing bulk campaign:", error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "An error occurred while processing the campaign",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSendCampaign = async () => {
     console.log('handleSendCampaign called, isLoading:', isLoading, 'isFormValid:', isFormValid());
     
