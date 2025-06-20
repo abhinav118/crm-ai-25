@@ -137,7 +137,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
         email: data[0].email || '',
         phone: data[0].phone || '',
         company: data[0].company || '',
-        lastActivity: data[0].last_activity || '',
+        last_activity: data[0].last_activity || '', // Fixed property name
         status: data[0].status as 'active' | 'inactive',
         tags: data[0].tags || [],
         createdAt: data[0].created_at
@@ -312,7 +312,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
               <ProfileItem 
                 icon={<Calendar className="h-5 w-5" />}
                 label="Last Activity" 
-                value={formatDate(contact.lastActivity)} 
+                value={formatDate(contact.last_activity)} // Fixed property name
               />
               <ProfileItem 
                 icon={<MapPin className="h-5 w-5" />} 

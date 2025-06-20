@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { 
@@ -108,7 +109,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
       contact.company || '',
       contact.status,
       (contact.tags || []).join(', '),
-      contact.lastActivity ? new Date(contact.lastActivity).toLocaleString() : '',
+      contact.last_activity ? new Date(contact.last_activity).toLocaleString() : '', // Fixed property name
       contact.createdAt ? new Date(contact.createdAt).toLocaleString() : ''
     ]);
     

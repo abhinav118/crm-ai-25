@@ -1,469 +1,387 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from '@/components/ui/table';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Edit, X } from 'lucide-react';
-import Avatar from './Avatar';
-import { getFullName } from '@/utils/contactHelpers';
-import BulkActionsTab from './BulkActions/BulkActionsTab';
-import Pagination from './Pagination';
+import { Badge } from '@/components/ui/badge';
+import { Eye, Edit2, Trash2, Phone, Mail, Building } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import type { Database } from '@/types/database.types';
-
-type ContactSegment = Database['public']['Tables']['contacts_segments']['Row'];
+import { toast } from '@/hooks/use-toast';
+import UserProfile from './UserProfile';
+import UserProfileModal from './UserProfileModal';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Pagination } from './Pagination';
+import SearchBar from './SearchBar';
+import Filters from './Filters/FilterDialog';
+import { logContactAction } from '@/utils/contactLogger';
+import BulkActionsTab from './BulkActions/BulkActionsTab';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { getFullName } from '@/utils/contactHelpers';
 
 export interface Contact {
   id: string;
   first_name: string;
-  last_name?: string;
-  email?: string;
-  phone?: string;
-  company?: string;
+  last_name: string | null;
+  email: string | null;
+  phone: string | null;
+  company: string | null;
   status: 'active' | 'inactive';
-  tags?: string[];
-  createdAt?: string;
-  segment_name?: string;
+  last_activity: string | null; // Changed from lastActivity to last_activity
+  tags: string[] | null;
+  createdAt: string; // This maps to created_at from DB
+  segment_name?: string | null;
 }
 
-interface ContactsTableProps {
-  contacts: Contact[];
-  onContactSelect: (contacts: Contact[]) => void;
-  onEditContact: (contact: Contact) => void;
-  onContactClick: (contact: Contact) => void;
+interface DataTableProps {
+  initialContacts: Contact[];
+}
+
+interface UpdateContact {
+  id: string;
+  first_name?: string;
+  last_name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  company?: string | null;
+  status?: string;
+  tags?: string[] | null;
+  updated_at?: string;
+}
+
+interface BulkActionsTabProps {
   selectedContacts: Contact[];
-  searchQuery: string;
-  onSearchChange: (query: string) => void;
-  statusFilter: string;
-  onStatusFilterChange: (status: string) => void;
-  activeTab: string;
-  onTabChange: (tab: string) => void;
-  isLoading?: boolean;
-  currentPage?: number;
-  totalPages?: number;
-  totalRecords?: number;
-  pageSize?: number;
-  onPageChange?: (page: number) => void;
-  onPageSizeChange?: (size: number) => void;
-  showCompanyColumn?: boolean;
-  showBulkActionsTab?: boolean;
-  showTabsHeader?: boolean;
-  segmentFilter?: string;
-  onSegmentFilterChange?: (segment: string) => void;
-  availableSegments?: string[];
-  onSegmentsLoad?: (segments: string[]) => void;
+  onActionComplete: () => void;
+  onSelectionClear: () => void;
+  onClearSelection: () => void;
 }
 
-const ContactsTable: React.FC<ContactsTableProps> = ({
-  contacts,
-  onContactSelect,
-  onEditContact,
-  onContactClick,
-  selectedContacts,
-  searchQuery,
-  onSearchChange,
-  statusFilter,
-  onStatusFilterChange,
-  activeTab,
-  onTabChange,
-  isLoading = false,
-  currentPage = 1,
-  totalPages = 1,
-  totalRecords = 0,
-  pageSize = 100,
-  onPageChange,
-  onPageSizeChange,
-  showCompanyColumn = true,
-  showTabsHeader = true,
-  showBulkActionsTab = true,
-  segmentFilter = 'all',
-  onSegmentFilterChange,
-  availableSegments = [],
-  onSegmentsLoad,
-}) => {
-  const [selectAll, setSelectAll] = useState(false);
-  const [localSegments, setLocalSegments] = useState<string[]>([]);
-  const [isLoadingSegments, setIsLoadingSegments] = useState(false);
+const ContactsTable: React.FC<DataTableProps> = ({ initialContacts }) => {
+  const [contacts, setContacts] = useState<Contact[]>(initialContacts);
+  const [selectedContacts, setSelectedContacts] = useState<Contact[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [page, setPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [openProfile, setOpenProfile] = useState(false);
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+    const [isBulkActionsOpen, setIsBulkActionsOpen] = useState(false);
+  const [availableSegments, setAvailableSegments] = useState<string[]>([]);
+  const [segmentFilter, setSegmentFilter] = useState('');
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  const [filters, setFilters] = useState<{ status?: string; tags?: string[] }>({
+    status: '',
+    tags: [],
+  });
 
-  const handleSelectAll = (checked: boolean) => {
-    setSelectAll(checked);
-    if (checked) {
-      onContactSelect(contacts);
-    } else {
-      onContactSelect([]);
-    }
+  useEffect(() => {
+    const fetchSegments = async () => {
+      const { data, error } = await supabase
+        .from('contacts_segments')
+        .select('segment_name');
+
+      if (error) {
+        console.error('Error fetching segments:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to fetch segments. Please try again.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const segmentNames = data.map(segment => segment.segment_name);
+      setAvailableSegments(segmentNames);
+    };
+
+    fetchSegments();
+  }, []);
+
+  useEffect(() => {
+    const fetchContacts = async () => {
+      let query = supabase
+        .from('contacts')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (searchTerm) {
+        query = query.ilike('first_name', `%${searchTerm}%`);
+      }
+
+      if (segmentFilter) {
+        query = query.eq('segment_name', segmentFilter);
+      }
+
+      if (filters.status) {
+        query = query.eq('status', filters.status);
+      }
+
+      if (filters.tags && filters.tags.length > 0) {
+        query = query.contains('tags', filters.tags);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Error fetching contacts:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to fetch contacts. Please try again.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      setContacts(data as Contact[]);
+    };
+
+    fetchContacts();
+  }, [searchTerm, segmentFilter, filters]);
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
   };
 
-  const handleSelectContact = (contact: Contact, checked: boolean) => {
-    if (checked) {
-      onContactSelect([...selectedContacts, contact]);
+  const handleItemsPerPageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setItemsPerPage(Number(e.target.value));
+    setPage(1);
+  };
+
+  const toggleContactSelection = (contact: Contact) => {
+    const isSelected = selectedContacts.some((c) => c.id === contact.id);
+
+    if (isSelected) {
+      setSelectedContacts(selectedContacts.filter((c) => c.id !== contact.id));
     } else {
-      onContactSelect(selectedContacts.filter(c => c.id !== contact.id));
+      setSelectedContacts([...selectedContacts, contact]);
     }
   };
 
   const isContactSelected = (contact: Contact) => {
-    return selectedContacts.some(c => c.id === contact.id);
+    return selectedContacts.some((c) => c.id === contact.id);
   };
 
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return '';
-    try {
-      return new Date(dateString).toLocaleDateString();
-    } catch (e) {
-      return dateString;
+  const selectAllContacts = () => {
+    if (selectedContacts.length === contacts.length) {
+      setSelectedContacts([]);
+    } else {
+      setSelectedContacts([...contacts]);
     }
   };
 
-  React.useEffect(() => {
-    setSelectAll(contacts.length > 0 && selectedContacts.length === contacts.length);
-  }, [selectedContacts, contacts]);
+  const paginatedContacts = useMemo(() => {
+    const startIndex = (page - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return contacts.slice(startIndex, endIndex);
+  }, [contacts, page, itemsPerPage]);
 
-  const loadSegments = async () => {
-    if (isLoadingSegments) return;
-    
-    setIsLoadingSegments(true);
+  const totalPages = Math.ceil(contacts.length / itemsPerPage);
+
+  const handleViewProfile = (contact: Contact) => {
+    setSelectedContact(contact);
+    setOpenProfile(true);
+  };
+
+  const handleUpdateContact = (updatedContact: Contact) => {
+    setContacts(prevContacts =>
+      prevContacts.map(contact =>
+        contact.id === updatedContact.id ? updatedContact : contact
+      )
+    );
+    setSelectedContact(updatedContact);
+  };
+
+  const handleDeleteContacts = async () => {
+    if (selectedContacts.length === 0) {
+      toast({
+        title: 'No contacts selected',
+        description: 'Please select at least one contact to delete.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     try {
-      const { data, error } = await supabase
-        .from('contacts_segments')
-        .select('*')
-        .order('segment_name');
+      const { error } = await supabase
+        .from('contacts')
+        .delete()
+        .in('id', selectedContacts.map(contact => contact.id));
 
       if (error) {
-        console.error('Error loading segments:', error);
-        return;
+        console.error('Error deleting contacts:', error);
+        throw error;
       }
 
-      console.log('---segments data:', data?.length, 'segments found');
-      
-      // Extract segment names, excluding 'unassigned'
-      const uniqueSegments = (data || [])
-        .map(row => row.segment_name)
-        .filter(name => name !== 'unassigned' && name.trim() !== '')
-        .sort((a, b) => a.localeCompare(b));
+      setContacts(prevContacts =>
+        prevContacts.filter(contact => !selectedContacts.some(selected => selected.id === contact.id))
+      );
+      setSelectedContacts([]);
 
-      setLocalSegments(uniqueSegments);
-      if (onSegmentsLoad) {
-        onSegmentsLoad(uniqueSegments);
-      }
-
-      // Reset to 'all' if current segment is not in the list
-      if (segmentFilter !== 'all' && !uniqueSegments.includes(segmentFilter)) {
-        handleSegmentChange('all');
-      }
+      toast({
+        title: 'Success',
+        description: 'Contacts deleted successfully.',
+      });
     } catch (error) {
-      console.error('Error loading segments:', error);
-    } finally {
-      setIsLoadingSegments(false);
+      console.error('Error deleting contacts:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete contacts. Please try again.',
+        variant: 'destructive',
+      });
     }
   };
 
-  // Load segments on mount
-  useEffect(() => {
-    loadSegments();
-  }, []); // Only on mount
-
-  const handleSegmentChange = (value: string) => {
-    if (onSegmentFilterChange) {
-      onSegmentFilterChange(value);
-    }
+  const handleAddContact = () => {
+    // Logic to open a modal or navigate to a form for adding a new contact
+    toast({
+      title: 'Add Contact',
+      description: 'Navigating to add contact form...',
+    });
   };
 
-  const clearSegmentFilter = () => {
-    handleSegmentChange('all');
+  const handleSendMessage = () => {
+    // Logic to open a modal or navigate to a form for sending a message
+    toast({
+      title: 'Send Message',
+      description: 'Opening message composer...',
+    });
   };
 
-  // Memoize the segments list
-  const segmentOptions = useMemo(() => {
-    return [
-      { value: 'all', label: 'All Segments' },
-      ...localSegments.map(segment => ({
-        value: segment,
-        label: segment
-      }))
-    ];
-  }, [localSegments]);
+  const clearSelection = () => {
+        setSelectedContacts([]);
+    };
 
-  const renderContactsTable = () => {
-    return (
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="relative">
-              <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
-              <Input
-                placeholder="Search contacts..."
-                value={searchQuery}
-                onChange={(e) => onSearchChange(e.target.value)}
-                className="pl-8"
-              />
-            </div>
-            <Select value={statusFilter} onValueChange={onStatusFilterChange}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select 
-              value={segmentFilter} 
-              onValueChange={handleSegmentChange}
-              disabled={isLoadingSegments}
-            >
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder={isLoadingSegments ? "Loading..." : "Filter by segment"} />
-              </SelectTrigger>
-              <SelectContent>
-                {segmentOptions.map(({ value, label }) => (
-                  <SelectItem key={value} value={value}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
+  const handleFiltersChange = (newFilters: { status?: string; tags?: string[] }) => {
+    setFilters(newFilters);
+    setPage(1);
+  };
 
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-12">
-                  <Checkbox
-                    checked={selectAll}
-                    onCheckedChange={handleSelectAll}
-                  />
-                </TableHead>
-                <TableHead>Contact</TableHead>
-                {showCompanyColumn && <TableHead>Company</TableHead>}
-                <TableHead>Phone</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Tags</TableHead>
-                <TableHead>Segment</TableHead>
-                <TableHead>Last Activity</TableHead>
-                <TableHead className="w-12">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                Array.from({ length: 5 }).map((_, index) => (
-                  <TableRow key={index}>
-                    <TableCell><div className="w-4 h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
-                    <TableCell><div className="w-32 h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
-                    {showCompanyColumn && <TableCell><div className="w-24 h-4 bg-gray-200 rounded animate-pulse" /></TableCell>}
-                    <TableCell><div className="w-20 h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
-                    <TableCell><div className="w-16 h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
-                    <TableCell><div className="w-20 h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
-                    <TableCell><div className="w-20 h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
-                    <TableCell><div className="w-20 h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
-                    <TableCell><div className="w-8 h-4 bg-gray-200 rounded animate-pulse" /></TableCell>
-                  </TableRow>
-                ))
-              ) : contacts.length > 0 ? (
-                contacts.map((contact) => (
-                  <TableRow key={contact.id} className="hover:bg-gray-50">
-                    <TableCell>
-                      <Checkbox
-                        checked={isContactSelected(contact)}
-                        onCheckedChange={(checked: boolean) => handleSelectContact(contact, checked)}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <div 
-                        className="flex items-center gap-3 cursor-pointer"
-                        onClick={() => onContactClick(contact)}
-                      >
-                        <Avatar name={getFullName(contact)} status={contact.status} />
-                        <div>
-                          <div className="font-medium">{getFullName(contact)}</div>
-                          <div className="text-sm text-gray-500">{contact.email}</div>
-                        </div>
-                      </div>
-                    </TableCell>
-                    {showCompanyColumn && (
-                      <TableCell>{contact.company || '—'}</TableCell>
-                    )}
-                    <TableCell>{contact.phone || '—'}</TableCell>
-                    <TableCell>
-                      <Badge variant={contact.status === 'active' ? 'default' : 'secondary'}>
-                        {contact.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {contact.tags?.map((tag) => (
-                          <Badge key={tag} variant="outline" className="px-2 py-0.5 text-xs">
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
-                    </TableCell>
-                    <TableCell>{contact.segment_name || '—'}</TableCell>
-                    <TableCell>{formatDate(contact.createdAt)}</TableCell>
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => onEditContact(contact)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={showCompanyColumn ? 9 : 8} className="h-24 text-center">
-                    No contacts found
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
-
-        {contacts.length > 0 && (
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-gray-500">
-              {selectedContacts.length > 0 && (
-                <span>{selectedContacts.length} selected</span>
-              )}
-            </div>
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={onPageChange}
-              totalRecords={totalRecords}
-              pageSize={pageSize}
-              onPageSizeChange={onPageSizeChange}
-            />
-          </div>
+  const renderContactRow = (contact: Contact) => (
+    <TableRow key={contact.id}>
+      <TableCell>
+        <Checkbox
+          checked={isContactSelected(contact)}
+          onCheckedChange={() => toggleContactSelection(contact)}
+        />
+      </TableCell>
+      <TableCell className="font-medium">{getFullName(contact)}</TableCell>
+      <TableCell>{contact.email}</TableCell>
+      <TableCell>{contact.phone}</TableCell>
+      <TableCell>{contact.company}</TableCell>
+      <TableCell>
+        <Badge variant={contact.status === 'active' ? 'success' : 'secondary'}>
+          {contact.status}
+        </Badge>
+      </TableCell>
+      <TableCell>
+        {contact.tags && contact.tags.length > 0 ? (
+          contact.tags.map(tag => (
+            <Badge key={tag} variant="outline" className="mr-1">
+              {tag}
+            </Badge>
+          ))
+        ) : (
+          <span className="text-gray-500">No tags</span>
         )}
-      </div>
-    );
-  };
+      </TableCell>
+      <TableCell>
+        <div className="flex items-center space-x-2">
+          <Button variant="ghost" size="sm" onClick={() => handleViewProfile(contact)}>
+            <Eye className="h-4 w-4 mr-2" />
+            View
+          </Button>
+        </div>
+      </TableCell>
+    </TableRow>
+  );
 
   return (
-    <div className="space-y-6">
-      {showTabsHeader && (
-        <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
-          <div className="flex items-center justify-between">
-            <TabsList className="grid grid-cols-4 w-fit">
-              <TabsTrigger value="all">All Contacts</TabsTrigger>
-              <TabsTrigger value="active">Active</TabsTrigger>
-              <TabsTrigger value="inactive">Inactive</TabsTrigger>
-              <TabsTrigger value="bulk-actions">Bulk Actions</TabsTrigger>
-            </TabsList>
-            
-            <div className="flex items-center space-x-2">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Search contacts..."
-                  value={searchQuery}
-                  onChange={(e) => onSearchChange(e.target.value)}
-                  className="pl-8 w-64"
+    <div>
+      <div className="flex flex-col md:flex-row justify-between items-center mb-4">
+        <SearchBar onSearch={setSearchTerm} />
+        <div className="flex items-center space-x-2">
+          <Select value={String(itemsPerPage)} onValueChange={handleItemsPerPageChange}>
+            <SelectTrigger className="w-[120px]">
+              <SelectValue placeholder="Items per page" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="10">10</SelectItem>
+              <SelectItem value="20">20</SelectItem>
+              <SelectItem value="50">50</SelectItem>
+            </SelectContent>
+          </Select>
+          <Filters
+            open={isFiltersOpen}
+            onOpenChange={setIsFiltersOpen}
+            onFiltersChange={handleFiltersChange}
+          />
+        </div>
+      </div>
+
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[50px]">
+                <Checkbox
+                  checked={selectedContacts.length === contacts.length}
+                  onCheckedChange={selectAllContacts}
                 />
-              </div>
-              
-              <Select value={statusFilter} onValueChange={onStatusFilterChange}>
-                <SelectTrigger className="w-32">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
-                  <SelectItem value="lead">Lead</SelectItem>
-                  <SelectItem value="customer">Customer</SelectItem>
-                </SelectContent>
-              </Select>
+              </TableHead>
+              <TableHead>Name</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead>Phone</TableHead>
+              <TableHead>Company</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Tags</TableHead>
+              <TableHead className="w-[150px]">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {paginatedContacts.map(renderContactRow)}
+            {paginatedContacts.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={8} className="text-center">
+                  No contacts found.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
 
-              <Select value={segmentFilter} onValueChange={onSegmentFilterChange}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Select Segment..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Segments</SelectItem>
-                  {availableSegments.map((segment) => (
-                    <SelectItem key={segment} value={segment}>
-                      {segment}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Current Filter Display */}
-          {segmentFilter && segmentFilter !== 'all' && (
-            <div className="flex items-center gap-2 mt-2">
-              <span className="text-sm text-gray-500">Showing:</span>
-              <Badge variant="secondary" className="gap-1">
-                Segment → {segmentFilter}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-4 w-4 p-0 hover:bg-transparent"
-                  onClick={clearSegmentFilter}
-                >
-                  <X className="h-3 w-3" />
-                </Button>
-              </Badge>
-            </div>
-          )}
-
-          <TabsContent value="all" className="mt-6">
-            {renderContactsTable()}
-          </TabsContent>
-          
-          <TabsContent value="active" className="mt-6">
-            {renderContactsTable()}
-          </TabsContent>
-          
-          <TabsContent value="inactive" className="mt-6">
-            {renderContactsTable()}
-          </TabsContent>
-
-          <TabsContent value="bulk-actions" className="mt-6">
-            <BulkActionsTab
-              selectedContacts={selectedContacts}
-              onActionComplete={() => {
-                // This will be handled by the parent component
-                if (window.location.reload) {
-                  console.log('Action completed, refreshing data...');
-                }
-              }}
-              onSelectionClear={() => onContactSelect([])}
-              segmentFilter={segmentFilter}
-              availableSegments={availableSegments}
-              onSegmentFilterChange={onSegmentFilterChange}
-            />
-          </TabsContent>
-        </Tabs>
-      )}
-
-      {!showTabsHeader && renderContactsTable()}
-
-      {showBulkActionsTab && selectedContacts.length > 0 && (
-        <BulkActionsTab
-          selectedContacts={selectedContacts}
-          onClearSelection={() => onContactSelect([])}
+      <div className="flex flex-col md:flex-row justify-between items-center mt-4">
+        <Pagination
+          currentPage={page}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
         />
-      )}
+        <Select onValueChange={setSegmentFilter}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Filter by Segment" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">All Segments</SelectItem>
+            {availableSegments.map(segment => (
+              <SelectItem key={segment} value={segment}>
+                {segment}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <Dialog open={openProfile} onOpenChange={setOpenProfile}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Contact Profile</DialogTitle>
+          </DialogHeader>
+          {selectedContact && (
+            <UserProfileModal
+              contact={selectedContact}
+              onSave={handleUpdateContact}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
