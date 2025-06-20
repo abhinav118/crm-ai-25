@@ -17,19 +17,7 @@ import Conversations from '@/components/dashboard/Conversations';
 import { supabase } from '@/integrations/supabase/client';
 import { logContactAction } from '@/utils/contactLogger';
 import { getFullName } from '@/utils/contactHelpers';
-
-export interface ContactFormData {
-  id?: string;
-  first_name: string;
-  last_name?: string;
-  email?: string;
-  phone?: string;
-  company?: string;
-  status: 'active' | 'inactive';
-  tags?: string[];
-  segment_name?: string;
-  updated_at: string;
-}
+import { ContactFormData } from '@/components/dashboard/ContactForm/types';
 
 const Index = () => {
   const [selectedContacts, setSelectedContacts] = useState<Contact[]>([]);
@@ -240,7 +228,7 @@ const Index = () => {
       
       // Log deletion for each contact
       for (const contact of selectedContacts) {
-        await logContactAction(contact.id, 'delete' as any);
+        await logContactAction(contact.id, 'delete');
       }
       
       toast({
@@ -267,7 +255,14 @@ const Index = () => {
         const { error } = await supabase
           .from('contacts')
           .update({
-            ...data,
+            first_name: data.first_name,
+            last_name: data.last_name,
+            email: data.email,
+            phone: data.phone,
+            company: data.company,
+            status: data.status,
+            tags: data.tags,
+            segment_name: data.segment_name,
             updated_at: new Date().toISOString()
           })
           .eq('id', selectedContact.id);
@@ -280,13 +275,20 @@ const Index = () => {
         });
 
         // Log the update action
-        await logContactAction(selectedContact.id, 'update' as any);
+        await logContactAction(selectedContact.id, 'update');
       } else {
         // Create new contact
         const { data: newContact, error } = await supabase
           .from('contacts')
           .insert([{
-            ...data,
+            first_name: data.first_name,
+            last_name: data.last_name,
+            email: data.email,
+            phone: data.phone,
+            company: data.company,
+            status: data.status,
+            tags: data.tags,
+            segment_name: data.segment_name,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           }])
@@ -302,7 +304,7 @@ const Index = () => {
 
         // Log the create action
         if (newContact) {
-          await logContactAction(newContact.id, 'create' as any);
+          await logContactAction(newContact.id, 'create');
         }
       }
 
@@ -386,7 +388,6 @@ const Index = () => {
       {/* Sidebar */}
       <Sidebar collapsed={sidebarCollapsed} onToggle={toggleSidebar} />
       
-      {/* Main Content */}
       <div className={`flex-1 flex flex-col transition-all duration-300 ${sidebarCollapsed ? 'ml-[63px]' : 'ml-[234px]'} ${showContactDetails ? 'mr-80' : ''}`}>
         {/* Header */}
         <header className="bg-white shadow-sm border-b px-6 py-4">
@@ -505,13 +506,14 @@ const Index = () => {
               initialData={selectedContact ? {
                 id: selectedContact.id,
                 first_name: selectedContact.first_name,
-                last_name: selectedContact.last_name || undefined,
-                email: selectedContact.email || undefined,
-                phone: selectedContact.phone || undefined,
-                company: selectedContact.company || undefined,
+                last_name: selectedContact.last_name || '',
+                email: selectedContact.email,
+                phone: selectedContact.phone,
+                company: selectedContact.company,
                 status: selectedContact.status,
-                tags: selectedContact.tags || undefined,
-                updated_at: new Date().toISOString()
+                tags: selectedContact.tags || [],
+                updated_at: new Date().toISOString(),
+                segment_name: selectedContact.segment_name
               } : undefined}
             />
           </div>
