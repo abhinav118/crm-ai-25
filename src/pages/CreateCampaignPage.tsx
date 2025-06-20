@@ -58,14 +58,16 @@ const CreateCampaignPage = () => {
   );
 
   // Add console logging to debug the suggestions
-  console.log('Prompt suggestions:', promptSuggestions);
-  console.log('Channel value:', channel);
+  console.log('CreateCampaignPage - Prompt suggestions:', promptSuggestions);
+  console.log('CreateCampaignPage - Channel value:', channel);
 
   const handleChannelChange = (value: MarketingChannel) => {
-    console.log('Channel changed to:', value);
-    // Ensure the value is valid before setting
-    if (value === 'SMS Marketing' || value === 'Email Marketing') {
+    console.log('CreateCampaignPage - Channel changed to:', value);
+    // Ensure the value is valid and not empty before setting
+    if (value && (value === 'SMS Marketing' || value === 'Email Marketing')) {
       setChannel(value);
+    } else {
+      console.error('CreateCampaignPage - Invalid channel value:', value);
     }
   };
 
@@ -299,6 +301,13 @@ const CreateCampaignPage = () => {
     return <EmailCampaignEditor onBack={() => setShowEmailEditor(false)} />;
   }
 
+  // Filter suggestions to ensure they are valid and not empty
+  const validSuggestions = promptSuggestions.filter(suggestion => 
+    suggestion && 
+    typeof suggestion === 'string' && 
+    suggestion.trim().length > 0
+  );
+
   return (
     <div className="max-w-5xl mx-auto px-4">
       <h1 className="text-4xl font-bold mb-8">Create Campaign</h1>
@@ -322,21 +331,19 @@ const CreateCampaignPage = () => {
           <div className="animate-pulse flex space-x-4">
             <div className="h-4 bg-gray-200 rounded w-3/4"></div>
           </div>
-        ) : promptSuggestions.length > 0 ? (
+        ) : validSuggestions.length > 0 ? (
           <div className="text-gray-600 mb-2 flex flex-wrap gap-2">
-            {promptSuggestions
-              .filter(suggestion => suggestion && suggestion.trim().length > 0)
-              .map((suggestion, index) => (
-                <Button 
-                  key={index} 
-                  variant="outline" 
-                  size="sm" 
-                  className="text-xs"
-                  onClick={() => setPrompt(suggestion)}
-                >
-                  {suggestion.length > 30 ? `${suggestion.substring(0, 30)}...` : suggestion}
-                </Button>
-              ))}
+            {validSuggestions.map((suggestion, index) => (
+              <Button 
+                key={index} 
+                variant="outline" 
+                size="sm" 
+                className="text-xs"
+                onClick={() => setPrompt(suggestion)}
+              >
+                {suggestion.length > 30 ? `${suggestion.substring(0, 30)}...` : suggestion}
+              </Button>
+            ))}
           </div>
         ) : (
           <p className="text-gray-600 mb-2">
