@@ -13,7 +13,7 @@ import UserProfileModal from './UserProfileModal';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import Pagination from './Pagination';
 import SearchBar from './SearchBar';
-import Filters from './Filters/FilterDialog';
+import { FilterDialog, FilterState } from './Filters/FilterDialog';
 import { logContactAction } from '@/utils/contactLogger';
 import BulkActionsTab from './BulkActions/BulkActionsTab';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -61,10 +61,7 @@ const ContactsTable: React.FC<DataTableProps> = ({ initialContacts }) => {
   const [availableSegments, setAvailableSegments] = useState<string[]>([]);
   const [segmentFilter, setSegmentFilter] = useState('');
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
-  const [filters, setFilters] = useState<{ status?: string; tags?: string[] }>({
-    status: '',
-    tags: [],
-  });
+  const [filters, setFilters] = useState<FilterState>({});
 
   useEffect(() => {
     const fetchSegments = async () => {
@@ -104,12 +101,46 @@ const ContactsTable: React.FC<DataTableProps> = ({ initialContacts }) => {
         query = query.eq('segment_name', segmentFilter);
       }
 
-      if (filters.status) {
-        query = query.eq('status', filters.status);
+      // Apply FilterState filters
+      if (filters.phone) {
+        const { operator, value } = filters.phone;
+        if (operator === 'isEmpty') {
+          query = query.is('phone', null);
+        } else if (operator === 'isNotEmpty') {
+          query = query.not('phone', 'is', null);
+        } else if (operator === 'is' && value) {
+          query = query.eq('phone', value);
+        } else if (operator === 'isNot' && value) {
+          query = query.neq('phone', value);
+        }
       }
 
-      if (filters.tags && filters.tags.length > 0) {
-        query = query.contains('tags', filters.tags);
+      if (filters.email) {
+        const { operator, value } = filters.email;
+        if (operator === 'isEmpty') {
+          query = query.is('email', null);
+        } else if (operator === 'isNotEmpty') {
+          query = query.not('email', 'is', null);
+        } else if (operator === 'is' && value) {
+          query = query.eq('email', value);
+        } else if (operator === 'isNot' && value) {
+          query = query.neq('email', value);
+        }
+      }
+
+      if (filters.tag) {
+        const { operator, value } = filters.tag;
+        if (operator === 'isEmpty') {
+          query = query.or('tags.is.null,tags.eq.{}');
+        } else if (operator === 'isNotEmpty') {
+          query = query.not('tags', 'is', null).not('tags', 'eq', '{}');
+        } else if (operator === 'is' && value) {
+          query = query.contains('tags', [value]);
+        } else if (operator === 'isNot' && value) {
+          query = query.not('tags', 'cs', [value]);
+        } else if (operator === 'anyOf' && Array.isArray(value)) {
+          query = query.overlaps('tags', value);
+        }
       }
 
       const { data, error } = await query;
@@ -241,7 +272,7 @@ const ContactsTable: React.FC<DataTableProps> = ({ initialContacts }) => {
     setSelectedContacts([]);
   };
 
-  const handleFiltersChange = (newFilters: { status?: string; tags?: string[] }) => {
+  const handleFiltersChange = (newFilters: FilterState) => {
     setFilters(newFilters);
     setPage(1);
   };
@@ -288,7 +319,7 @@ const ContactsTable: React.FC<DataTableProps> = ({ initialContacts }) => {
   return (
     <div>
       <div className="flex flex-col md:flex-row justify-between items-center mb-4">
-        <SearchBar onSearch={setSearchTerm} onFilterChange={handleFiltersChange} />
+        <SearchBar onSearch={setSearchTerm} />
         <div className="flex items-center space-x-2">
           <Select value={String(itemsPerPage)} onValueChange={handleItemsPerPageChange}>
             <SelectTrigger className="w-[120px]">
@@ -300,10 +331,12 @@ const ContactsTable: React.FC<DataTableProps> = ({ initialContacts }) => {
               <SelectItem value="50">50</SelectItem>
             </SelectContent>
           </Select>
-          <Filters
+          <FilterDialog
             open={isFiltersOpen}
             onOpenChange={setIsFiltersOpen}
-            onFiltersChange={handleFiltersChange}
+            onApplyFilters={handleFiltersChange}
+            currentFilters={filters}
+            totalCount={contacts.length}
           />
         </div>
       </div>
@@ -345,6 +378,9 @@ const ContactsTable: React.FC<DataTableProps> = ({ initialContacts }) => {
           currentPage={page}
           totalPages={totalPages}
           onPageChange={handlePageChange}
+          totalRecords={contacts.length}
+          pageSize={itemsPerPage}
+          onPageSizeChange={handleItemsPerPageChange}
         />
         <Select onValueChange={setSegmentFilter}>
           <SelectTrigger className="w-[180px]">

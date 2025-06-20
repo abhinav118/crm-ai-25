@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { Plus, MessageSquare, UserPlus, Search, Settings, X, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -6,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/use-toast';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import ContactsTable from '@/components/dashboard/ContactsTable';
+import ContactsTable, { Contact } from '@/components/dashboard/ContactsTable';
 import Sidebar from '@/components/dashboard/Sidebar';
 import ContactForm from '@/components/dashboard/ContactForm';
 import ActionButtons from '@/components/dashboard/ActionButtons';
@@ -16,19 +17,6 @@ import Conversations from '@/components/dashboard/Conversations';
 import { supabase } from '@/integrations/supabase/client';
 import { logContactAction } from '@/utils/contactLogger';
 import { getFullName } from '@/utils/contactHelpers';
-
-export interface Contact {
-  id: string;
-  first_name: string;
-  last_name?: string;
-  email?: string;
-  phone?: string;
-  company?: string;
-  status: 'active' | 'inactive';
-  tags?: string[];
-  createdAt?: string;
-  segment_name?: string;
-}
 
 export interface ContactFormData {
   id?: string;
@@ -106,7 +94,7 @@ const Index = () => {
   };
 
   // Fetch available segments
-  const { data: segmentsData } = useQueryClient({
+  const { data: segmentsData } = useQuery({
     queryKey: ['contact-segments'],
     queryFn: async () => {
       console.log('Fetching available segments...');
@@ -181,12 +169,12 @@ const Index = () => {
         id: contact.id,
         first_name: contact.first_name,
         last_name: contact.last_name,
-        email: contact.email || '',
-        phone: contact.phone || '',
-        company: contact.company || '',
-        lastActivity: contact.last_activity || '',
+        email: contact.email || null,
+        phone: contact.phone || null,
+        company: contact.company || null,
+        last_activity: contact.last_activity || null,
         status: contact.status as 'active' | 'inactive',
-        tags: contact.tags || [],
+        tags: contact.tags || null,
         createdAt: contact.created_at,
         segment_name: contact.segment_name
       }));
@@ -251,11 +239,7 @@ const Index = () => {
       
       // Log deletion for each contact
       for (const contact of selectedContacts) {
-        await logContactAction('delete', {
-          id: contact.id,
-          first_name: contact.first_name,
-          last_name: contact.last_name
-        });
+        await logContactAction(contact.id, 'delete');
       }
       
       toast({
@@ -275,14 +259,14 @@ const Index = () => {
     }
   };
 
-  const handleSubmitContact = async (formData: ContactFormData) => {
+  const handleSubmitContact = async (data: ContactFormData) => {
     try {
       if (selectedContact) {
         // Update existing contact
         const { error } = await supabase
           .from('contacts')
           .update({
-            ...formData,
+            ...data,
             updated_at: new Date().toISOString()
           })
           .eq('id', selectedContact.id);
@@ -298,10 +282,10 @@ const Index = () => {
         await logContactAction(selectedContact.id, 'update');
       } else {
         // Create new contact
-        const { data, error } = await supabase
+        const { data: newContact, error } = await supabase
           .from('contacts')
           .insert([{
-            ...formData,
+            ...data,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           }])
@@ -316,8 +300,8 @@ const Index = () => {
         });
 
         // Log the create action
-        if (data) {
-          await logContactAction(data.id, 'create');
+        if (newContact) {
+          await logContactAction(newContact.id, 'create');
         }
       }
 
@@ -459,30 +443,7 @@ const Index = () => {
         {/* Content */}
         <main className="flex-1 p-6">
           <ContactsTable
-            contacts={contacts}
-            onContactSelect={setSelectedContacts}
-            onEditContact={handleEditContact}
-            onContactClick={handleContactClick}
-            selectedContacts={selectedContacts}
-            searchQuery={searchQuery}
-            onSearchChange={handleSearchChange}
-            statusFilter={statusFilter}
-            onStatusFilterChange={handleStatusFilterChange}
-            activeTab={activeTab}
-            onTabChange={handleTabChange}
-            isLoading={isLoadingContacts}
-            currentPage={currentPage}
-            totalPages={totalPages}
-            totalRecords={totalContacts}
-            pageSize={pageSize}
-            onPageChange={setCurrentPage}
-            onPageSizeChange={handlePageSizeChange}
-            showCompanyColumn={false}
-            showBulkActionsTab={true}
-            segmentFilter={segmentFilter}
-            onSegmentFilterChange={handleSegmentFilterChange}
-            availableSegments={availableSegments}
-            onSegmentsLoad={handleSegmentsLoad}
+            initialContacts={contacts}
           />
         </main>
       </div>
@@ -543,13 +504,12 @@ const Index = () => {
               initialData={selectedContact ? {
                 id: selectedContact.id,
                 first_name: selectedContact.first_name,
-                last_name: selectedContact.last_name,
-                email: selectedContact.email,
-                phone: selectedContact.phone,
-                company: selectedContact.company,
+                last_name: selectedContact.last_name || undefined,
+                email: selectedContact.email || undefined,
+                phone: selectedContact.phone || undefined,
+                company: selectedContact.company || undefined,
                 status: selectedContact.status,
-                tags: selectedContact.tags,
-                updated_at: new Date().toISOString()
+                tags: selectedContact.tags || undefined,
               } : undefined}
             />
           </div>
