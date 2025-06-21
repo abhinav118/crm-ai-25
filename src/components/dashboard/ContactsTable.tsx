@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,8 +15,10 @@ import SearchBar from './SearchBar';
 import FilterDialog, { FilterState } from './Filters/FilterDialog';
 import { logContactAction } from '@/utils/contactLogger';
 import BulkActionsTab from './BulkActions/BulkActionsTab';
+import BulkActions from './BulkActions/BulkActions';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { getFullName } from '@/utils/contactHelpers';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export interface Contact {
   id: string;
@@ -57,11 +58,11 @@ const ContactsTable: React.FC<DataTableProps> = ({ initialContacts }) => {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [openProfile, setOpenProfile] = useState(false);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
-  const [isBulkActionsOpen, setIsBulkActionsOpen] = useState(false);
   const [availableSegments, setAvailableSegments] = useState<string[]>([]);
   const [segmentFilter, setSegmentFilter] = useState('all');
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [filters, setFilters] = useState<FilterState>({});
+  const [activeTab, setActiveTab] = useState('contacts');
 
   useEffect(() => {
     const fetchSegments = async () => {
@@ -277,6 +278,12 @@ const ContactsTable: React.FC<DataTableProps> = ({ initialContacts }) => {
     setPage(1);
   };
 
+  const handleBulkActionComplete = () => {
+    // Refresh contacts data
+    setSelectedContacts([]);
+    // You may want to refetch contacts here
+  };
+
   const renderContactRow = (contact: Contact) => (
     <TableRow key={contact.id}>
       <TableCell>
@@ -318,91 +325,118 @@ const ContactsTable: React.FC<DataTableProps> = ({ initialContacts }) => {
 
   return (
     <div>
-      <div className="flex flex-col md:flex-row justify-between items-center mb-4">
-        <SearchBar 
-          onSearch={setSearchTerm} 
-          onFilterChange={handleFiltersChange}
-          totalCount={contacts.length}
-        />
-        <div className="flex items-center space-x-2">
-          <Select value={String(itemsPerPage)} onValueChange={handleItemsPerPageChange}>
-            <SelectTrigger className="w-[120px]">
-              <SelectValue placeholder="Items per page" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="10">10</SelectItem>
-              <SelectItem value="20">20</SelectItem>
-              <SelectItem value="50">50</SelectItem>
-            </SelectContent>
-          </Select>
-          <FilterDialog
-            open={isFiltersOpen}
-            onOpenChange={setIsFiltersOpen}
-            onApplyFilters={handleFiltersChange}
-            currentFilters={filters}
-            totalCount={contacts.length}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="contacts">Contacts</TabsTrigger>
+          <TabsTrigger value="bulk-actions">Bulk Actions</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="contacts" className="space-y-4">
+          <div className="flex flex-col md:flex-row justify-between items-center mb-4">
+            <SearchBar 
+              onSearch={setSearchTerm} 
+              onFilterChange={handleFiltersChange}
+              totalCount={contacts.length}
+            />
+            <div className="flex items-center space-x-2">
+              <Select value={String(itemsPerPage)} onValueChange={handleItemsPerPageChange}>
+                <SelectTrigger className="w-[120px]">
+                  <SelectValue placeholder="Items per page" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="20">20</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                </SelectContent>
+              </Select>
+              <FilterDialog
+                open={isFiltersOpen}
+                onOpenChange={setIsFiltersOpen}
+                onApplyFilters={handleFiltersChange}
+                currentFilters={filters}
+                totalCount={contacts.length}
+              />
+            </div>
+          </div>
+
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[50px]">
+                    <Checkbox
+                      checked={selectedContacts.length === contacts.length}
+                      onCheckedChange={selectAllContacts}
+                    />
+                  </TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Phone</TableHead>
+                  <TableHead>Company</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Tags</TableHead>
+                  <TableHead className="w-[150px]">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {paginatedContacts.map(renderContactRow)}
+                {paginatedContacts.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center">
+                      No contacts found.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+
+          <div className="flex flex-col md:flex-row justify-between items-center mt-4">
+            <Pagination
+              currentPage={page}
+              totalPages={totalPages}
+              onPageChange={handlePageChange}
+              totalRecords={contacts.length}
+              pageSize={itemsPerPage}
+              onPageSizeChange={(size: number) => {
+                setItemsPerPage(size);
+                setPage(1);
+              }}
+            />
+            <Select value={segmentFilter} onValueChange={setSegmentFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Filter by Segment" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Segments</SelectItem>
+                {availableSegments.map(segment => (
+                  <SelectItem key={segment} value={segment}>
+                    {segment}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="bulk-actions" className="space-y-4">
+          <BulkActionsTab
+            selectedContacts={selectedContacts}
+            onActionComplete={handleBulkActionComplete}
+            onSelectionClear={clearSelection}
+            onClearSelection={clearSelection}
+            segmentFilter={segmentFilter}
+            availableSegments={availableSegments}
+            onSegmentFilterChange={setSegmentFilter}
           />
-        </div>
-      </div>
+        </TabsContent>
+      </Tabs>
 
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[50px]">
-                <Checkbox
-                  checked={selectedContacts.length === contacts.length}
-                  onCheckedChange={selectAllContacts}
-                />
-              </TableHead>
-              <TableHead>Name</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Phone</TableHead>
-              <TableHead>Company</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Tags</TableHead>
-              <TableHead className="w-[150px]">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {paginatedContacts.map(renderContactRow)}
-            {paginatedContacts.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={8} className="text-center">
-                  No contacts found.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
-
-      <div className="flex flex-col md:flex-row justify-between items-center mt-4">
-        <Pagination
-          currentPage={page}
-          totalPages={totalPages}
-          onPageChange={handlePageChange}
-          totalRecords={contacts.length}
-          pageSize={itemsPerPage}
-          onPageSizeChange={(size: number) => {
-            setItemsPerPage(size);
-            setPage(1);
-          }}
-        />
-        <Select value={segmentFilter} onValueChange={setSegmentFilter}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Filter by Segment" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Segments</SelectItem>
-            {availableSegments.map(segment => (
-              <SelectItem key={segment} value={segment}>
-                {segment}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <BulkActions
+        selectedContacts={selectedContacts}
+        onContactsUpdated={handleBulkActionComplete}
+        onSelectionClear={clearSelection}
+      />
 
       <Dialog open={openProfile} onOpenChange={setOpenProfile}>
         <DialogContent className="sm:max-w-[425px]">
