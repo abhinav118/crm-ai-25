@@ -35,7 +35,7 @@ const ManageSegmentMembership: React.FC<ManageSegmentMembershipProps> = ({
   
   const queryClient = useQueryClient();
 
-  // Phone number validation function
+  // Enhanced phone number validation function
   const validatePhoneNumber = (phone: string): boolean => {
     const cleanPhone = phone.trim();
     // Support formats: (xxx) xxx-xxxx, +1xxxxxxxxxx, xxxxxxxxxx
@@ -111,13 +111,13 @@ const ManageSegmentMembership: React.FC<ManageSegmentMembershipProps> = ({
         return;
       }
 
-      // Validate phone numbers
+      // Validate phone numbers with better error messages
       const errors: string[] = [];
       const validPhones: string[] = [];
       
       inputPhones.forEach((phone, index) => {
         if (!validatePhoneNumber(phone)) {
-          errors.push(`Line ${index + 1}: Invalid phone format "${phone}"`);
+          errors.push(`Line ${index + 1}: Invalid phone format "${phone}" - Use (xxx) xxx-xxxx, +1xxxxxxxxxx, or xxxxxxxxxx`);
         } else {
           validPhones.push(phone);
         }
@@ -126,8 +126,8 @@ const ManageSegmentMembership: React.FC<ManageSegmentMembershipProps> = ({
       if (errors.length > 0) {
         setValidationErrors(errors);
         toast({
-          title: 'Validation Errors',
-          description: `${errors.length} phone number(s) have invalid format`,
+          title: 'Phone Number Validation Errors',
+          description: `${errors.length} phone number(s) have invalid format. Accepted formats: (xxx) xxx-xxxx, +1xxxxxxxxxx, xxxxxxxxxx`,
           variant: 'destructive'
         });
         return;
@@ -148,8 +148,8 @@ const ManageSegmentMembership: React.FC<ManageSegmentMembershipProps> = ({
       // Determine the segment to use
       const segmentToUse = newSegmentName.trim() || targetSegment;
       
-      // Update contacts
-      const updatedContacts = matchingContacts.map(contact => {
+      // Update contacts using individual update operations
+      const updatePromises = matchingContacts.map(contact => {
         let updatedSegmentName = contact.segment_name;
         
         if (operationType === 'add') {
@@ -158,19 +158,25 @@ const ManageSegmentMembership: React.FC<ManageSegmentMembershipProps> = ({
           updatedSegmentName = contact.segment_name === segmentToUse ? null : contact.segment_name;
         }
         
-        return {
-          id: contact.id,
-          segment_name: updatedSegmentName,
-          updated_at: new Date().toISOString()
-        };
+        // Use update instead of upsert to avoid first_name constraint issues
+        return supabase
+          .from('contacts')
+          .update({
+            segment_name: updatedSegmentName,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', contact.id);
       });
 
-      // Batch update contacts
-      const { error: updateError } = await supabase
-        .from('contacts')
-        .upsert(updatedContacts);
-
-      if (updateError) throw updateError;
+      // Execute all updates
+      const results = await Promise.all(updatePromises);
+      
+      // Check for any errors
+      const errors_in_updates = results.filter(result => result.error);
+      if (errors_in_updates.length > 0) {
+        console.error('Update errors:', errors_in_updates);
+        throw new Error(`Failed to update ${errors_in_updates.length} contact(s)`);
+      }
 
       // Show success message
       const actionText = operationType === 'add' ? 'added to' : 'removed from';

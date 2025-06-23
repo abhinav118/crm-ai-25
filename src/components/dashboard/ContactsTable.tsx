@@ -127,9 +127,9 @@ const ContactsTable: React.FC<DataTableProps> = ({ initialContacts }) => {
           } else if (operator === 'isNotEmpty') {
             query = query.not('phone', 'is', null);
           } else if (operator === 'is' && value) {
-            query = query.eq('phone', value);
+            query = query.eq('phone', String(value));
           } else if (operator === 'isNot' && value) {
-            query = query.neq('phone', value);
+            query = query.neq('phone', String(value));
           }
         }
 
@@ -140,9 +140,9 @@ const ContactsTable: React.FC<DataTableProps> = ({ initialContacts }) => {
           } else if (operator === 'isNotEmpty') {
             query = query.not('email', 'is', null);
           } else if (operator === 'is' && value) {
-            query = query.eq('email', value);
+            query = query.eq('email', String(value));
           } else if (operator === 'isNot' && value) {
-            query = query.neq('email', value);
+            query = query.neq('email', String(value));
           }
         }
 
@@ -153,11 +153,11 @@ const ContactsTable: React.FC<DataTableProps> = ({ initialContacts }) => {
           } else if (operator === 'isNotEmpty') {
             query = query.not('tags', 'is', null).not('tags', 'eq', '{}');
           } else if (operator === 'is' && value) {
-            query = query.contains('tags', [value]);
+            query = query.contains('tags', [String(value)]);
           } else if (operator === 'isNot' && value) {
-            query = query.not('tags', 'cs', [value]);
+            query = query.not('tags', 'cs', [String(value)]);
           } else if (operator === 'anyOf' && Array.isArray(value)) {
-            query = query.overlaps('tags', value);
+            query = query.overlaps('tags', value.map(String));
           }
         }
 
@@ -173,7 +173,14 @@ const ContactsTable: React.FC<DataTableProps> = ({ initialContacts }) => {
           return;
         }
 
-        setContacts(data as Contact[]);
+        // Convert database format to Contact interface format
+        const contactsWithCorrectFormat = (data || []).map((contact: any) => ({
+          ...contact,
+          createdAt: contact.created_at,
+          created_at: contact.created_at
+        })) as Contact[];
+
+        setContacts(contactsWithCorrectFormat);
       } else {
         // Fetch contacts for specific segment
         try {
@@ -195,7 +202,8 @@ const ContactsTable: React.FC<DataTableProps> = ({ initialContacts }) => {
 
           if (data?.contacts_membership) {
             // Convert JSONB contacts to Contact format
-            const segmentContactsData = data.contacts_membership.map((contact: any) => ({
+            const membership = data.contacts_membership as any[];
+            const segmentContactsData = Array.isArray(membership) ? membership.map((contact: any) => ({
               id: contact.id,
               first_name: contact.name ? contact.name.split(' ')[0] : 'Unknown',
               last_name: contact.name ? contact.name.split(' ').slice(1).join(' ') || null : null,
@@ -206,8 +214,9 @@ const ContactsTable: React.FC<DataTableProps> = ({ initialContacts }) => {
               last_activity: contact.last_activity || null,
               tags: contact.tags || null,
               createdAt: contact.created_at || new Date().toISOString(),
+              created_at: contact.created_at || new Date().toISOString(),
               segment_name: segmentFilter
-            }));
+            })) : [];
 
             setContacts(segmentContactsData as Contact[]);
           } else {
@@ -379,7 +388,7 @@ const ContactsTable: React.FC<DataTableProps> = ({ initialContacts }) => {
         </Badge>
       </TableCell>
       <TableCell>
-        {contact.tags && contact.tags.length > 0 ? (
+        {contact.tags && Array.isArray(contact.tags) && contact.tags.length > 0 ? (
           contact.tags.map(tag => (
             <Badge key={tag} variant="outline" className="mr-1">
               {tag}
