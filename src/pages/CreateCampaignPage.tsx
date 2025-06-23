@@ -1342,7 +1342,7 @@ const CreateCampaignPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* Schedule Recurring */}
+                {/* Schedule Recurring 
                 {scheduleType === 'recurring' && (
                   <div className="mt-4 space-y-4 p-4 border rounded-lg bg-gray-50">
                     <div>
@@ -1408,7 +1408,7 @@ const CreateCampaignPage: React.FC = () => {
                       </Popover>
                     </div>
                   </div>
-                )}
+                )}*/
               </div>
 
               {/* Send Campaign Button */}
