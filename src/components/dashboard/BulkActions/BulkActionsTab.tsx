@@ -1,86 +1,52 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Contact } from '../ContactsTable';
-import ManageSegmentTags from './components/ManageSegmentTags';
+import { Contact } from '@/types';
 import ManageSegmentMembership from './components/ManageSegmentMembership';
-import BulkActionsTable from './BulkActionsTable';
-import { Button } from '@/components/ui/button';
 
 interface BulkActionsTabProps {
   selectedContacts: Contact[];
-  onActionComplete: () => void;
-  onSelectionClear: () => void;
-  onClearSelection: () => void;
-  segmentFilter?: string;
-  availableSegments?: string[];
-  onSegmentFilterChange?: (segment: string) => void;
+  segmentFilter: string;
+  availableSegments: string[];
+  onSegmentFilterChange: (segment: string) => void;
 }
 
 const BulkActionsTab: React.FC<BulkActionsTabProps> = ({
   selectedContacts,
-  onActionComplete,
-  onClearSelection,
-  onSelectionClear,
-  segmentFilter = 'all',
-  availableSegments = [],
+  segmentFilter,
+  availableSegments,
   onSegmentFilterChange
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState('segment-tags');
-
-  const handleClearSelection = () => {
-    if (onClearSelection) {
-      onClearSelection();
-    }
-  };
-
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium">
-            {selectedContacts.length} contacts selected
-          </span>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleClearSelection}
-          >
-            Clear selection
-          </Button>
-        </div>
+    <div className="space-y-6">
+      <div className="border-b pb-4">
+        <h2 className="text-lg font-semibold">Bulk Actions</h2>
+        <p className="text-sm text-gray-500">
+          Perform actions on multiple contacts at once.
+        </p>
       </div>
-
-      <Tabs value={activeSubTab} onValueChange={setActiveSubTab} className="w-full">
-        <TabsList className="grid grid-cols-3 w-fit">
-          <TabsTrigger value="segment-tags">Manage Segment Tags</TabsTrigger>
-          <TabsTrigger value="segment-membership">Manage Segment Membership</TabsTrigger>
-          <TabsTrigger value="activity-log">Activity Log</TabsTrigger>
+      
+      <Tabs defaultValue="segments" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="segments">Segment Management</TabsTrigger>
+          <TabsTrigger value="tags">Tag Management</TabsTrigger>
+          <TabsTrigger value="actions">Bulk Actions</TabsTrigger>
         </TabsList>
-
-        <TabsContent value="segment-tags" className="mt-6">
-          <ManageSegmentTags 
-            onActionComplete={onActionComplete}
+        
+        <TabsContent value="segments" className="space-y-4">
+          <ManageSegmentMembership
+            selectedContacts={selectedContacts}
             segmentFilter={segmentFilter}
             availableSegments={availableSegments}
             onSegmentFilterChange={onSegmentFilterChange}
           />
         </TabsContent>
-
-        <TabsContent value="segment-membership" className="mt-6">
-          <ManageSegmentMembership 
-            onActionComplete={onActionComplete}
-            segmentFilter={segmentFilter}
-            availableSegments={availableSegments}
-            onSegmentFilterChange={onSegmentFilterChange}
-          />
+        
+        <TabsContent value="tags">
+          <p>Tag Management Content</p>
         </TabsContent>
-
-        <TabsContent value="activity-log" className="mt-6">
-          <BulkActionsTable 
-            segmentFilter={segmentFilter}
-            availableSegments={availableSegments}
-            onSegmentFilterChange={onSegmentFilterChange}
-          />
+        
+        <TabsContent value="actions">
+          <p>Bulk Actions Content</p>
         </TabsContent>
       </Tabs>
     </div>

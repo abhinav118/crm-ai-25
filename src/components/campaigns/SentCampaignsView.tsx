@@ -12,7 +12,7 @@ import { useNavigate } from 'react-router-dom';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useSentTelnyxCampaigns, TelnyxCampaign } from '@/hooks/useTelnyxCampaigns';
 import { toast } from '@/hooks/use-toast';
-import { CampaignProgressDialog } from './CampaignProgressDialog';
+import CampaignProgressDialog from './CampaignProgressDialog';
 
 // Simple inline MessageCell component
 interface MessageCellProps {
@@ -328,10 +328,9 @@ const SentCampaignsView: React.FC = () => {
         </div>
       )}
       <CampaignProgressDialog
-        isOpen={progressDialogOpen}
+        campaignId={selectedCampaignId || ''}
+        open={progressDialogOpen}
         onClose={() => setProgressDialogOpen(false)}
-        campaignId={selectedCampaignId}
-        campaignName={selectedCampaignName}
       />
     </div>
   );

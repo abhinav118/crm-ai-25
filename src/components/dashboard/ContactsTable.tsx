@@ -1,3 +1,4 @@
+
 import React from 'react';
 import {
   Table,
@@ -12,6 +13,9 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Button } from "@/components/ui/button"
 import { MoreVertical, Edit, MessageSquare, Trash2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+
+// Re-export Contact type for backward compatibility
+export type { Contact };
 
 interface ContactsTableProps {
   contacts: Contact[];
@@ -70,7 +74,7 @@ const formatEmail = (email: string): string => {
 };
 
 const ContactsTable: React.FC<ContactsTableProps> = ({
-  contacts,
+  contacts = [], // Add default value to prevent undefined
   isLoading,
   selectedContacts,
   onContactSelect,
