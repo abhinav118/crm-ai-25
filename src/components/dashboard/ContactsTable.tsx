@@ -63,100 +63,163 @@ const ContactsTable: React.FC<DataTableProps> = ({ initialContacts }) => {
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [filters, setFilters] = useState<FilterState>({});
   const [activeTab, setActiveTab] = useState('contacts');
+  const [segmentContacts, setSegmentContacts] = useState<Contact[]>([]);
+  const [isLoadingSegments, setIsLoadingSegments] = useState(false);
 
+  // Fetch available segments from contacts_segments table
   useEffect(() => {
     const fetchSegments = async () => {
-      const { data, error } = await supabase
-        .from('contacts_segments')
-        .select('segment_name');
+      setIsLoadingSegments(true);
+      try {
+        const { data, error } = await supabase
+          .from('contacts_segments')
+          .select('segment_name')
+          .order('updated_at', { ascending: false });
 
-      if (error) {
+        if (error) {
+          console.error('Error fetching segments:', error);
+          toast({
+            title: 'Error',
+            description: 'Failed to fetch segments. Please try again.',
+            variant: 'destructive',
+          });
+          return;
+        }
+
+        const segmentNames = data.map(segment => segment.segment_name);
+        setAvailableSegments(segmentNames);
+      } catch (error) {
         console.error('Error fetching segments:', error);
         toast({
           title: 'Error',
           description: 'Failed to fetch segments. Please try again.',
           variant: 'destructive',
         });
-        return;
+      } finally {
+        setIsLoadingSegments(false);
       }
-
-      const segmentNames = data.map(segment => segment.segment_name);
-      setAvailableSegments(segmentNames);
     };
 
     fetchSegments();
   }, []);
 
+  // Fetch contacts based on segment selection
   useEffect(() => {
     const fetchContacts = async () => {
-      let query = supabase
-        .from('contacts')
-        .select('*')
-        .order('created_at', { ascending: false });
+      if (segmentFilter === 'all') {
+        // Use original contacts when no segment filter is applied
+        let query = supabase
+          .from('contacts')
+          .select('*')
+          .order('created_at', { ascending: false });
 
-      if (searchTerm) {
-        query = query.ilike('first_name', `%${searchTerm}%`);
-      }
+        if (searchTerm) {
+          query = query.ilike('first_name', `%${searchTerm}%`);
+        }
 
-      if (segmentFilter && segmentFilter !== 'all') {
-        query = query.eq('segment_name', segmentFilter);
-      }
+        // Apply FilterState filters
+        if (filters.phone) {
+          const { operator, value } = filters.phone;
+          if (operator === 'isEmpty') {
+            query = query.is('phone', null);
+          } else if (operator === 'isNotEmpty') {
+            query = query.not('phone', 'is', null);
+          } else if (operator === 'is' && value) {
+            query = query.eq('phone', value);
+          } else if (operator === 'isNot' && value) {
+            query = query.neq('phone', value);
+          }
+        }
 
-      // Apply FilterState filters
-      if (filters.phone) {
-        const { operator, value } = filters.phone;
-        if (operator === 'isEmpty') {
-          query = query.is('phone', null);
-        } else if (operator === 'isNotEmpty') {
-          query = query.not('phone', 'is', null);
-        } else if (operator === 'is' && value) {
-          query = query.eq('phone', value);
-        } else if (operator === 'isNot' && value) {
-          query = query.neq('phone', value);
+        if (filters.email) {
+          const { operator, value } = filters.email;
+          if (operator === 'isEmpty') {
+            query = query.is('email', null);
+          } else if (operator === 'isNotEmpty') {
+            query = query.not('email', 'is', null);
+          } else if (operator === 'is' && value) {
+            query = query.eq('email', value);
+          } else if (operator === 'isNot' && value) {
+            query = query.neq('email', value);
+          }
+        }
+
+        if (filters.tag) {
+          const { operator, value } = filters.tag;
+          if (operator === 'isEmpty') {
+            query = query.or('tags.is.null,tags.eq.{}');
+          } else if (operator === 'isNotEmpty') {
+            query = query.not('tags', 'is', null).not('tags', 'eq', '{}');
+          } else if (operator === 'is' && value) {
+            query = query.contains('tags', [value]);
+          } else if (operator === 'isNot' && value) {
+            query = query.not('tags', 'cs', [value]);
+          } else if (operator === 'anyOf' && Array.isArray(value)) {
+            query = query.overlaps('tags', value);
+          }
+        }
+
+        const { data, error } = await query;
+
+        if (error) {
+          console.error('Error fetching contacts:', error);
+          toast({
+            title: 'Error',
+            description: 'Failed to fetch contacts. Please try again.',
+            variant: 'destructive',
+          });
+          return;
+        }
+
+        setContacts(data as Contact[]);
+      } else {
+        // Fetch contacts for specific segment
+        try {
+          const { data, error } = await supabase
+            .from('contacts_segments')
+            .select('contacts_membership')
+            .eq('segment_name', segmentFilter)
+            .single();
+
+          if (error) {
+            console.error('Error fetching segment contacts:', error);
+            toast({
+              title: 'Error',
+              description: 'Failed to fetch segment contacts. Please try again.',
+              variant: 'destructive',
+            });
+            return;
+          }
+
+          if (data?.contacts_membership) {
+            // Convert JSONB contacts to Contact format
+            const segmentContactsData = data.contacts_membership.map((contact: any) => ({
+              id: contact.id,
+              first_name: contact.name ? contact.name.split(' ')[0] : 'Unknown',
+              last_name: contact.name ? contact.name.split(' ').slice(1).join(' ') || null : null,
+              email: contact.email || null,
+              phone: contact.phone || null,
+              company: contact.company || null,
+              status: contact.status || 'active',
+              last_activity: contact.last_activity || null,
+              tags: contact.tags || null,
+              createdAt: contact.created_at || new Date().toISOString(),
+              segment_name: segmentFilter
+            }));
+
+            setContacts(segmentContactsData as Contact[]);
+          } else {
+            setContacts([]);
+          }
+        } catch (error) {
+          console.error('Error fetching segment contacts:', error);
+          toast({
+            title: 'Error',
+            description: 'Failed to fetch segment contacts. Please try again.',
+            variant: 'destructive',
+          });
         }
       }
-
-      if (filters.email) {
-        const { operator, value } = filters.email;
-        if (operator === 'isEmpty') {
-          query = query.is('email', null);
-        } else if (operator === 'isNotEmpty') {
-          query = query.not('email', 'is', null);
-        } else if (operator === 'is' && value) {
-          query = query.eq('email', value);
-        } else if (operator === 'isNot' && value) {
-          query = query.neq('email', value);
-        }
-      }
-
-      if (filters.tag) {
-        const { operator, value } = filters.tag;
-        if (operator === 'isEmpty') {
-          query = query.or('tags.is.null,tags.eq.{}');
-        } else if (operator === 'isNotEmpty') {
-          query = query.not('tags', 'is', null).not('tags', 'eq', '{}');
-        } else if (operator === 'is' && value) {
-          query = query.contains('tags', [value]);
-        } else if (operator === 'isNot' && value) {
-          query = query.not('tags', 'cs', [value]);
-        } else if (operator === 'anyOf' && Array.isArray(value)) {
-          query = query.overlaps('tags', value);
-        }
-      }
-
-      const { data, error } = await query;
-
-      if (error) {
-        console.error('Error fetching contacts:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to fetch contacts. Please try again.',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      setContacts(data as Contact[]);
     };
 
     fetchContacts();
@@ -284,6 +347,11 @@ const ContactsTable: React.FC<DataTableProps> = ({ initialContacts }) => {
     // You may want to refetch contacts here
   };
 
+  const handleSegmentFilterChange = (segment: string) => {
+    setSegmentFilter(segment);
+    setPage(1); // Reset to first page when changing segment
+  };
+
   const renderContactRow = (contact: Contact) => (
     <TableRow key={contact.id}>
       <TableCell>
@@ -359,6 +427,26 @@ const ContactsTable: React.FC<DataTableProps> = ({ initialContacts }) => {
             </div>
           </div>
 
+          {/* Segment Filter */}
+          <div className="flex items-center space-x-2 mb-4">
+            <Select value={segmentFilter} onValueChange={handleSegmentFilterChange} disabled={isLoadingSegments}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Filter by Segment" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Segments</SelectItem>
+                {availableSegments.map(segment => (
+                  <SelectItem key={segment} value={segment}>
+                    {segment}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {isLoadingSegments && (
+              <span className="text-sm text-gray-500">Loading segments...</span>
+            )}
+          </div>
+
           <div className="rounded-md border">
             <Table>
               <TableHeader>
@@ -383,7 +471,7 @@ const ContactsTable: React.FC<DataTableProps> = ({ initialContacts }) => {
                 {paginatedContacts.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={8} className="text-center">
-                      No contacts found.
+                      {segmentFilter === 'all' ? 'No contacts found.' : `No contacts found in segment "${segmentFilter}".`}
                     </TableCell>
                   </TableRow>
                 )}
@@ -403,19 +491,6 @@ const ContactsTable: React.FC<DataTableProps> = ({ initialContacts }) => {
                 setPage(1);
               }}
             />
-            <Select value={segmentFilter} onValueChange={setSegmentFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Filter by Segment" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Segments</SelectItem>
-                {availableSegments.map(segment => (
-                  <SelectItem key={segment} value={segment}>
-                    {segment}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
         </TabsContent>
 
