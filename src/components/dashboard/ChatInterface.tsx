@@ -1,9 +1,7 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import Avatar from '@/components/dashboard/Avatar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import UserProfile from './UserProfile';
 import { Contact } from './ContactsTable';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -13,7 +11,6 @@ import { getFullName } from '@/utils/contactHelpers';
 import {
   MessageSquare,
   Mail,
-  X,
   Smile,
   Link,
   FileText,
@@ -310,211 +307,199 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-lg w-full max-w-5xl h-[90vh] flex flex-col">
-        <div className="p-4 border-b flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Avatar name={getFullName(updatedContact)} status={updatedContact.status as any} />
-            <div>
-              <h3 className="font-medium text-gray-900">{getFullName(updatedContact)}</h3>
-              <div className="text-sm text-gray-500 flex items-center gap-2">
-                <Phone size={14} />
-                {updatedContact.phone || 'No phone number'}
-              </div>
+    <div className="flex flex-col h-full bg-white">
+      {/* Header */}
+      <div className="p-4 border-b flex items-center justify-between bg-gray-50">
+        <div className="flex items-center gap-3">
+          <Avatar name={getFullName(updatedContact)} status={updatedContact.status as any} />
+          <div>
+            <h3 className="font-medium text-gray-900">{getFullName(updatedContact)}</h3>
+            <div className="text-sm text-gray-500 flex items-center gap-2">
+              <Phone size={14} />
+              {updatedContact.phone || 'No phone number'}
             </div>
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose}>
-            <X size={18} />
-          </Button>
         </div>
-        
-        <div className="flex flex-1 overflow-hidden">
-          <div className="w-[320px] min-w-[320px] border-r">
-            <UserProfile 
-              contact={updatedContact}
-              onSave={handleContactUpdate}
-            />
+      </div>
+      
+      {/* Chat Interface */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <Tabs 
+          defaultValue="sms" 
+          className="flex-1 flex flex-col"
+          onValueChange={value => setActiveChannel(value)}
+        >
+          <div className="px-4 pt-4">
+            <TabsList className="grid grid-cols-2 w-full">
+              <TabsTrigger value="sms" className="flex items-center gap-2">
+                <MessageSquare size={16} />
+                <span>SMS</span>
+              </TabsTrigger>
+              <TabsTrigger value="email" className="flex items-center gap-2">
+                <Mail size={16} />
+                <span>Email</span>
+              </TabsTrigger>
+            </TabsList>
           </div>
 
-          <div className="flex-1 flex flex-col">
-            <Tabs 
-              defaultValue="sms" 
-              className="flex-1 flex flex-col"
-              onValueChange={value => setActiveChannel(value)}
-            >
-              <div className="px-4 pt-4">
-                <TabsList className="grid grid-cols-2 w-full">
-                  <TabsTrigger value="sms" className="flex items-center gap-2">
-                    <MessageSquare size={16} />
-                    <span>SMS</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="email" className="flex items-center gap-2">
-                    <Mail size={16} />
-                    <span>Email</span>
-                  </TabsTrigger>
-                </TabsList>
-              </div>
-
-              <div className="flex-1 overflow-hidden p-4 flex flex-col">
-                <TabsContent value="sms" className="mt-0 h-full flex flex-col">
-                  {!contact.phone && (
-                    <div className="flex items-center justify-center h-full">
-                      <div className="text-center text-gray-500 bg-yellow-50 p-4 rounded-lg">
-                        <p className="font-medium">No phone number available</p>
-                        <p className="text-sm">Add a phone number to the contact profile to enable SMS.</p>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {contact.phone && messages.filter(msg => msg.channel === 'sms').length === 0 && !isFetching && (
-                    <div className="flex items-center justify-center h-full">
-                      <div className="text-center text-gray-500">
-                        <MessageSquare className="mx-auto mb-2" />
-                        <p>No SMS messages yet</p>
-                        <p className="text-sm">Send a message to start the conversation</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {isFetching && (
-                    <div className="flex items-center justify-center h-20">
-                      <div className="text-center">
-                        <div className="animate-spin rounded-full h-6 w-6 border-4 border-primary border-t-transparent mx-auto"></div>
-                        <p className="text-sm text-gray-500 mt-2">Loading messages...</p>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {!isFetching && messages.filter(msg => msg.channel === 'sms').length > 0 && (
-                    <div className="h-full flex flex-col" ref={scrollAreaContainerRef}>
-                      <ScrollArea className="flex-1 pr-4" type="auto">
-                        <div className="space-y-4 pb-2">
-                          {messages
-                            .filter(msg => msg.channel === 'sms')
-                            .map(message => (
-                              <div key={message.id} className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                <div className={`max-w-[70%] p-3 rounded-lg ${message.sender === 'user' ? 'bg-primary text-white' : 'bg-gray-100'}`}>
-                                  <p className="text-sm">{message.text}</p>
-                                  <p className={`text-xs mt-1 ${message.sender === 'user' ? 'text-primary-foreground/70' : 'text-gray-500'}`}>
-                                    {formatTime(message.timestamp)}
-                                  </p>
-                                </div>
-                              </div>
-                            ))}
-                          <div ref={messagesEndRef} />
-                        </div>
-                      </ScrollArea>
-                    </div>
-                  )}
-                </TabsContent>
-                
-                <TabsContent value="email" className="mt-0 h-full flex flex-col">
-                  {!contact.email && (
-                    <div className="flex items-center justify-center h-full">
-                      <div className="text-center text-gray-500 bg-yellow-50 p-4 rounded-lg">
-                        <p className="font-medium">No email address available</p>
-                        <p className="text-sm">Add an email address to the contact profile to enable Email.</p>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {contact.email && messages.filter(msg => msg.channel === 'email').length === 0 && !isFetching && (
-                    <div className="flex items-center justify-center h-full">
-                      <div className="text-center text-gray-500">
-                        <Mail className="mx-auto mb-2" />
-                        <p>No email messages yet</p>
-                        <p className="text-sm">Send an email to start the conversation</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {isFetching && (
-                    <div className="flex items-center justify-center h-20">
-                      <div className="text-center">
-                        <div className="animate-spin rounded-full h-6 w-6 border-4 border-primary border-t-transparent mx-auto"></div>
-                        <p className="text-sm text-gray-500 mt-2">Loading messages...</p>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {!isFetching && messages.filter(msg => msg.channel === 'email').length > 0 && (
-                    <div className="h-full flex flex-col">
-                      <ScrollArea className="flex-1 pr-4" type="auto">
-                        <div className="space-y-4 pb-2">
-                          {messages
-                            .filter(msg => msg.channel === 'email')
-                            .map(message => (
-                              <div key={message.id} className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                <div className={`max-w-[70%] p-3 rounded-lg ${message.sender === 'user' ? 'bg-primary text-white' : 'bg-gray-100'}`}>
-                                  <p className="text-sm">{message.text}</p>
-                                  <p className={`text-xs mt-1 ${message.sender === 'user' ? 'text-primary-foreground/70' : 'text-gray-500'}`}>
-                                    {formatTime(message.timestamp)}
-                                  </p>
-                                </div>
-                              </div>
-                            ))}
-                          <div ref={messagesEndRef} />
-                        </div>
-                      </ScrollArea>
-                    </div>
-                  )}
-                </TabsContent>
-              </div>
-
-              <div className="p-4 border-t">
-                <form onSubmit={handleSend} className="flex flex-col space-y-2">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Button type="button" variant="ghost" size="sm">
-                      <Smile size={18} />
-                    </Button>
-                    <Button type="button" variant="ghost" size="sm">
-                      <Link size={18} />
-                    </Button>
-                    <Button type="button" variant="ghost" size="sm">
-                      <FileText size={18} />
-                    </Button>
+          <div className="flex-1 overflow-hidden p-4 flex flex-col">
+            <TabsContent value="sms" className="mt-0 h-full flex flex-col">
+              {!contact.phone && (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-center text-gray-500 bg-yellow-50 p-4 rounded-lg">
+                    <p className="font-medium">No phone number available</p>
+                    <p className="text-sm">Add a phone number to the contact profile to enable SMS.</p>
                   </div>
-                  <div className="flex gap-2">
-                    <Textarea
-                      className="flex-1 resize-none h-[60px]"
-                      placeholder={getChannelPlaceholder(activeChannel)}
-                      value={messageText}
-                      onChange={(e) => setMessageText(e.target.value)}
-                      onKeyDown={handleKeyPress}
-                      disabled={isChannelDisabled(activeChannel) || isLoading}
-                    />
-                    <div className="flex flex-col gap-2">
-                      <Button 
-                        type="button"
-                        variant="outline" 
-                        size="sm" 
-                        className="px-3" 
-                        onClick={() => setMessageText('')}
-                        disabled={!messageText.trim() || isLoading}
-                      >
-                        Clear
-                      </Button>
-                      <Button 
-                        type="submit"
-                        size="sm" 
-                        className="px-3" 
-                        disabled={!messageText.trim() || isChannelDisabled(activeChannel) || isLoading}
-                      >
-                        <Send size={14} className="mr-1" />
-                        {isLoading ? 'Sending...' : 'Send'}
-                      </Button>
-                    </div>
+                </div>
+              )}
+              
+              {contact.phone && messages.filter(msg => msg.channel === 'sms').length === 0 && !isFetching && (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-center text-gray-500">
+                    <MessageSquare className="mx-auto mb-2" />
+                    <p>No SMS messages yet</p>
+                    <p className="text-sm">Send a message to start the conversation</p>
                   </div>
-                  {isChannelDisabled(activeChannel) && (
-                    <p className="text-sm text-yellow-600 mt-2">
-                      {getMissingInfoMessage(activeChannel)}
-                    </p>
-                  )}
-                </form>
-              </div>
-            </Tabs>
+                </div>
+              )}
+
+              {isFetching && (
+                <div className="flex items-center justify-center h-20">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-6 w-6 border-4 border-primary border-t-transparent mx-auto"></div>
+                    <p className="text-sm text-gray-500 mt-2">Loading messages...</p>
+                  </div>
+                </div>
+              )}
+              
+              {!isFetching && messages.filter(msg => msg.channel === 'sms').length > 0 && (
+                <div className="h-full flex flex-col" ref={scrollAreaContainerRef}>
+                  <ScrollArea className="flex-1 pr-4" type="auto">
+                    <div className="space-y-4 pb-2">
+                      {messages
+                        .filter(msg => msg.channel === 'sms')
+                        .map(message => (
+                          <div key={message.id} className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+                            <div className={`max-w-[70%] p-3 rounded-lg ${message.sender === 'user' ? 'bg-primary text-white' : 'bg-gray-100'}`}>
+                              <p className="text-sm">{message.text}</p>
+                              <p className={`text-xs mt-1 ${message.sender === 'user' ? 'text-primary-foreground/70' : 'text-gray-500'}`}>
+                                {formatTime(message.timestamp)}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      <div ref={messagesEndRef} />
+                    </div>
+                  </ScrollArea>
+                </div>
+              )}
+            </TabsContent>
+            
+            <TabsContent value="email" className="mt-0 h-full flex flex-col">
+              {!contact.email && (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-center text-gray-500 bg-yellow-50 p-4 rounded-lg">
+                    <p className="font-medium">No email address available</p>
+                    <p className="text-sm">Add an email address to the contact profile to enable Email.</p>
+                  </div>
+                </div>
+              )}
+              
+              {contact.email && messages.filter(msg => msg.channel === 'email').length === 0 && !isFetching && (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-center text-gray-500">
+                    <Mail className="mx-auto mb-2" />
+                    <p>No email messages yet</p>
+                    <p className="text-sm">Send an email to start the conversation</p>
+                  </div>
+                </div>
+              )}
+
+              {isFetching && (
+                <div className="flex items-center justify-center h-20">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-6 w-6 border-4 border-primary border-t-transparent mx-auto"></div>
+                    <p className="text-sm text-gray-500 mt-2">Loading messages...</p>
+                  </div>
+                </div>
+              )}
+              
+              {!isFetching && messages.filter(msg => msg.channel === 'email').length > 0 && (
+                <div className="h-full flex flex-col">
+                  <ScrollArea className="flex-1 pr-4" type="auto">
+                    <div className="space-y-4 pb-2">
+                      {messages
+                        .filter(msg => msg.channel === 'email')
+                        .map(message => (
+                          <div key={message.id} className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+                            <div className={`max-w-[70%] p-3 rounded-lg ${message.sender === 'user' ? 'bg-primary text-white' : 'bg-gray-100'}`}>
+                              <p className="text-sm">{message.text}</p>
+                              <p className={`text-xs mt-1 ${message.sender === 'user' ? 'text-primary-foreground/70' : 'text-gray-500'}`}>
+                                {formatTime(message.timestamp)}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      <div ref={messagesEndRef} />
+                    </div>
+                  </ScrollArea>
+                </div>
+              )}
+            </TabsContent>
           </div>
-        </div>
+
+          <div className="p-4 border-t">
+            <form onSubmit={handleSend} className="flex flex-col space-y-2">
+              <div className="flex items-center gap-2 mb-2">
+                <Button type="button" variant="ghost" size="sm">
+                  <Smile size={18} />
+                </Button>
+                <Button type="button" variant="ghost" size="sm">
+                  <Link size={18} />
+                </Button>
+                <Button type="button" variant="ghost" size="sm">
+                  <FileText size={18} />
+                </Button>
+              </div>
+              <div className="flex gap-2">
+                <Textarea
+                  className="flex-1 resize-none h-[60px]"
+                  placeholder={getChannelPlaceholder(activeChannel)}
+                  value={messageText}
+                  onChange={(e) => setMessageText(e.target.value)}
+                  onKeyDown={handleKeyPress}
+                  disabled={isChannelDisabled(activeChannel) || isLoading}
+                />
+                <div className="flex flex-col gap-2">
+                  <Button 
+                    type="button"
+                    variant="outline" 
+                    size="sm" 
+                    className="px-3" 
+                    onClick={() => setMessageText('')}
+                    disabled={!messageText.trim() || isLoading}
+                  >
+                    Clear
+                  </Button>
+                  <Button 
+                    type="submit"
+                    size="sm" 
+                    className="px-3" 
+                    disabled={!messageText.trim() || isChannelDisabled(activeChannel) || isLoading}
+                  >
+                    <Send size={14} className="mr-1" />
+                    {isLoading ? 'Sending...' : 'Send'}
+                  </Button>
+                </div>
+              </div>
+              {isChannelDisabled(activeChannel) && (
+                <p className="text-sm text-yellow-600 mt-2">
+                  {getMissingInfoMessage(activeChannel)}
+                </p>
+              )}
+            </form>
+          </div>
+        </Tabs>
       </div>
     </div>
   );

@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import UserProfile from './UserProfile';
 import UserProfileModal from './UserProfileModal';
+import ChatInterface from './ChatInterface';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import Pagination from './Pagination';
 import SearchBar from './SearchBar';
@@ -65,6 +66,7 @@ const ContactsTable: React.FC<DataTableProps> = ({ initialContacts }) => {
   const [activeTab, setActiveTab] = useState('contacts');
   const [segmentContacts, setSegmentContacts] = useState<Contact[]>([]);
   const [isLoadingSegments, setIsLoadingSegments] = useState(false);
+  const [openContactWithChat, setOpenContactWithChat] = useState(false);
 
   // Fetch available segments from contacts_segments table
   useEffect(() => {
@@ -353,8 +355,15 @@ const ContactsTable: React.FC<DataTableProps> = ({ initialContacts }) => {
   };
 
   const renderContactRow = (contact: Contact) => (
-    <TableRow key={contact.id}>
-      <TableCell>
+    <TableRow 
+      key={contact.id} 
+      className="cursor-pointer hover:bg-gray-50"
+      onClick={() => {
+        setSelectedContact(contact);
+        setOpenContactWithChat(true);
+      }}
+    >
+      <TableCell onClick={(e) => e.stopPropagation()}>
         <Checkbox
           checked={isContactSelected(contact)}
           onCheckedChange={() => toggleContactSelection(contact)}
@@ -380,7 +389,7 @@ const ContactsTable: React.FC<DataTableProps> = ({ initialContacts }) => {
           <span className="text-gray-500">No tags</span>
         )}
       </TableCell>
-      <TableCell>
+      <TableCell onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center space-x-2">
           <Button variant="ghost" size="sm" onClick={() => handleViewProfile(contact)}>
             <Eye className="h-4 w-4 mr-2" />
@@ -513,6 +522,41 @@ const ContactsTable: React.FC<DataTableProps> = ({ initialContacts }) => {
         onSelectionClear={clearSelection}
       />
 
+      {/* Contact Profile with Chat Modal */}
+      <Dialog open={openContactWithChat} onOpenChange={setOpenContactWithChat}>
+        <DialogContent className="max-w-6xl h-[90vh] p-0">
+          <DialogHeader className="p-6 pb-4">
+            <DialogTitle>
+              {selectedContact && `${getFullName(selectedContact)} - Profile & Chat`}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex h-full overflow-hidden">
+            {/* Left Panel - Contact Profile */}
+            <div className="w-1/3 border-r border-gray-200 overflow-y-auto">
+              {selectedContact && (
+                <div className="p-4">
+                  <UserProfile
+                    contact={selectedContact}
+                    onSave={handleUpdateContact}
+                  />
+                </div>
+              )}
+            </div>
+            
+            {/* Right Panel - Chat Interface */}
+            <div className="flex-1 flex flex-col">
+              {selectedContact && (
+                <ChatInterface
+                  contact={selectedContact}
+                  onClose={() => setOpenContactWithChat(false)}
+                />
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Original Profile Modal (keep for backward compatibility) */}
       <Dialog open={openProfile} onOpenChange={setOpenProfile}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
