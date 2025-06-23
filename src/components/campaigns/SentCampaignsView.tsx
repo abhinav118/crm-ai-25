@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Calendar } from '@/components/ui/calendar';
@@ -13,6 +13,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useSentTelnyxCampaigns, TelnyxCampaign } from '@/hooks/useTelnyxCampaigns';
 import { toast } from '@/hooks/use-toast';
 import { CampaignProgressDialog } from './CampaignProgressDialog';
+import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
+import { supabase } from '@/integrations/supabase/client';
 
 // Simple inline MessageCell component
 interface MessageCellProps {
@@ -97,7 +100,49 @@ const SentCampaignsView: React.FC = () => {
   
   const navigate = useNavigate();
 
-  const { data: sentCampaigns = [], isLoading, error } = useSentTelnyxCampaigns();
+  const { data: sentCampaigns = [], isLoading, error, refetch } = useSentTelnyxCampaigns();
+
+  // Set up Supabase Realtime listener for campaign progress updates
+  useEffect(() => {
+    const channel = supabase
+      .channel('sent-campaigns-progress')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'telnyx_campaigns',
+          filter: 'status=in.(sending,completed,failed)'
+        },
+        (payload) => {
+          console.log('Campaign progress update received:', payload);
+          // Refetch data when progress updates are received
+          refetch();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [refetch]);
+
+  // Auto-refresh for campaigns with incomplete progress
+  useEffect(() => {
+    const hasIncompleteProgress = sentCampaigns.some(
+      campaign => campaign.progress_percentage < 100 && 
+      (campaign.status === 'sending' || campaign.status === 'scheduled')
+    );
+
+    if (hasIncompleteProgress) {
+      const interval = setInterval(() => {
+        console.log('Auto-refreshing campaigns with incomplete progress');
+        refetch();
+      }, 5000);
+
+      return () => clearInterval(interval);
+    }
+  }, [sentCampaigns, refetch]);
 
   console.log('SentCampaignsView - recipientsFilter value:', recipientsFilter);
   console.log('SentCampaignsView - recipientsFilter type:', typeof recipientsFilter);
@@ -128,6 +173,19 @@ const SentCampaignsView: React.FC = () => {
     setSelectedCampaignId(campaign.id);
     setSelectedCampaignName(campaign.campaign_name);
     setProgressDialogOpen(true);
+  };
+
+  const renderProgressCell = (campaign: TelnyxCampaign) => {
+    if (campaign.progress_percentage < 100 && (campaign.status === 'sending' || campaign.status === 'scheduled')) {
+      return (
+        <div className="flex items-center gap-2">
+          <Progress value={campaign.progress_percentage || 0} className="w-20" />
+          <span className="text-sm text-gray-600">{campaign.progress_percentage || 0}%</span>
+        </div>
+      );
+    } else {
+      return <Badge variant="success">Completed</Badge>;
+    }
   };
 
   const renderStatusCell = (campaign: TelnyxCampaign) => {
@@ -278,6 +336,7 @@ const SentCampaignsView: React.FC = () => {
                 <TableHead>Segment</TableHead>
                 <TableHead>Sent Date</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Progress</TableHead>
                 <TableHead>Message</TableHead>
               </TableRow>
             </TableHeader>
@@ -293,6 +352,7 @@ const SentCampaignsView: React.FC = () => {
                   <TableCell>{campaign.segment_name || 'N/A'}</TableCell>
                   <TableCell>{campaign.created_at ? format(new Date(campaign.created_at), 'MMM d, yyyy, h:mm a') : ''}</TableCell>
                   <TableCell>{renderStatusCell(campaign)}</TableCell>
+                  <TableCell>{renderProgressCell(campaign)}</TableCell>
                   <TableCell>
                     <MessageCell
                       message={campaign.message}

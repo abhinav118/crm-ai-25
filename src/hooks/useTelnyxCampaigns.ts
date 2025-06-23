@@ -19,6 +19,8 @@ export interface TelnyxCampaign {
   sent_count?: number;
   total_count?: number;
   error_count?: number;
+  repeat_frequency?: string | null;
+  repeat_days?: string[] | null;
   [key: string]: any;
 }
 
