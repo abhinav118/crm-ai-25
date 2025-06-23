@@ -1,9 +1,1 @@
-
 project_id = "nzsflibcvrisxjlzuxjn"
-
-[functions.update-campaign-status]
-verify_jwt = false
-
-[functions.send-bulk-sms-via-telnyx]
-verify_jwt = false
-timeout = 600
