@@ -131,26 +131,7 @@ serve(async (req) => {
       );
     }
 
-    // If scheduled for later, return immediately without sending
-    if (send_at) {
-      console.log(`Campaign scheduled for ${send_at}, not sending immediately`);
-      return new Response(
-        JSON.stringify({
-          success: true,
-          message: 'Bulk SMS campaign scheduled successfully',
-          campaign_id,
-          segment_name,
-          total_recipients: phoneNumbers.length,
-          status: 'scheduled',
-          scheduled_for: send_at
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
-    }
-
-    // Start background SMS sending process for immediate campaigns
+    // Start background SMS sending process for all campaigns
     const backgroundSendProcess = async () => {
       const fromNumber = from || '+17733897839';
       let sentCount = 0;
@@ -272,11 +253,12 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        message: 'Bulk SMS sending started',
+        message: send_at ? 'Bulk SMS campaign scheduled successfully' : 'Bulk SMS sending started',
         campaign_id,
         segment_name,
         total_recipients: phoneNumbers.length,
-        status: 'sending'
+        status: send_at ? 'scheduled' : 'sending',
+        ...(send_at && { scheduled_for: send_at })
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
