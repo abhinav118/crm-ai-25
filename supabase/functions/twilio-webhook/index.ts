@@ -1,6 +1,7 @@
 /// <reference types="https://deno.land/x/deno/cli/tsc/dts/lib.deno.d.ts" />
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { lazy } from 'react'
 
 // Define CORS headers
 const corsHeaders = {
@@ -168,7 +169,7 @@ serve(async (req) => {
       // Use multiple search patterns to increase chances of matching
       const { data: contactData, error: contactError } = await supabase
         .from('contacts')
-        .select('id, name, phone')
+        .select('id, first_name, phone')
         .or(`phone.eq.${cleanFrom},phone.ilike.%${cleanFrom.slice(-10)}%`)
         .maybeSingle()
 
@@ -210,14 +211,15 @@ serve(async (req) => {
             action: 'message_received',
             contact_info: {
               id: contactData.id,
-              name: contactData.name,
+              first_name: contactData.first_name,
+              last_name: contactData.last_name,
               message: incomingMessage,
               channel: 'sms',
               timestamp: new Date().toISOString()
             }
           })
 
-        console.log('Message stored in database for contact:', contactData.name)
+        console.log('Message stored in database for contact:', contactData.first_name)
       } else {
         console.log('No matching contact found for phone number:', fromNumber)
         console.log('Creating a new contact for this phone number')
@@ -226,7 +228,8 @@ serve(async (req) => {
         const { data: newContact, error: newContactError } = await supabase
           .from('contacts')
           .insert({
-            name: `Unknown (${fromNumber})`,
+            first_name: `New Contact (${fromNumber})`,
+            last_name: '',
             phone: fromNumber,
             status: 'active',
             tags: ['sms-inbound'],
@@ -264,7 +267,8 @@ serve(async (req) => {
             action: 'message_received',
             contact_info: {
               id: newContact.id,
-              name: newContact.name,
+              first_name: newContact.first_name,
+              last_name: newContact.last_name || '',
               message: incomingMessage,
               channel: 'sms',
               timestamp: new Date().toISOString()
