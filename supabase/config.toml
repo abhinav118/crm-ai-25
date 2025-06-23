@@ -1,1 +1,5 @@
+
 project_id = "nzsflibcvrisxjlzuxjn"
+
+[functions.telnyx-webhook]
+verify_jwt = false
