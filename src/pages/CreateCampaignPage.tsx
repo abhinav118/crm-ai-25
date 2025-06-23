@@ -1292,10 +1292,10 @@ const CreateCampaignPage: React.FC = () => {
                     <RadioGroupItem value="later" id="schedule_later" />
                     <Label htmlFor="schedule_later" className="text-sm">Schedule for Later</Label>
                   </div>
-                  <div className="flex items-center space-x-2">
+                  {/* <div className="flex items-center space-x-2">
                     <RadioGroupItem value="recurring" id="schedule_recurring" />
                     <Label htmlFor="schedule_recurring" className="text-sm">Schedule Recurring</Label>
-                  </div>
+                  </div> */}
                 </RadioGroup>
 
                 {/* Schedule for Later */}
@@ -1343,72 +1343,6 @@ const CreateCampaignPage: React.FC = () => {
                 )}
 
                 {/* Schedule Recurring */}
-                {scheduleType === 'recurring' && (
-                  <div className="mt-4 space-y-4 p-4 border rounded-lg bg-gray-50">
-                    <div>
-                      <Label className="text-sm font-medium mb-2 block">Repeat Frequency</Label>
-                      <Select value={repeatFrequency} onValueChange={(value) => setRepeatFrequency(value as 'daily' | 'weekly' | 'monthly')}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="daily">Daily</SelectItem>
-                          <SelectItem value="weekly">Weekly</SelectItem>
-                          <SelectItem value="monthly">Monthly</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {repeatFrequency === 'weekly' && (
-                      <div>
-                        <Label className="text-sm font-medium mb-2 block">Repeat on Days</Label>
-                        <div className="flex flex-wrap gap-2">
-                          {DAYS_OF_WEEK.map((day) => (
-                            <div key={day} className="flex items-center space-x-2">
-                              <Checkbox
-                                id={day}
-                                checked={repeatDays.includes(day)}
-                                onCheckedChange={() => handleDayToggle(day)}
-                              />
-                              <Label htmlFor={day} className="text-sm">{day.slice(0, 3)}</Label>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    <div>
-                      <Label className="text-sm font-medium mb-2 block">Start Date & Time</Label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className="w-full justify-start text-left font-normal"
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {format(recurringStartTime, "PPP p")}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <Calendar
-                            mode="single"
-                            selected={recurringStartTime}
-                            onSelect={(date) => setRecurringStartTime(date || new Date())}
-                            initialFocus
-                            className="pointer-events-auto"
-                          />
-                          <div className="p-3 border-t">
-                            <Input
-                              type="datetime-local"
-                              value={format(recurringStartTime, "yyyy-MM-dd'T'HH:mm")}
-                              onChange={(e) => setRecurringStartTime(new Date(e.target.value))}
-                            />
-                          </div>
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                  </div>
-                )}
               </div>
 
               {/* Send Campaign Button */}
