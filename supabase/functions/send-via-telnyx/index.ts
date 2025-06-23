@@ -1,5 +1,6 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -21,7 +22,7 @@ serve(async (req) => {
     }
 
     const payload = await req.json();
-    const { to, from, text, subject, schedule_type, schedule_time, media_url } = payload;
+    const { to, from, text, subject, schedule_type, schedule_time, media_url, contactId } = payload;
 
     // Validate required fields
     if (!to || !text) {
@@ -50,6 +51,9 @@ serve(async (req) => {
     }
     if (media_url) {
       console.log(`Media URL: ${media_url}`);
+    }
+    if (contactId) {
+      console.log(`Contact ID: ${contactId}`);
     }
 
     // Build Telnyx payload
@@ -95,6 +99,76 @@ serve(async (req) => {
     const deliveryType = schedule_type === 'later' ? 'scheduled' : 'sent';
     
     console.log(`${messageType} ${deliveryType} successfully via Telnyx:`, responseData.data?.id);
+
+    // Database logging - only if contactId is provided
+    if (contactId) {
+      try {
+        console.log('Setting up database logging for contactId:', contactId);
+        
+        // Create Supabase client
+        const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+        const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+        
+        if (!supabaseUrl || !supabaseServiceKey) {
+          console.warn('Supabase credentials not available - skipping database logging');
+        } else {
+          const supabase = createClient(supabaseUrl, supabaseServiceKey);
+          
+          // Insert the sent message into the database
+          const { data: messageData, error: messageError } = await supabase
+            .from('messages')
+            .insert({
+              contact_id: contactId,
+              content: text,
+              sender: 'user',
+              channel: 'sms',
+              sent_at: new Date().toISOString()
+            })
+            .select();
+
+          if (messageError) {
+            console.error('Error inserting message to database:', messageError);
+          } else {
+            console.log('Message logged to database:', messageData);
+          }
+
+          // Get contact information for logging
+          const { data: contactData, error: contactError } = await supabase
+            .from('contacts')
+            .select('id, first_name, last_name')
+            .eq('id', contactId)
+            .single();
+
+          if (contactError) {
+            console.error('Error fetching contact for logging:', contactError);
+          } else {
+            // Log the sent message activity
+            const { error: logError } = await supabase
+              .from('contact_logs')
+              .insert({
+                action: 'message_sent',
+                contact_info: {
+                  id: contactData.id,
+                  first_name: contactData.first_name,
+                  last_name: contactData.last_name,
+                  message: text,
+                  channel: 'sms',
+                  timestamp: new Date().toISOString()
+                }
+              });
+
+            if (logError) {
+              console.error('Error logging contact activity:', logError);
+            } else {
+              console.log('Contact activity logged successfully');
+            }
+          }
+        }
+      } catch (dbError) {
+        console.error('Database logging failed:', dbError);
+        // Don't fail the main request if database logging fails
+      }
+    }
 
     return new Response(
       JSON.stringify({

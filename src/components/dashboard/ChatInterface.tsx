@@ -189,24 +189,25 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
       }
       
       if (activeChannel === 'sms' && updatedContact.phone) {
-        console.log('Sending SMS via Supabase Edge Function');
+        console.log('Sending SMS via Telnyx Edge Function');
         
-        const { data: twilioResponse, error: twilioError } = await supabase.functions.invoke('send-sms', {
+        const { data: telnyxResponse, error: telnyxError } = await supabase.functions.invoke('send-via-telnyx', {
           body: {
             to: updatedContact.phone,
-            message: messageText,
+            text: messageText,
+            schedule_type: 'now',
             contactId: updatedContact.id
           }
         });
         
-        console.log('Twilio response:', twilioResponse);
+        console.log('Telnyx response:', telnyxResponse);
         
-        if (twilioError) {
-          throw new Error(`Failed to send SMS: ${twilioError.message}`);
+        if (telnyxError) {
+          throw new Error(`Failed to send SMS: ${telnyxError.message}`);
         }
         
-        if (twilioResponse && !twilioResponse.success) {
-          throw new Error(`Twilio error: ${twilioResponse.error || 'Unknown error'}`);
+        if (telnyxResponse && !telnyxResponse.success) {
+          throw new Error(`Telnyx error: ${telnyxResponse.error || 'Unknown error'}`);
         }
       } else if (activeChannel === 'email' && updatedContact.email) {
         console.log('Email sending would happen here');
@@ -250,7 +251,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
       toast({
         title: 'Message sent',
         description: activeChannel === 'sms' 
-          ? 'SMS sent successfully' 
+          ? 'SMS sent successfully via Telnyx' 
           : activeChannel === 'email'
           ? 'Email saved successfully'
           : 'Message saved successfully',
