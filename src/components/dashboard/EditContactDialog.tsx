@@ -62,6 +62,7 @@ const EditContactDialog: React.FC<EditContactDialogProps> = ({
       const updatedContact: Contact = {
         ...contact,
         ...data,
+        status: data.status as 'active' | 'inactive' | 'busy' | 'away',
         createdAt: contact.createdAt,
         updatedAt: new Date().toISOString()
       };

@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import TopBar from '@/components/dashboard/TopBar';
 import Sidebar from '@/components/dashboard/Sidebar';
-import ContactsTable, { Contact } from '@/components/dashboard/ContactsTable';
+import ContactsTable from '@/components/dashboard/ContactsTable';
 import ContactDetailsDialog from '@/components/dashboard/ContactDetailsDialog';
 import SendMessageDialog from '@/components/dashboard/SendMessageDialog';
 import EditContactDialog from '@/components/dashboard/EditContactDialog';
@@ -13,6 +14,7 @@ import { toast } from '@/hooks/use-toast';
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Search } from 'lucide-react';
+import { Contact } from '@/types';
 
 const Index = () => {
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -32,13 +34,14 @@ const Index = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [availableSegments, setAvailableSegments] = useState<string[]>([]);
   const [segmentFilter, setSegmentFilter] = useState('all');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   useEffect(() => {
     const fetchSegments = async () => {
       try {
         const { data, error } = await supabase
-          .from('segments')
-          .select('name');
+          .from('contacts_segments')
+          .select('segment_name');
 
         if (error) {
           console.error('Error fetching segments:', error);
@@ -51,7 +54,7 @@ const Index = () => {
         }
 
         if (data) {
-          const segmentNames = data.map(segment => segment.name);
+          const segmentNames = data.map(segment => segment.segment_name);
           setAvailableSegments(segmentNames);
         }
       } catch (error) {
@@ -95,7 +98,24 @@ const Index = () => {
         }
 
         if (data) {
-          setContacts(data);
+          // Transform database contacts to Contact interface
+          const transformedContacts: Contact[] = data.map(contact => ({
+            id: contact.id,
+            first_name: contact.first_name,
+            last_name: contact.last_name || '',
+            phone: contact.phone || '',
+            email: contact.email || '',
+            company: contact.company || '',
+            status: contact.status as 'active' | 'inactive' | 'busy' | 'away',
+            tags: contact.tags || [],
+            createdAt: contact.created_at,
+            updatedAt: contact.updated_at,
+            lastActivity: contact.last_activity,
+            segment_name: contact.segment_name,
+            notes: contact.notes
+          }));
+          
+          setContacts(transformedContacts);
           setTotalPages(Math.ceil((count || 0) / itemsPerPage));
         }
       } catch (error) {
@@ -237,7 +257,10 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <TopBar />
+      <TopBar 
+        sidebarCollapsed={sidebarCollapsed}
+        onMenuClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+      />
       <div className="flex">
         <Sidebar />
         <main className="flex-1 p-8">
@@ -284,7 +307,7 @@ const Index = () => {
             contact={selectedContact}
           />
           <SendMessageDialog
-            isOpen={isMessageOpen}
+            open={isMessageOpen}
             onClose={() => setIsMessageOpen(false)}
             contact={selectedContact}
           />
@@ -316,6 +339,9 @@ const Index = () => {
                   availableSegments={availableSegments}
                   segmentFilter={segmentFilter}
                   onSegmentFilterChange={setSegmentFilter}
+                  onActionComplete={() => setIsBulkActionsOpen(false)}
+                  onSelectionClear={() => setSelectedContacts([])}
+                  onClearSelection={() => setSelectedContacts([])}
                 />
                 <div className="mt-6 flex justify-end">
                   <Button variant="ghost" onClick={() => setIsBulkActionsOpen(false)}>

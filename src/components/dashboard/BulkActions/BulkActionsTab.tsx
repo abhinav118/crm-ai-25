@@ -5,6 +5,9 @@ import { Contact } from '@/types';
 
 interface BulkActionsTabProps {
   selectedContacts: Contact[];
+  availableSegments: string[];
+  segmentFilter: string;
+  onSegmentFilterChange: (segment: string) => void;
   onActionComplete: () => void;
   onSelectionClear: () => void;
   onClearSelection: () => void;
@@ -12,6 +15,9 @@ interface BulkActionsTabProps {
 
 const BulkActionsTab: React.FC<BulkActionsTabProps> = ({
   selectedContacts,
+  availableSegments,
+  segmentFilter,
+  onSegmentFilterChange,
   onActionComplete,
   onSelectionClear,
   onClearSelection
