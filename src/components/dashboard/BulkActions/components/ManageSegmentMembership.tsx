@@ -5,9 +5,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Upload, Plus, Minus } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface ManageSegmentMembershipProps {
   onActionComplete: () => void;
@@ -18,145 +22,173 @@ interface ManageSegmentMembershipProps {
 
 const ManageSegmentMembership: React.FC<ManageSegmentMembershipProps> = ({
   onActionComplete,
-  segmentFilter = 'all',
   availableSegments = [],
-  onSegmentFilterChange
 }) => {
-  const [selectedSegment, setSelectedSegment] = useState(segmentFilter);
-  const [selectedAction, setSelectedAction] = useState('');
-  const [newSegmentName, setNewSegmentName] = useState('');
+  const [operationType, setOperationType] = useState<'add' | 'remove'>('add');
   const [targetSegment, setTargetSegment] = useState('');
+  const [newSegmentName, setNewSegmentName] = useState('');
+  const [inputMethod, setInputMethod] = useState<'manual' | 'csv'>('manual');
+  const [phoneNumbers, setPhoneNumbers] = useState('');
+  const [csvFile, setCsvFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  
   const queryClient = useQueryClient();
 
-  // Fetch contacts for the selected segment
-  const { data: segmentContacts, isLoading: isLoadingContacts } = useQuery({
-    queryKey: ['segment-contacts', selectedSegment],
-    queryFn: async () => {
-      console.log('Fetching contacts for segment:', selectedSegment);
-      
-      let query = supabase
-        .from('contacts')
-        .select('*')
-        .order('created_at', { ascending: false });
+  // Phone number validation function
+  const validatePhoneNumber = (phone: string): boolean => {
+    const cleanPhone = phone.trim();
+    // Support formats: (xxx) xxx-xxxx, +1xxxxxxxxxx, xxxxxxxxxx
+    const phoneRegex = /^(\(\d{3}\)\s\d{3}-\d{4}|\+1\d{10}|\d{10})$/;
+    return phoneRegex.test(cleanPhone);
+  };
 
-      // Apply segment filter if not "all"
-      if (selectedSegment !== 'all') {
-        query = query.eq('segment_name', selectedSegment);
-      }
+  // Parse CSV file
+  const parseCSV = (file: File): Promise<string[]> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const text = e.target?.result as string;
+          const lines = text.split('\n').map(line => line.trim()).filter(line => line);
+          // Assuming phone numbers are in the first column
+          const phoneNumbers = lines.map(line => line.split(',')[0].trim());
+          resolve(phoneNumbers);
+        } catch (error) {
+          reject(error);
+        }
+      };
+      reader.onerror = reject;
+      reader.readAsText(file);
+    });
+  };
 
-      const { data, error } = await query;
-      
-      if (error) {
-        console.error('Error fetching segment contacts:', error);
-        throw error;
-      }
-
-      console.log('Fetched segment contacts:', data?.length);
-      return data || [];
-    },
-    enabled: !!selectedSegment,
-  });
-
-  const handleApplyAction = async () => {
-    if (!selectedAction || !selectedSegment || selectedSegment === 'all') {
-      toast({
-        title: 'Invalid Selection',
-        description: 'Please select a segment and action',
-        variant: 'destructive'
-      });
-      return;
+  // Get phone numbers from input
+  const getPhoneNumbers = async (): Promise<string[]> => {
+    if (inputMethod === 'manual') {
+      return phoneNumbers.split('\n').map(phone => phone.trim()).filter(phone => phone);
+    } else if (inputMethod === 'csv' && csvFile) {
+      return await parseCSV(csvFile);
     }
+    return [];
+  };
 
-    if (selectedAction === 'move' && !targetSegment) {
+  // Find contacts by phone numbers
+  const findContactsByPhone = async (phones: string[]) => {
+    const { data, error } = await supabase
+      .from('contacts')
+      .select('id, phone, first_name, last_name, segment_name')
+      .in('phone', phones);
+    
+    if (error) throw error;
+    return data || [];
+  };
+
+  // Handle form submission
+  const handleSubmit = async () => {
+    if (!targetSegment && !newSegmentName) {
       toast({
         title: 'Missing Target',
-        description: 'Please select a target segment',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    if (selectedAction === 'rename' && !newSegmentName) {
-      toast({
-        title: 'Missing Name',
-        description: 'Please enter a new segment name',
+        description: 'Please select a segment or create a new one',
         variant: 'destructive'
       });
       return;
     }
 
     setIsLoading(true);
+    setValidationErrors([]);
     
     try {
-      const contactsToUpdate = segmentContacts || [];
+      // Get phone numbers from input
+      const inputPhones = await getPhoneNumbers();
       
-      if (contactsToUpdate.length === 0) {
+      if (inputPhones.length === 0) {
         toast({
-          title: 'No Contacts',
-          description: 'No contacts found in the selected segment',
+          title: 'No Input',
+          description: 'Please provide phone numbers',
           variant: 'destructive'
         });
         return;
       }
 
-      let updatedContacts = [];
-
-      for (const contact of contactsToUpdate) {
-        let newSegmentName = contact.segment_name;
-        
-        switch (selectedAction) {
-          case 'move':
-            newSegmentName = targetSegment;
-            break;
-          case 'rename':
-            newSegmentName = newSegmentName;
-            break;
-          case 'remove':
-            newSegmentName = null;
-            break;
+      // Validate phone numbers
+      const errors: string[] = [];
+      const validPhones: string[] = [];
+      
+      inputPhones.forEach((phone, index) => {
+        if (!validatePhoneNumber(phone)) {
+          errors.push(`Line ${index + 1}: Invalid phone format "${phone}"`);
+        } else {
+          validPhones.push(phone);
         }
+      });
 
-        updatedContacts.push({
-          id: contact.id,
-          segment_name: newSegmentName
+      if (errors.length > 0) {
+        setValidationErrors(errors);
+        toast({
+          title: 'Validation Errors',
+          description: `${errors.length} phone number(s) have invalid format`,
+          variant: 'destructive'
         });
+        return;
       }
 
+      // Find matching contacts
+      const matchingContacts = await findContactsByPhone(validPhones);
+      
+      if (matchingContacts.length === 0) {
+        toast({
+          title: 'No Matches Found',
+          description: 'No contacts found matching the provided phone numbers. Please double check the input formatting.',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      // Determine the segment to use
+      const segmentToUse = newSegmentName.trim() || targetSegment;
+      
+      // Update contacts
+      const updatedContacts = matchingContacts.map(contact => {
+        let updatedSegmentName = contact.segment_name;
+        
+        if (operationType === 'add') {
+          updatedSegmentName = segmentToUse;
+        } else if (operationType === 'remove') {
+          updatedSegmentName = contact.segment_name === segmentToUse ? null : contact.segment_name;
+        }
+        
+        return {
+          id: contact.id,
+          segment_name: updatedSegmentName,
+          updated_at: new Date().toISOString()
+        };
+      });
+
       // Batch update contacts
-      const { error } = await supabase
+      const { error: updateError } = await supabase
         .from('contacts')
         .upsert(updatedContacts);
 
-      if (error) throw error;
+      if (updateError) throw updateError;
 
-      let successMessage = '';
-      switch (selectedAction) {
-        case 'move':
-          successMessage = `Moved ${contactsToUpdate.length} contacts from "${selectedSegment}" to "${targetSegment}"`;
-          break;
-        case 'rename':
-          successMessage = `Renamed segment "${selectedSegment}" to "${newSegmentName}" for ${contactsToUpdate.length} contacts`;
-          break;
-        case 'remove':
-          successMessage = `Removed ${contactsToUpdate.length} contacts from segment "${selectedSegment}"`;
-          break;
-      }
-      
+      // Show success message
+      const actionText = operationType === 'add' ? 'added to' : 'removed from';
       toast({
         title: 'Success',
-        description: successMessage,
+        description: `${matchingContacts.length} contacts ${actionText} segment "${segmentToUse}" successfully`,
       });
 
+      // Reset form
+      setPhoneNumbers('');
+      setCsvFile(null);
+      setNewSegmentName('');
+      setValidationErrors([]);
+      
       // Refresh data
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
-      queryClient.invalidateQueries({ queryKey: ['segment-contacts'] });
       queryClient.invalidateQueries({ queryKey: ['contact-segments'] });
-      
       onActionComplete();
-      setNewSegmentName('');
-      setTargetSegment('');
-      setSelectedAction('');
       
     } catch (error) {
       console.error('Error updating segment membership:', error);
@@ -170,27 +202,52 @@ const ManageSegmentMembership: React.FC<ManageSegmentMembershipProps> = ({
     }
   };
 
-  const handleSegmentChange = (segment: string) => {
-    setSelectedSegment(segment);
-    onSegmentFilterChange?.(segment);
-  };
-
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Manage Segment Membership</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            {operationType === 'add' ? (
+              <Plus className="h-5 w-5 text-green-600" />
+            ) : (
+              <Minus className="h-5 w-5 text-red-600" />
+            )}
+            Manage Segment Membership
+          </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Segment Selector */}
+        <CardContent className="space-y-6">
+          {/* Operation Type */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Select Source Segment</label>
-            <Select value={selectedSegment} onValueChange={handleSegmentChange}>
+            <Label className="text-sm font-medium">Operation Type</Label>
+            <Select value={operationType} onValueChange={(value: 'add' | 'remove') => setOperationType(value)}>
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select Segment..." />
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all" disabled>All Segments (Select a specific segment)</SelectItem>
+                <SelectItem value="add">
+                  <div className="flex items-center gap-2">
+                    <Plus className="h-4 w-4 text-green-600" />
+                    Add to Segment
+                  </div>
+                </SelectItem>
+                <SelectItem value="remove">
+                  <div className="flex items-center gap-2">
+                    <Minus className="h-4 w-4 text-red-600" />
+                    Remove from Segment
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Target Segment */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Target Segment</Label>
+            <Select value={targetSegment} onValueChange={setTargetSegment}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select existing segment..." />
+              </SelectTrigger>
+              <SelectContent>
                 {availableSegments.map((segment) => (
                   <SelectItem key={segment} value={segment}>
                     {segment}
@@ -200,112 +257,99 @@ const ManageSegmentMembership: React.FC<ManageSegmentMembershipProps> = ({
             </Select>
           </div>
 
-          {/* Contacts Count */}
-          {selectedSegment !== 'all' && (
-            <div className="text-sm text-gray-600">
-              {isLoadingContacts ? (
-                'Loading contacts...'
-              ) : (
-                `${segmentContacts?.length || 0} contacts in "${selectedSegment}" segment`
-              )}
-            </div>
-          )}
-
-          {/* Action Selector */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Select Action</label>
-            <Select value={selectedAction} onValueChange={setSelectedAction}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select Action..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="move">Move to Another Segment</SelectItem>
-                <SelectItem value="rename">Rename Current Segment</SelectItem>
-                <SelectItem value="remove">Remove from Segment</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Target Segment Selector for Move */}
-          {selectedAction === 'move' && (
+          {/* Create New Segment (only in Add mode) */}
+          {operationType === 'add' && (
             <div className="space-y-2">
-              <label className="text-sm font-medium">Target Segment</label>
-              <div className="flex gap-2">
-                <Select value={targetSegment} onValueChange={setTargetSegment}>
-                  <SelectTrigger className="flex-1">
-                    <SelectValue placeholder="Select target segment..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableSegments
-                      .filter(segment => segment !== selectedSegment)
-                      .map((segment) => (
-                        <SelectItem key={segment} value={segment}>
-                          {segment}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-                <Input
-                  value={targetSegment}
-                  onChange={(e) => setTargetSegment(e.target.value)}
-                  placeholder="Or type new segment name..."
-                  className="flex-1"
-                />
-              </div>
-            </div>
-          )}
-
-          {/* New Segment Name for Rename */}
-          {selectedAction === 'rename' && (
-            <div className="space-y-2">
-              <label className="text-sm font-medium">New Segment Name</label>
+              <Label className="text-sm font-medium">Or Create New Segment</Label>
               <Input
                 value={newSegmentName}
                 onChange={(e) => setNewSegmentName(e.target.value)}
                 placeholder="Enter new segment name..."
+                className="w-full"
               />
+              <p className="text-xs text-gray-500">
+                If filled, this will create a new segment. Leave empty to use selected segment above.
+              </p>
             </div>
           )}
 
-          {/* Apply Button */}
+          {/* Contact Input Method */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Contact Input Method</Label>
+            <Tabs value={inputMethod} onValueChange={(value: 'manual' | 'csv') => setInputMethod(value)}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="manual">Manual Input</TabsTrigger>
+                <TabsTrigger value="csv">CSV Upload</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="manual" className="space-y-2">
+                <Label className="text-sm font-medium">Phone Numbers</Label>
+                <Textarea
+                  value={phoneNumbers}
+                  onChange={(e) => setPhoneNumbers(e.target.value)}
+                  placeholder="Enter phone numbers (one per line)&#10;Examples:&#10;(555) 123-4567&#10;+15551234567&#10;5551234567"
+                  rows={8}
+                  className="w-full"
+                />
+                <p className="text-xs text-gray-500">
+                  Supported formats: (xxx) xxx-xxxx, +1xxxxxxxxxx, xxxxxxxxxx
+                </p>
+              </TabsContent>
+              
+              <TabsContent value="csv" className="space-y-2">
+                <Label className="text-sm font-medium">Upload CSV File</Label>
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                  <Upload className="mx-auto h-12 w-12 text-gray-400" />
+                  <div className="mt-2">
+                    <input
+                      type="file"
+                      accept=".csv"
+                      onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
+                      className="hidden"
+                      id="csv-upload"
+                    />
+                    <label
+                      htmlFor="csv-upload"
+                      className="cursor-pointer text-blue-600 hover:text-blue-500"
+                    >
+                      Choose CSV file
+                    </label>
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500">
+                    CSV should have phone numbers in the first column
+                  </p>
+                  {csvFile && (
+                    <p className="mt-2 text-sm text-green-600">
+                      Selected: {csvFile.name}
+                    </p>
+                  )}
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
+
+          {/* Validation Errors */}
+          {validationErrors.length > 0 && (
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-red-600">Validation Errors</Label>
+              <div className="bg-red-50 border border-red-200 rounded-md p-3 max-h-32 overflow-y-auto">
+                {validationErrors.map((error, index) => (
+                  <p key={index} className="text-sm text-red-600">{error}</p>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Submit Button */}
           <Button 
-            onClick={handleApplyAction}
-            disabled={isLoading || !selectedAction || selectedSegment === 'all'}
+            onClick={handleSubmit}
+            disabled={isLoading || (!targetSegment && !newSegmentName)}
             className="w-full"
           >
-            {isLoading ? 'Applying...' : 'Apply Action'}
+            {isLoading ? 'Processing...' : `${operationType === 'add' ? 'Add to' : 'Remove from'} Segment`}
           </Button>
         </CardContent>
       </Card>
-
-      {/* Preview */}
-      {selectedSegment !== 'all' && segmentContacts && segmentContacts.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Preview - Contacts in "{selectedSegment}"</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {segmentContacts.slice(0, 5).map((contact) => (
-                <div key={contact.id} className="flex items-center justify-between p-2 border rounded">
-                  <div>
-                    <div className="font-medium">{contact.first_name} {contact.last_name}</div>
-                    <div className="text-sm text-gray-500">{contact.email}</div>
-                  </div>
-                  <Badge variant="outline" className="text-xs">
-                    {contact.segment_name || 'No Segment'}
-                  </Badge>
-                </div>
-              ))}
-              {segmentContacts.length > 5 && (
-                <div className="text-sm text-gray-500 text-center">
-                  And {segmentContacts.length - 5} more contacts...
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 };
