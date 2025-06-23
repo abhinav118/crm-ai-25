@@ -220,7 +220,7 @@ serve(async (req) => {
       const messagesToInsert = segmentData.map(contact => ({
         contact_id: contact.id,
         content: text, // Using text from the campaign payload
-        sender: 'business',
+        sender: 'user',
         channel: 'sms',
         sent_at: new Date().toISOString(),
       }));
