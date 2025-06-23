@@ -65,6 +65,9 @@ serve(async (req)=>{
     if (!payload) {
       throw new Error('Invalid Telnyx webhook payload');
     }
+    else if(webhookData.data.event_type!=='message.received'){
+            throw new Error('Not a Telnyx receive sms webhook.. handle later');
+    }
     // Get specific fields we need
     const incomingMessage = payload.text || '';
     const fromNumber = payload.from?.phone_number || '';
