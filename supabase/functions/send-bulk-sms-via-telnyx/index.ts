@@ -169,6 +169,7 @@ serve(async (req) => {
             } else {
               console.log(`SMS sent successfully to ${phoneNumber}:`, responseData.data?.id);
               sentCount++;
+              
             }
 
             // Small delay to avoid rate limiting
@@ -214,6 +215,22 @@ serve(async (req) => {
 
       if (finalError) {
         console.error('Error updating final status:', finalError);
+      }
+      // Insert records into messages table for all campaign recipients
+      const messagesToInsert = segmentData.map(contact => ({
+        contact_id: contact.id,
+        content: text, // Using text from the campaign payload
+        sender: 'business',
+        channel: 'sms',
+        sent_at: new Date().toISOString(),
+      }));
+
+      const { error: messagesError } = await supabase
+        .from('messages')
+        .insert(messagesToInsert);
+
+      if (messagesError) {
+        console.error('Error inserting campaign messages:', messagesError);
       }
 
       console.log(`Bulk SMS completed: ${sentCount} sent, ${errorCount} failed`);
