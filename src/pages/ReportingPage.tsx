@@ -1,3 +1,4 @@
+
 import React, { useState, createContext, useContext } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -262,43 +263,5 @@ const ReportingPage = () => {
     </DateRangeContext.Provider>
   );
 };
-
-function getSelectedRangeLabel() {
-  if (!dateRange?.from || !dateRange?.to) return 'Select Date Range';
-  
-  const daysDiff = Math.ceil((dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 60 * 60 * 24));
-  
-  if (daysDiff <= 1) return 'Past Day';
-  if (daysDiff <= 7) return 'Past Week';
-  if (daysDiff <= 31) return 'Past Month';
-  
-  return `${format(dateRange.from, "MMM dd")} - ${format(dateRange.to, "MMM dd")}`;
-}
-
-function getTabDescription(tab: string) {
-  switch (tab) {
-    case "messages":
-      return "Comprehensive view of messaging activity and performance";
-    case "delivery":
-      return "Detailed delivery status and success rates for your campaigns";
-    case "contacts":
-      return "Monitor contact growth, segmentation, and engagement trends";
-    default:
-      return "";
-  }
-}
-
-function getTabTitle(tab: string) {
-  switch (tab) {
-    case "messages":
-      return "Messages Overview";
-    case "delivery":
-      return "Delivery Reports";
-    case "contacts":
-      return "Contacts Overview";
-    default:
-      return "";
-  }
-}
 
 export default ReportingPage;

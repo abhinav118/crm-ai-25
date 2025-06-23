@@ -59,16 +59,15 @@ export function useScheduledTelnyxCampaigns() {
   });
 }
 
-// Query sent/failed campaigns (past)
+// Query sent/completed campaigns (includes all processed campaigns)
 export function useSentTelnyxCampaigns() {
   return useQuery({
     queryKey: ['telnyx_campaigns', 'sent'],
     queryFn: async () => {
-      const nowISO = new Date().toISOString();
       const { data, error } = await supabase
         .from('telnyx_campaigns')
         .select('*')
-        .or("status.eq.sent,status.eq.failed")
+        .in('status', ['sent', 'completed', 'failed'])
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data as TelnyxCampaign[];
