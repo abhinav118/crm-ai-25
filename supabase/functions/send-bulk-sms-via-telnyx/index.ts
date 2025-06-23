@@ -222,7 +222,7 @@ serve(async (req) => {
         console.error('Error updating final status:', finalError);
       }
       // Insert records into messages table for all campaign recipients
-      const messagesToInsert = segmentData.map(contact => ({
+      const messagesToInsert = segmentData.contacts_membership.map(contact => ({
         contact_id: contact.id,
         content: text, // Using text from the campaign payload
         sender: 'user',
