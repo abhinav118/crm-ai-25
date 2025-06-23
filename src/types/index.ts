@@ -5,7 +5,7 @@ export interface Contact {
   last_name: string;
   phone: string;
   email?: string;
-  status?: string;
+  status?: 'active' | 'inactive' | 'busy' | 'away';
   tags?: string[];
   createdAt: string;
   updatedAt: string;
@@ -13,6 +13,9 @@ export interface Contact {
   avatar?: string;
   dnd_preference?: boolean;
   profile_image_url?: string;
+  company?: string;
+  last_activity?: string;
+  segments?: string[];
   emails?: Array<{
     email: string;
     type: string;

@@ -1,7 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { UserPlus, UserMinus } from 'lucide-react';
 import { Contact } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -27,18 +29,23 @@ const ManageSegmentMembership: React.FC<ManageSegmentMembershipProps> = ({
   }, [selectedContacts]);
 
   const fetchContactSegments = async () => {
+    if (selectedContacts.length === 0) return;
+    
     try {
+      const contactIds = selectedContacts.map(contact => contact.id);
       const { data: contactsData, error } = await supabase
         .from('contacts')
         .select('id, segments')
-        .in('id', selectedContacts);
+        .in('id', contactIds);
 
       if (error) throw error;
 
       const contactSegmentMap: Record<string, string[]> = {};
-      contactsData.forEach(contact => {
-        contactSegmentMap[contact.id] = contact.segments || [];
-      });
+      if (contactsData) {
+        contactsData.forEach(contact => {
+          contactSegmentMap[contact.id] = contact.segments || [];
+        });
+      }
 
       setContactSegments(contactSegmentMap);
     } catch (error) {
@@ -183,6 +190,7 @@ const ManageSegmentMembership: React.FC<ManageSegmentMembershipProps> = ({
                         size="sm"
                         variant="outline"
                         onClick={() => handleAddToSegment(segmentFilter)}
+                        disabled={isLoading}
                       >
                         <UserPlus className="h-3 w-3" />
                       </Button>
@@ -192,6 +200,7 @@ const ManageSegmentMembership: React.FC<ManageSegmentMembershipProps> = ({
                         size="sm"
                         variant="outline"
                         onClick={() => handleRemoveFromSegment(segmentFilter)}
+                        disabled={isLoading}
                       >
                         <UserMinus className="h-3 w-3" />
                       </Button>
