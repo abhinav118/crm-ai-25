@@ -37,13 +37,13 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
         
         <nav className="flex-1 px-3 space-y-2">
-          <SidebarLink 
+          {/* <SidebarLink 
             icon={<Grid size={20} />} 
             label="Dashboard" 
             to="/" 
             collapsed={true}
             active={isActive('/')}
-          />
+          /> */}
           <SidebarLink 
             icon={<User size={20} />} 
             label="Contacts" 
@@ -51,13 +51,13 @@ const Sidebar: React.FC<SidebarProps> = ({
             collapsed={true}
             active={isActive('/contacts')}
           />
-          <SidebarLink 
+          {/* <SidebarLink 
             icon={<Clock size={20} />} 
             label="Conversations" 
             to="/conversations" 
             collapsed={true}
             active={isActive('/conversations')}
-          />
+          /> */}
           <SidebarLink 
             icon={<Archive size={20} />} 
             label="Campaigns" 
@@ -105,24 +105,24 @@ const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Main Nav */}
         <nav className="px-3 space-y-2 text-sm">
-          <SidebarLink 
+          {/* <SidebarLink 
             icon={<Grid size={20} />} 
             label="Dashboard" 
             to="/" 
             active={isActive('/')}
-          />
+          /> */}
           <SidebarLink 
             icon={<User size={20} />} 
             label="Contacts" 
             to="/contacts" 
             active={isActive('/contacts')}
           />
-          <SidebarLink 
+          {/* <SidebarLink 
             icon={<Clock size={20} />} 
             label="Conversations" 
             to="/conversations" 
             active={isActive('/conversations')}
-          />
+          /> */}
           <SidebarLink 
             icon={<Archive size={20} />} 
             label="Campaigns" 
