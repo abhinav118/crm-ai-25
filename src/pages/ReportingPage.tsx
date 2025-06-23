@@ -1,4 +1,3 @@
-
 import React, { useState, createContext, useContext } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -14,6 +13,10 @@ import DeliveryReports from './DeliveryReports';
 import ContactsOverview from './ContactsOverview';
 import MessagesOverview from './MessagesOverview';
 import { DateRange } from "react-day-picker";
+import { useDeliveryReportMetrics } from '@/hooks/useDeliveryReportMetrics';
+import { useContactsMetrics } from '@/hooks/useContactsMetrics';
+import { exportDeliveryReport, exportContactsReport } from '@/utils/csvExport';
+import { toast } from '@/hooks/use-toast';
 
 interface DateRangeContextType {
   dateRange: DateRange | undefined;
@@ -38,6 +41,10 @@ const ReportingPage = () => {
     to: new Date(),
   });
   const [showCustomRange, setShowCustomRange] = useState(false);
+
+  // Fetch data for export functionality
+  const { data: deliveryMetrics } = useDeliveryReportMetrics(dateRange);
+  const { data: contactsMetrics } = useContactsMetrics(dateRange);
 
   const handleSidebarToggle = () => {
     setSidebarCollapsed(!sidebarCollapsed);
@@ -71,6 +78,37 @@ const ReportingPage = () => {
       case 'custom':
         setShowCustomRange(true);
         break;
+    }
+  };
+
+  const handleExportReport = () => {
+    try {
+      if (activeTab === 'delivery' && deliveryMetrics?.campaignData) {
+        exportDeliveryReport(deliveryMetrics.campaignData, dateRange);
+        toast({
+          title: "Export Successful",
+          description: "Delivery report has been downloaded as CSV.",
+        });
+      } else if (activeTab === 'contacts' && contactsMetrics?.segment_performance) {
+        exportContactsReport(contactsMetrics.segment_performance, dateRange);
+        toast({
+          title: "Export Successful", 
+          description: "Contacts report has been downloaded as CSV.",
+        });
+      } else {
+        toast({
+          title: "Export Failed",
+          description: "No data available for export.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Export error:', error);
+      toast({
+        title: "Export Failed",
+        description: "An error occurred while exporting the report.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -145,7 +183,10 @@ const ReportingPage = () => {
                       </DropdownMenuContent>
                     </DropdownMenu>
                     {activeTab !== "messages" && (
-                      <Button className="bg-[#6366F1] hover:bg-[#5855EB] text-white px-4 py-2 h-10 font-medium w-full xs:w-auto whitespace-nowrap">
+                      <Button 
+                        onClick={handleExportReport}
+                        className="bg-[#6366F1] hover:bg-[#5855EB] text-white px-4 py-2 h-10 font-medium w-full xs:w-auto whitespace-nowrap"
+                      >
                         <Download className="mr-2 h-4 w-4" />
                         Export Report
                       </Button>
@@ -221,5 +262,43 @@ const ReportingPage = () => {
     </DateRangeContext.Provider>
   );
 };
+
+function getSelectedRangeLabel() {
+  if (!dateRange?.from || !dateRange?.to) return 'Select Date Range';
+  
+  const daysDiff = Math.ceil((dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 60 * 60 * 24));
+  
+  if (daysDiff <= 1) return 'Past Day';
+  if (daysDiff <= 7) return 'Past Week';
+  if (daysDiff <= 31) return 'Past Month';
+  
+  return `${format(dateRange.from, "MMM dd")} - ${format(dateRange.to, "MMM dd")}`;
+}
+
+function getTabDescription(tab: string) {
+  switch (tab) {
+    case "messages":
+      return "Comprehensive view of messaging activity and performance";
+    case "delivery":
+      return "Detailed delivery status and success rates for your campaigns";
+    case "contacts":
+      return "Monitor contact growth, segmentation, and engagement trends";
+    default:
+      return "";
+  }
+}
+
+function getTabTitle(tab: string) {
+  switch (tab) {
+    case "messages":
+      return "Messages Overview";
+    case "delivery":
+      return "Delivery Reports";
+    case "contacts":
+      return "Contacts Overview";
+    default:
+      return "";
+  }
+}
 
 export default ReportingPage;

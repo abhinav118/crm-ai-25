@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -17,7 +16,8 @@ const chartConfig = {
 };
 
 const DeliveryReportsComponent = () => {
-  const { data: metrics, isLoading, error } = useDeliveryReportMetrics();
+  const { dateRange } = ImportedUseDateRange();
+  const { data: metrics, isLoading, error } = useDeliveryReportMetrics(dateRange);
 
   const deliveryStats = [
     { 
@@ -97,6 +97,52 @@ const DeliveryReportsComponent = () => {
         ))}
       </div>
 
+      {/* Campaign Details Table */}
+      {metrics?.campaignData && metrics.campaignData.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Campaign Details</CardTitle>
+            <CardDescription>Individual campaign performance metrics</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Campaign</TableHead>
+                    <TableHead>Total Sent</TableHead>
+                    <TableHead>Delivered</TableHead>
+                    <TableHead>Failed</TableHead>
+                    <TableHead>Pending</TableHead>
+                    <TableHead>Delivery Rate</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {metrics.campaignData.map((campaign, index) => (
+                    <TableRow key={index}>
+                      <TableCell className="font-medium">{campaign.campaignName}</TableCell>
+                      <TableCell>{campaign.totalSent}</TableCell>
+                      <TableCell>{campaign.delivered}</TableCell>
+                      <TableCell>{campaign.failed}</TableCell>
+                      <TableCell>{campaign.pending}</TableCell>
+                      <TableCell>{campaign.deliveryRate}%</TableCell>
+                      <TableCell>{campaign.sentDate}</TableCell>
+                      <TableCell>
+                        <span className={getStatusBadge(campaign.status)}>
+                          {campaign.status}
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         {/* Delivery Status Breakdown */}
         <Card>
@@ -147,7 +193,7 @@ const DeliveryReportsComponent = () => {
           </CardContent>
         </Card>
 
-        {/* Delivery Trends Chart */}
+        {/* Delivery Performance */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
