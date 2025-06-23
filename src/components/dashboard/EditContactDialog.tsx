@@ -27,7 +27,7 @@ const EditContactDialog: React.FC<EditContactDialogProps> = ({
     phone: '',
     email: '',
     company: '',
-    status: 'active' as const
+    status: 'active' as 'active' | 'inactive' | 'busy' | 'away'
   });
   const [isLoading, setIsLoading] = useState(false);
 
@@ -39,7 +39,7 @@ const EditContactDialog: React.FC<EditContactDialogProps> = ({
         phone: contact.phone || '',
         email: contact.email || '',
         company: contact.company || '',
-        status: contact.status || 'active'
+        status: (contact.status as 'active' | 'inactive' | 'busy' | 'away') || 'active'
       });
     }
   }, [contact]);
@@ -59,7 +59,14 @@ const EditContactDialog: React.FC<EditContactDialogProps> = ({
 
       if (error) throw error;
 
-      onContactUpdate(data);
+      const updatedContact: Contact = {
+        ...contact,
+        ...data,
+        createdAt: contact.createdAt,
+        updatedAt: new Date().toISOString()
+      };
+
+      onContactUpdate(updatedContact);
       toast({
         title: "Success",
         description: "Contact updated successfully"

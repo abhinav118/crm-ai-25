@@ -35,7 +35,7 @@ const ManageSegmentMembership: React.FC<ManageSegmentMembershipProps> = ({
       const contactIds = selectedContacts.map(contact => contact.id);
       const { data: contactsData, error } = await supabase
         .from('contacts')
-        .select('id, segments')
+        .select('id, segment_name')
         .in('id', contactIds);
 
       if (error) throw error;
@@ -43,7 +43,7 @@ const ManageSegmentMembership: React.FC<ManageSegmentMembershipProps> = ({
       const contactSegmentMap: Record<string, string[]> = {};
       if (contactsData) {
         contactsData.forEach(contact => {
-          contactSegmentMap[contact.id] = contact.segments || [];
+          contactSegmentMap[contact.id] = contact.segment_name ? [contact.segment_name] : [];
         });
       }
 
@@ -66,20 +66,12 @@ const ManageSegmentMembership: React.FC<ManageSegmentMembershipProps> = ({
       const contactIds = selectedContacts.map(contact => contact.id);
       
       for (const contactId of contactIds) {
-        const currentSegments = Array.isArray(contactSegments[contactId]) 
-          ? contactSegments[contactId] 
-          : [];
-        
-        if (!currentSegments.includes(segmentName)) {
-          const updatedSegments = [...currentSegments, segmentName];
+        const { error } = await supabase
+          .from('contacts')
+          .update({ segment_name: segmentName })
+          .eq('id', contactId);
           
-          const { error } = await supabase
-            .from('contacts')
-            .update({ segments: updatedSegments })
-            .eq('id', contactId);
-            
-          if (error) throw error;
-        }
+        if (error) throw error;
       }
       
       await fetchContactSegments();
@@ -99,7 +91,7 @@ const ManageSegmentMembership: React.FC<ManageSegmentMembershipProps> = ({
     }
   };
 
-  const handleRemoveFromSegment = async (segmentName: string) => {
+  const handleRemoveFromSegment = async () => {
     if (selectedContacts.length === 0) return;
     
     setIsLoading(true);
@@ -107,26 +99,18 @@ const ManageSegmentMembership: React.FC<ManageSegmentMembershipProps> = ({
       const contactIds = selectedContacts.map(contact => contact.id);
       
       for (const contactId of contactIds) {
-        const currentSegments = Array.isArray(contactSegments[contactId]) 
-          ? contactSegments[contactId] 
-          : [];
-        
-        if (currentSegments.includes(segmentName)) {
-          const updatedSegments = currentSegments.filter(s => s !== segmentName);
+        const { error } = await supabase
+          .from('contacts')
+          .update({ segment_name: null })
+          .eq('id', contactId);
           
-          const { error } = await supabase
-            .from('contacts')
-            .update({ segments: updatedSegments })
-            .eq('id', contactId);
-            
-          if (error) throw error;
-        }
+        if (error) throw error;
       }
       
       await fetchContactSegments();
       toast({
         title: "Success",
-        description: `Removed ${selectedContacts.length} contact(s) from ${segmentName}`,
+        description: `Removed ${selectedContacts.length} contact(s) from segment`,
       });
     } catch (error) {
       console.error('Error removing contacts from segment:', error);
@@ -199,7 +183,7 @@ const ManageSegmentMembership: React.FC<ManageSegmentMembershipProps> = ({
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => handleRemoveFromSegment(segmentFilter)}
+                        onClick={() => handleRemoveFromSegment()}
                         disabled={isLoading}
                       >
                         <UserMinus className="h-3 w-3" />

@@ -1,4 +1,4 @@
-import { Contact } from '@/components/dashboard/ContactsTable';
+import { Contact } from '@/types';
 
 export const SAMPLE_CONTACTS: Contact[] = [
   {
@@ -12,6 +12,7 @@ export const SAMPLE_CONTACTS: Contact[] = [
     last_activity: '2023-06-15T14:30:00',
     tags: ['Customer', 'Enterprise'],
     createdAt: '2023-01-15T09:30:00',
+    updatedAt: '2023-01-15T09:30:00',
   },
   {
     id: '2',
@@ -24,6 +25,7 @@ export const SAMPLE_CONTACTS: Contact[] = [
     last_activity: '2023-06-14T11:20:00',
     tags: ['Prospect'],
     createdAt: '2023-02-10T15:45:00',
+    updatedAt: '2023-02-10T15:45:00',
   },
   {
     id: '3',
@@ -36,6 +38,7 @@ export const SAMPLE_CONTACTS: Contact[] = [
     last_activity: '2023-06-10T09:15:00',
     tags: ['Healthcare', 'Lead'],
     createdAt: '2023-03-05T10:20:00',
+    updatedAt: '2023-03-05T10:20:00',
   },
   {
     id: '4',
@@ -48,6 +51,7 @@ export const SAMPLE_CONTACTS: Contact[] = [
     last_activity: null,
     tags: null,
     createdAt: '2023-03-22T14:10:00',
+    updatedAt: '2023-03-22T14:10:00',
   },
   {
     id: '5',
@@ -60,6 +64,7 @@ export const SAMPLE_CONTACTS: Contact[] = [
     last_activity: '2023-06-16T16:45:00',
     tags: ['Partner', 'Tech'],
     createdAt: '2023-04-12T11:30:00',
+    updatedAt: '2023-04-12T11:30:00',
   },
   {
     id: '6',
@@ -72,6 +77,7 @@ export const SAMPLE_CONTACTS: Contact[] = [
     last_activity: '2023-06-15T10:15:00',
     tags: ['Customer', 'Finance'],
     createdAt: '2023-01-20T13:45:00',
+    updatedAt: '2023-01-20T13:45:00',
   },
   {
     id: '7',
@@ -84,6 +90,7 @@ export const SAMPLE_CONTACTS: Contact[] = [
     last_activity: '2023-06-14T15:30:00',
     tags: ['Creative', 'Lead'],
     createdAt: '2023-02-15T09:20:00',
+    updatedAt: '2023-02-15T09:20:00',
   },
   {
     id: '8',
@@ -96,6 +103,7 @@ export const SAMPLE_CONTACTS: Contact[] = [
     last_activity: '2023-06-13T11:45:00',
     tags: ['Customer', 'Tech'],
     createdAt: '2023-01-25T08:15:00',
+    updatedAt: '2023-01-25T08:15:00',
   },
   {
     id: '9',
@@ -108,6 +116,7 @@ export const SAMPLE_CONTACTS: Contact[] = [
     last_activity: '2023-05-20T14:20:00',
     tags: ['Marketing', 'Lead'],
     createdAt: '2023-03-10T10:30:00',
+    updatedAt: '2023-03-10T10:30:00',
   },
   {
     id: '10',
@@ -120,6 +129,7 @@ export const SAMPLE_CONTACTS: Contact[] = [
     last_activity: '2023-06-12T09:30:00',
     tags: ['Consultant', 'Enterprise'],
     createdAt: '2023-02-05T16:45:00',
+    updatedAt: '2023-02-05T16:45:00',
   },
   {
     id: '11',
@@ -132,6 +142,7 @@ export const SAMPLE_CONTACTS: Contact[] = [
     last_activity: '2023-06-11T13:15:00',
     tags: ['Healthcare', 'Customer'],
     createdAt: '2023-01-18T11:20:00',
+    updatedAt: '2023-01-18T11:20:00',
   },
   {
     id: '12',
@@ -144,6 +155,7 @@ export const SAMPLE_CONTACTS: Contact[] = [
     last_activity: '2023-05-15T15:30:00',
     tags: ['Manufacturing', 'Lead'],
     createdAt: '2023-03-15T09:40:00',
+    updatedAt: '2023-03-15T09:40:00',
   },
   {
     id: '13',
@@ -156,6 +168,7 @@ export const SAMPLE_CONTACTS: Contact[] = [
     last_activity: '2023-06-10T10:45:00',
     tags: ['Creative', 'Partner'],
     createdAt: '2023-02-20T14:30:00',
+    updatedAt: '2023-02-20T14:30:00',
   },
   {
     id: '14',
@@ -168,6 +181,7 @@ export const SAMPLE_CONTACTS: Contact[] = [
     last_activity: '2023-06-09T11:30:00',
     tags: ['Finance', 'Customer'],
     createdAt: '2023-01-30T10:15:00',
+    updatedAt: '2023-01-30T10:15:00',
   },
   {
     id: '15',
@@ -180,6 +194,7 @@ export const SAMPLE_CONTACTS: Contact[] = [
     last_activity: '2023-05-25T14:15:00',
     tags: ['Education', 'Prospect'],
     createdAt: '2023-03-25T13:20:00',
+    updatedAt: '2023-03-25T13:20:00',
   },
   {
     id: '16',
@@ -192,6 +207,7 @@ export const SAMPLE_CONTACTS: Contact[] = [
     last_activity: '2023-06-08T09:45:00',
     tags: ['Legal', 'Enterprise'],
     createdAt: '2023-02-12T11:30:00',
+    updatedAt: '2023-02-12T11:30:00',
   },
   {
     id: '17',
@@ -204,6 +220,7 @@ export const SAMPLE_CONTACTS: Contact[] = [
     last_activity: '2023-06-07T15:20:00',
     tags: ['Retail', 'Customer'],
     createdAt: '2023-01-22T10:45:00',
+    updatedAt: '2023-01-22T10:45:00',
   },
   {
     id: '18',
@@ -216,6 +233,7 @@ export const SAMPLE_CONTACTS: Contact[] = [
     last_activity: '2023-05-30T11:15:00',
     tags: ['Media', 'Lead'],
     createdAt: '2023-03-18T14:30:00',
+    updatedAt: '2023-03-18T14:30:00',
   },
   {
     id: '19',
@@ -228,6 +246,7 @@ export const SAMPLE_CONTACTS: Contact[] = [
     last_activity: '2023-06-06T10:30:00',
     tags: ['Enterprise', 'Customer'],
     createdAt: '2023-02-25T09:15:00',
+    updatedAt: '2023-02-25T09:15:00',
   },
   {
     id: '20',
@@ -240,6 +259,7 @@ export const SAMPLE_CONTACTS: Contact[] = [
     last_activity: '2023-06-05T14:45:00',
     tags: ['Energy', 'Partner'],
     createdAt: '2023-01-28T13:20:00',
+    updatedAt: '2023-01-28T13:20:00',
   },
   {
     id: '21',
@@ -252,6 +272,7 @@ export const SAMPLE_CONTACTS: Contact[] = [
     last_activity: '2023-05-28T09:30:00',
     tags: ['Food', 'Tech', 'Prospect'],
     createdAt: '2023-03-20T11:45:00',
+    updatedAt: '2023-03-20T11:45:00',
   },
   {
     id: '22',
@@ -264,6 +285,7 @@ export const SAMPLE_CONTACTS: Contact[] = [
     last_activity: '2023-06-04T11:15:00',
     tags: ['Construction', 'Customer'],
     createdAt: '2023-02-08T15:30:00',
+    updatedAt: '2023-02-08T15:30:00',
   },
   {
     id: '23',
@@ -276,6 +298,7 @@ export const SAMPLE_CONTACTS: Contact[] = [
     last_activity: '2023-06-03T13:45:00',
     tags: ['Travel', 'Enterprise'],
     createdAt: '2023-01-17T10:20:00',
+    updatedAt: '2023-01-17T10:20:00',
   },
   {
     id: '24',
@@ -288,6 +311,7 @@ export const SAMPLE_CONTACTS: Contact[] = [
     last_activity: '2023-05-22T16:30:00',
     tags: ['Tech', 'Lead'],
     createdAt: '2023-03-12T09:15:00',
+    updatedAt: '2023-03-12T09:15:00',
   },
   {
     id: '25',
@@ -300,6 +324,7 @@ export const SAMPLE_CONTACTS: Contact[] = [
     last_activity: '2023-06-02T10:15:00',
     tags: ['Consulting', 'Customer'],
     createdAt: '2023-02-18T14:45:00',
+    updatedAt: '2023-02-18T14:45:00',
   },
   {
     id: '26',
@@ -312,6 +337,7 @@ export const SAMPLE_CONTACTS: Contact[] = [
     last_activity: '2023-06-01T14:30:00',
     tags: ['Manufacturing', 'Enterprise'],
     createdAt: '2023-01-24T11:15:00',
+    updatedAt: '2023-01-24T11:15:00',
   },
   {
     id: '27',
@@ -324,6 +350,7 @@ export const SAMPLE_CONTACTS: Contact[] = [
     last_activity: '2023-05-18T09:45:00',
     tags: ['Retail', 'Fashion', 'Lead'],
     createdAt: '2023-03-28T13:30:00',
+    updatedAt: '2023-03-28T13:30:00',
   },
   {
     id: '28',
@@ -336,6 +363,7 @@ export const SAMPLE_CONTACTS: Contact[] = [
     last_activity: '2023-05-31T11:20:00',
     tags: ['Sports', 'Customer'],
     createdAt: '2023-02-28T10:30:00',
+    updatedAt: '2023-02-28T10:30:00',
   },
   {
     id: '29',
@@ -348,6 +376,7 @@ export const SAMPLE_CONTACTS: Contact[] = [
     last_activity: '2023-05-30T15:15:00',
     tags: ['Entertainment', 'Partner'],
     createdAt: '2023-01-19T14:20:00',
+    updatedAt: '2023-01-19T14:20:00',
   },
   {
     id: '30',
@@ -360,6 +389,7 @@ export const SAMPLE_CONTACTS: Contact[] = [
     last_activity: '2023-05-15T10:45:00',
     tags: ['Electronics', 'Prospect'],
     createdAt: '2023-03-15T09:30:00',
+    updatedAt: '2023-03-15T09:30:00',
   },
   {
     id: '31',
@@ -372,6 +402,7 @@ export const SAMPLE_CONTACTS: Contact[] = [
     last_activity: '2023-05-29T13:30:00',
     tags: ['Pet Care', 'Customer'],
     createdAt: '2023-02-07T11:15:00',
+    updatedAt: '2023-02-07T11:15:00',
   },
   {
     id: '32',
@@ -384,6 +415,7 @@ export const SAMPLE_CONTACTS: Contact[] = [
     last_activity: '2023-05-28T09:45:00',
     tags: ['Food', 'Services', 'Enterprise'],
     createdAt: '2023-01-26T15:20:00',
+    updatedAt: '2023-01-26T15:20:00',
   },
   {
     id: '33',
@@ -396,6 +428,7 @@ export const SAMPLE_CONTACTS: Contact[] = [
     last_activity: '2023-05-10T14:15:00',
     tags: ['Education', 'Lead'],
     createdAt: '2023-03-22T10:45:00',
+    updatedAt: '2023-03-22T10:45:00',
   },
   {
     id: '34',
@@ -408,6 +441,7 @@ export const SAMPLE_CONTACTS: Contact[] = [
     last_activity: '2023-05-27T11:30:00',
     tags: ['Real Estate', 'Customer'],
     createdAt: '2023-02-14T09:20:00',
+    updatedAt: '2023-02-14T09:20:00',
   },
   {
     id: '35',
@@ -420,6 +454,7 @@ export const SAMPLE_CONTACTS: Contact[] = [
     last_activity: '2023-05-26T15:45:00',
     tags: ['Fitness', 'Partner'],
     createdAt: '2023-01-16T13:30:00',
+    updatedAt: '2023-01-16T13:30:00',
   },
   {
     id: '36',
@@ -432,6 +467,7 @@ export const SAMPLE_CONTACTS: Contact[] = [
     last_activity: '2023-05-05T10:15:00',
     tags: ['Insurance', 'Prospect'],
     createdAt: '2023-03-30T14:15:00',
+    updatedAt: '2023-03-30T14:15:00',
   },
   {
     id: '37',
@@ -444,6 +480,7 @@ export const SAMPLE_CONTACTS: Contact[] = [
     last_activity: '2023-05-25T09:20:00',
     tags: ['Food', 'Small Business', 'Customer'],
     createdAt: '2023-02-22T11:30:00',
+    updatedAt: '2023-02-22T11:30:00',
   },
   {
     id: '38',
@@ -456,6 +493,7 @@ export const SAMPLE_CONTACTS: Contact[] = [
     last_activity: '2023-05-24T13:45:00',
     tags: ['Legal', 'Enterprise'],
     createdAt: '2023-01-29T10:15:00',
+    updatedAt: '2023-01-29T10:15:00',
   },
   {
     id: '39',
@@ -468,6 +506,7 @@ export const SAMPLE_CONTACTS: Contact[] = [
     last_activity: '2023-05-01T16:30:00',
     tags: ['Art', 'Lead'],
     createdAt: '2023-03-25T09:45:00',
+    updatedAt: '2023-03-25T09:45:00',
   },
   {
     id: '40',
@@ -480,6 +519,7 @@ export const SAMPLE_CONTACTS: Contact[] = [
     last_activity: '2023-05-23T10:30:00',
     tags: ['Landscaping', 'Customer'],
     createdAt: '2023-02-17T15:20:00',
+    updatedAt: '2023-02-17T15:20:00',
   },
   {
     id: '41',
@@ -492,6 +532,7 @@ export const SAMPLE_CONTACTS: Contact[] = [
     last_activity: '2023-05-22T14:15:00',
     tags: ['Healthcare', 'Dental', 'Partner'],
     createdAt: '2023-01-21T11:45:00',
+    updatedAt: '2023-01-21T11:45:00',
   },
   {
     id: '42',
@@ -504,6 +545,7 @@ export const SAMPLE_CONTACTS: Contact[] = [
     last_activity: '2023-04-28T09:30:00',
     tags: ['Services', 'Language', 'Prospect'],
     createdAt: '2023-03-17T13:20:00',
+    updatedAt: '2023-03-17T13:20:00',
   },
   {
     id: '43',
@@ -516,6 +558,7 @@ export const SAMPLE_CONTACTS: Contact[] = [
     last_activity: '2023-05-21T11:45:00',
     tags: ['Healthcare', 'Pharmacy', 'Customer'],
     createdAt: '2023-02-09T10:30:00',
+    updatedAt: '2023-02-09T10:30:00',
   },
   {
     id: '44',
@@ -528,6 +571,7 @@ export const SAMPLE_CONTACTS: Contact[] = [
     last_activity: '2023-05-20T15:30:00',
     tags: ['Architecture', 'Enterprise'],
     createdAt: '2023-01-31T14:15:00',
+    updatedAt: '2023-01-31T14:15:00',
   },
   {
     id: '45',
@@ -540,6 +584,7 @@ export const SAMPLE_CONTACTS: Contact[] = [
     last_activity: '2023-04-25T13:15:00',
     tags: ['Food', 'Restaurant', 'Lead'],
     createdAt: '2023-03-10T09:20:00',
+    updatedAt: '2023-03-10T09:20:00',
   },
   {
     id: '46',
@@ -552,6 +597,7 @@ export const SAMPLE_CONTACTS: Contact[] = [
     last_activity: '2023-05-19T10:45:00',
     tags: ['Automotive', 'Customer'],
     createdAt: '2023-02-19T11:15:00',
+    updatedAt: '2023-02-19T11:15:00',
   },
   {
     id: '47',
@@ -564,6 +610,7 @@ export const SAMPLE_CONTACTS: Contact[] = [
     last_activity: '2023-05-18T14:30:00',
     tags: ['Photography', 'Creative', 'Partner'],
     createdAt: '2023-01-23T15:45:00',
+    updatedAt: '2023-01-23T15:45:00',
   },
   {
     id: '48',
@@ -576,6 +623,7 @@ export const SAMPLE_CONTACTS: Contact[] = [
     last_activity: '2023-04-20T09:15:00',
     tags: ['Security', 'Prospect'],
     createdAt: '2023-03-13T13:30:00',
+    updatedAt: '2023-03-13T13:30:00',
   },
   {
     id: '49',
@@ -588,6 +636,7 @@ export const SAMPLE_CONTACTS: Contact[] = [
     last_activity: '2023-05-17T11:20:00',
     tags: ['Healthcare', 'Home Care', 'Customer'],
     createdAt: '2023-02-11T10:20:00',
+    updatedAt: '2023-02-11T10:20:00',
   },
   {
     id: '50',
@@ -600,6 +649,7 @@ export const SAMPLE_CONTACTS: Contact[] = [
     last_activity: '2023-05-16T15:15:00',
     tags: ['IT', 'Enterprise'],
     createdAt: '2023-01-27T14:30:00',
+    updatedAt: '2023-01-27T14:30:00',
   }
 ];
 

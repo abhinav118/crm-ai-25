@@ -1,20 +1,20 @@
+
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Contact } from '@/types';
-import ManageSegmentMembership from './components/ManageSegmentMembership';
 
 interface BulkActionsTabProps {
   selectedContacts: Contact[];
-  segmentFilter: string;
-  availableSegments: string[];
-  onSegmentFilterChange: (segment: string) => void;
+  onActionComplete: () => void;
+  onSelectionClear: () => void;
+  onClearSelection: () => void;
 }
 
 const BulkActionsTab: React.FC<BulkActionsTabProps> = ({
   selectedContacts,
-  segmentFilter,
-  availableSegments,
-  onSegmentFilterChange
+  onActionComplete,
+  onSelectionClear,
+  onClearSelection
 }) => {
   return (
     <div className="space-y-6">
@@ -25,28 +25,23 @@ const BulkActionsTab: React.FC<BulkActionsTabProps> = ({
         </p>
       </div>
       
-      <Tabs defaultValue="segments" className="w-full">
+      <Tabs defaultValue="actions" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="segments">Segment Management</TabsTrigger>
-          <TabsTrigger value="tags">Tag Management</TabsTrigger>
           <TabsTrigger value="actions">Bulk Actions</TabsTrigger>
+          <TabsTrigger value="tags">Tag Management</TabsTrigger>
+          <TabsTrigger value="segments">Segment Management</TabsTrigger>
         </TabsList>
         
-        <TabsContent value="segments" className="space-y-4">
-          <ManageSegmentMembership
-            selectedContacts={selectedContacts}
-            segmentFilter={segmentFilter}
-            availableSegments={availableSegments}
-            onSegmentFilterChange={onSegmentFilterChange}
-          />
+        <TabsContent value="actions">
+          <p>Bulk Actions Content</p>
         </TabsContent>
         
         <TabsContent value="tags">
           <p>Tag Management Content</p>
         </TabsContent>
         
-        <TabsContent value="actions">
-          <p>Bulk Actions Content</p>
+        <TabsContent value="segments">
+          <p>Segment Management Content</p>
         </TabsContent>
       </Tabs>
     </div>

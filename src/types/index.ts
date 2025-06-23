@@ -24,4 +24,8 @@ export interface Contact {
     phone: string;
     type: string;
   }>;
+  created_at?: string;
+  updated_at?: string;
+  segment_name?: string;
+  notes?: string;
 }
