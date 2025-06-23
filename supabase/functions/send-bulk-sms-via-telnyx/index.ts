@@ -29,7 +29,7 @@ serve(async (req) => {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     const payload = await req.json();
-    const { segment_name, text, from, media_urls, campaign_id } = payload;
+    const { segment_name, text, from, media_urls, campaign_id, send_at } = payload;
 
     // Validate required fields
     if (!segment_name || !text || !campaign_id) {
@@ -37,6 +37,9 @@ serve(async (req) => {
     }
 
     console.log(`Processing bulk SMS for segment: ${segment_name}, campaign: ${campaign_id}`);
+    if (send_at) {
+      console.log(`Scheduled for: ${send_at}`);
+    }
 
     // Query contacts by segment
     const { data: segmentData, error: segmentError } = await supabase
@@ -99,13 +102,14 @@ serve(async (req) => {
       );
     }
 
-    // Update campaign with initial progress and set status to sending
+    // Update campaign with initial progress and set status to sending or scheduled
+    const initialStatus = send_at ? 'scheduled' : 'sending';
     const { error: initUpdateError } = await supabase
       .from('telnyx_campaigns')
       .update({
         recipients: phoneNumbers,
         segment_name: segment_name,
-        status: 'sending',
+        status: initialStatus,
         total_count: phoneNumbers.length,
         sent_count: 0,
         error_count: 0,
@@ -127,7 +131,26 @@ serve(async (req) => {
       );
     }
 
-    // Start background SMS sending process
+    // If scheduled for later, return immediately without sending
+    if (send_at) {
+      console.log(`Campaign scheduled for ${send_at}, not sending immediately`);
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: 'Bulk SMS campaign scheduled successfully',
+          campaign_id,
+          segment_name,
+          total_recipients: phoneNumbers.length,
+          status: 'scheduled',
+          scheduled_for: send_at
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    // Start background SMS sending process for immediate campaigns
     const backgroundSendProcess = async () => {
       const fromNumber = from || '+17733897839';
       let sentCount = 0;
@@ -148,6 +171,7 @@ serve(async (req) => {
               to: phoneNumber,
               from: fromNumber,
               text: text,
+              send_at: send_at ? send_at : undefined,
               ...(media_urls && media_urls.length > 0 && { media_urls })
             };
 

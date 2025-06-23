@@ -545,6 +545,12 @@ const CreateCampaignPage: React.FC = () => {
     setIsLoading(true);
 
     try {
+      // Prepare send_at timestamp for scheduled campaigns
+      let sendAt: string | undefined = undefined;
+      if (scheduleType === 'later' && scheduleTime) {
+        sendAt = scheduleTime.toISOString();
+      }
+
       // Save campaign to database first
       const campaignData = {
         campaign_name: campaignName,
@@ -578,6 +584,7 @@ const CreateCampaignPage: React.FC = () => {
         text: message,
         from: "+17733897839",
         campaign_id: campaign.id,
+        ...(sendAt && { send_at: sendAt }),
         ...(attachedImage && { media_urls: [attachedImage.url] })
       };
 
@@ -595,16 +602,25 @@ const CreateCampaignPage: React.FC = () => {
       }
 
       // Update campaign status
+      const finalStatus = scheduleType === 'later' ? 'scheduled' : 'sent';
       await supabase
         .from('telnyx_campaigns')
-        .update({ status: 'sent' })
+        .update({ status: finalStatus })
         .eq('id', campaign.id);
 
       const messageType = attachedImage ? 'MMS' : 'SMS';
-      toast({
-        title: "Bulk campaign sent successfully",
-        description: `${bulkResponse.sent_count} ${messageType} messages sent to ${selectedSegment} segment`,
-      });
+      if (scheduleType === 'later') {
+        const scheduledTime = format(scheduleTime!, 'MMMM d \'at\' h:mm a');
+        toast({
+          title: "Bulk campaign scheduled successfully",
+          description: `${bulkResponse.total_recipients} ${messageType} messages scheduled for ${scheduledTime}`,
+        });
+      } else {
+        toast({
+          title: "Bulk campaign sent successfully",
+          description: `${bulkResponse.sent_count} ${messageType} messages sent to ${selectedSegment} segment`,
+        });
+      }
 
       navigate('/campaigns');
     } catch (error) {
@@ -678,6 +694,12 @@ const CreateCampaignPage: React.FC = () => {
         finalRecipients = recipients;
       }
 
+      // Prepare send_at timestamp for scheduled campaigns
+      let sendAt: string | undefined = undefined;
+      if (scheduleType === 'later' && scheduleTime) {
+        sendAt = scheduleTime.toISOString();
+      }
+
       // Save campaign to database first
       const campaignData = {
         campaign_name: campaignName,
@@ -711,6 +733,8 @@ const CreateCampaignPage: React.FC = () => {
           segment_name: selectedSegment,
           text: message,
           from: "+17733897839",
+          campaign_id: campaign.id,
+          ...(sendAt && { send_at: sendAt }),
           ...(attachedImage && { media_urls: [attachedImage.url] })
         };
 
@@ -728,16 +752,25 @@ const CreateCampaignPage: React.FC = () => {
         }
 
         // Update campaign status
+        const finalStatus = scheduleType === 'later' ? 'scheduled' : 'sent';
         await supabase
           .from('telnyx_campaigns')
-          .update({ status: 'sent' })
+          .update({ status: finalStatus })
           .eq('id', campaign.id);
 
         const messageType = attachedImage ? 'MMS' : 'SMS';
-        toast({
-          title: "Bulk campaign sent successfully",
-          description: `${bulkResponse.sent_count} ${messageType} messages sent to ${selectedSegment} segment`,
-        });
+        if (scheduleType === 'later') {
+          const scheduledTime = format(scheduleTime!, 'MMMM d \'at\' h:mm a');
+          toast({
+            title: "Bulk campaign scheduled successfully",
+            description: `${bulkResponse.total_recipients} ${messageType} messages scheduled for ${scheduledTime}`,
+          });
+        } else {
+          toast({
+            title: "Bulk campaign sent successfully",
+            description: `${bulkResponse.sent_count} ${messageType} messages sent to ${selectedSegment} segment`,
+          });
+        }
 
         navigate('/campaigns');
         return;
