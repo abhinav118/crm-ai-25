@@ -37,7 +37,11 @@ export const CampaignProgressDialog: React.FC<CampaignProgressDialogProps> = ({
       if (error) {
         console.error('Error fetching campaign:', error);
       } else {
-        setCampaign(data);
+        // Type assertion to handle the schedule_type field
+        setCampaign({
+          ...data,
+          schedule_type: data.schedule_type as "now" | "later"
+        } as TelnyxCampaign);
       }
       setIsLoading(false);
     };
@@ -57,7 +61,10 @@ export const CampaignProgressDialog: React.FC<CampaignProgressDialogProps> = ({
         },
         (payload) => {
           console.log('Campaign progress update:', payload);
-          setCampaign(payload.new as TelnyxCampaign);
+          setCampaign({
+            ...payload.new,
+            schedule_type: payload.new.schedule_type as "now" | "later"
+          } as TelnyxCampaign);
         }
       )
       .subscribe();

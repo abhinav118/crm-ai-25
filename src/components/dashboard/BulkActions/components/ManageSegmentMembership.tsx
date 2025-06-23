@@ -150,15 +150,20 @@ const ManageSegmentMembership: React.FC<ManageSegmentMembershipProps> = ({
       
       // Update contacts using individual update operations
       const updatePromises = matchingContacts.map(contact => {
-        let updatedSegmentName = contact.segment_name;
+        let updatedSegmentName: string | null = contact.segment_name;
         
         if (operationType === 'add') {
           updatedSegmentName = segmentToUse;
         } else if (operationType === 'remove') {
-          updatedSegmentName = contact.segment_name === segmentToUse ? null : contact.segment_name;
+          // Only remove if the contact is currently in the target segment
+          if (contact.segment_name === segmentToUse) {
+            updatedSegmentName = null;
+          }
         }
         
-        // Use update instead of upsert to avoid first_name constraint issues
+        console.log(`Updating contact ${contact.id}: ${contact.segment_name} -> ${updatedSegmentName}`);
+        
+        // Use update to modify existing contacts
         return supabase
           .from('contacts')
           .update({
@@ -175,14 +180,20 @@ const ManageSegmentMembership: React.FC<ManageSegmentMembershipProps> = ({
       const errors_in_updates = results.filter(result => result.error);
       if (errors_in_updates.length > 0) {
         console.error('Update errors:', errors_in_updates);
-        throw new Error(`Failed to update ${errors_in_updates.length} contact(s)`);
+        errors_in_updates.forEach(result => {
+          console.error('Update error details:', result.error);
+        });
+        throw new Error(`Failed to update ${errors_in_updates.length} contact(s): ${errors_in_updates[0].error?.message}`);
       }
 
+      // Count successful updates
+      const successfulUpdates = results.filter(result => !result.error);
+      
       // Show success message
       const actionText = operationType === 'add' ? 'added to' : 'removed from';
       toast({
         title: 'Success',
-        description: `${matchingContacts.length} contacts ${actionText} segment "${segmentToUse}" successfully`,
+        description: `${successfulUpdates.length} contacts ${actionText} segment "${segmentToUse}" successfully`,
       });
 
       // Reset form
@@ -200,7 +211,7 @@ const ManageSegmentMembership: React.FC<ManageSegmentMembershipProps> = ({
       console.error('Error updating segment membership:', error);
       toast({
         title: 'Error',
-        description: 'Failed to update segment membership. Please try again.',
+        description: error instanceof Error ? error.message : 'Failed to update segment membership. Please try again.',
         variant: 'destructive'
       });
     } finally {
