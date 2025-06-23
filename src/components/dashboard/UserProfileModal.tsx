@@ -112,8 +112,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ contact, onSave }) 
           company: updateData.company,
           status: updateData.status,
           tags: updateData.tags,
-          updated_at: currentTime,
-          updatedAt: currentTime
+          updated_at: currentTime
         };
         
         if (onSave) {
@@ -138,11 +137,10 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ contact, onSave }) 
         email: data[0].email || '',
         phone: data[0].phone || '',
         company: data[0].company || '',
-        last_activity: data[0].last_activity || '',
+        last_activity: data[0].last_activity || '', // Fixed property name
         status: data[0].status as 'active' | 'inactive',
         tags: data[0].tags || [],
-        createdAt: data[0].created_at,
-        updatedAt: data[0].updated_at
+        createdAt: data[0].created_at
       };
       
       if (onSave) {
