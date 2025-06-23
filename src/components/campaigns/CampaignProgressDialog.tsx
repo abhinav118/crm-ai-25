@@ -1,189 +1,143 @@
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, XCircle, Clock, Send } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { TelnyxCampaign } from '@/hooks/useTelnyxCampaigns';
+import { X, CheckCircle, AlertCircle } from 'lucide-react';
+import { useTelnyxCampaignById } from '@/hooks/useTelnyxCampaigns';
 
 interface CampaignProgressDialogProps {
-  isOpen: boolean;
+  campaignId: string;
+  open: boolean;
   onClose: () => void;
-  campaignId: string | null;
-  campaignName?: string;
 }
 
-export const CampaignProgressDialog: React.FC<CampaignProgressDialogProps> = ({
-  isOpen,
-  onClose,
+type TelnyxCampaign = {
+  id: string;
+  campaign_name: string;
+  message: string;
+  recipients: string[];
+  schedule_type: 'now' | 'later';
+  schedule_time?: string;
+  repeat_frequency?: string;
+  repeat_days?: string[];
+  status: string;
+  media_url?: string;
+  total_count: number;
+  sent_count: number;
+  error_count: number;
+  progress_percentage: number;
+  created_at: string;
+  updated_at: string;
+  segment_name?: string;
+};
+
+const CampaignProgressDialog: React.FC<CampaignProgressDialogProps> = ({
   campaignId,
-  campaignName
+  open,
+  onClose
 }) => {
-  const [campaign, setCampaign] = useState<TelnyxCampaign | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    if (!campaignId || !isOpen) return;
-
-    // Initial fetch
-    const fetchCampaign = async () => {
-      const { data, error } = await supabase
-        .from('telnyx_campaigns')
-        .select('*')
-        .eq('id', campaignId)
-        .single();
-
-      if (error) {
-        console.error('Error fetching campaign:', error);
-      } else {
-        setCampaign(data);
-      }
-      setIsLoading(false);
-    };
-
-    fetchCampaign();
-
-    // Set up real-time subscription
-    const channel = supabase
-      .channel('campaign-progress')
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'telnyx_campaigns',
-          filter: `id=eq.${campaignId}`
-        },
-        (payload) => {
-          console.log('Campaign progress update:', payload);
-          setCampaign(payload.new as TelnyxCampaign);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [campaignId, isOpen]);
-
-  const getStatusIcon = () => {
-    if (!campaign) return <Clock className="w-5 h-5 text-gray-400" />;
-    
-    switch (campaign.status) {
-      case 'sending':
-        return <Send className="w-5 h-5 text-blue-500 animate-pulse" />;
-      case 'completed':
-        return <CheckCircle className="w-5 h-5 text-green-500" />;
-      case 'failed':
-        return <XCircle className="w-5 h-5 text-red-500" />;
-      default:
-        return <Clock className="w-5 h-5 text-gray-400" />;
-    }
-  };
-
-  const getStatusText = () => {
-    if (!campaign) return 'Loading...';
-    
-    switch (campaign.status) {
-      case 'sending':
-        return 'Sending messages...';
-      case 'completed':
-        return 'Campaign completed successfully!';
-      case 'failed':
-        return 'Campaign failed';
-      default:
-        return 'Preparing campaign...';
-    }
-  };
-
-  const getProgressColor = () => {
-    if (!campaign) return '';
-    
-    switch (campaign.status) {
-      case 'completed':
-        return 'bg-green-500';
-      case 'failed':
-        return 'bg-red-500';
-      default:
-        return 'bg-blue-500';
-    }
-  };
+  const { data: campaign, isLoading, error } = useTelnyxCampaignById(campaignId);
 
   if (isLoading) {
     return (
-      <Dialog open={isOpen} onOpenChange={onClose}>
+      <Dialog open={open} onOpenChange={onClose}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Campaign Progress</DialogTitle>
-          </DialogHeader>
-          <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+          <div className="flex items-center justify-center p-6">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
           </div>
         </DialogContent>
       </Dialog>
     );
   }
 
+  if (error || !campaign) {
+    return (
+      <Dialog open={open} onOpenChange={onClose}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-red-500" />
+              Error Loading Campaign
+            </DialogTitle>
+          </DialogHeader>
+          <div className="p-4">
+            <p className="text-gray-600">Failed to load campaign details.</p>
+            <Button onClick={onClose} className="mt-4 w-full">
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  const isCompleted = campaign.status === 'completed' || campaign.status === 'sent';
+  const isFailed = campaign.status === 'failed';
+  const progressPercentage = campaign.progress_percentage || 0;
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            {getStatusIcon()}
-            Campaign Progress
+          <DialogTitle className="flex items-center justify-between">
+            <span>Campaign Progress</span>
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              <X className="h-4 w-4" />
+            </Button>
           </DialogTitle>
         </DialogHeader>
         
-        <div className="space-y-4">
+        <div className="space-y-4 p-4">
           <div>
-            <h3 className="font-medium text-sm text-gray-700 mb-1">Campaign Name</h3>
-            <p className="text-sm">{campaignName || 'Unnamed Campaign'}</p>
+            <h3 className="font-medium text-gray-900">{campaign.campaign_name}</h3>
+            <p className="text-sm text-gray-500 mt-1">{campaign.message}</p>
           </div>
 
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium">{getStatusText()}</span>
-              <span className="text-sm text-gray-500">
-                {campaign?.progress_percentage || 0}%
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span>Progress</span>
+              <span>{progressPercentage}%</span>
+            </div>
+            <Progress value={progressPercentage} className="w-full" />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <span className="text-gray-500">Total:</span>
+              <span className="ml-2 font-medium">{campaign.total_count}</span>
+            </div>
+            <div>
+              <span className="text-gray-500">Sent:</span>
+              <span className="ml-2 font-medium text-green-600">{campaign.sent_count}</span>
+            </div>
+            <div>
+              <span className="text-gray-500">Failed:</span>
+              <span className="ml-2 font-medium text-red-600">{campaign.error_count}</span>
+            </div>
+            <div>
+              <span className="text-gray-500">Status:</span>
+              <span className={`ml-2 font-medium ${
+                isCompleted ? 'text-green-600' : 
+                isFailed ? 'text-red-600' : 
+                'text-blue-600'
+              }`}>
+                {campaign.status}
               </span>
             </div>
-            <Progress 
-              value={campaign?.progress_percentage || 0} 
-              className="h-2"
-            />
           </div>
 
-          <div className="grid grid-cols-3 gap-4 text-center">
-            <div>
-              <div className="text-lg font-semibold text-green-600">
-                {campaign?.sent_count || 0}
-              </div>
-              <div className="text-xs text-gray-500">Sent</div>
+          {isCompleted && (
+            <div className="flex items-center gap-2 text-green-600 bg-green-50 p-3 rounded-lg">
+              <CheckCircle className="h-5 w-5" />
+              <span className="text-sm font-medium">Campaign completed successfully!</span>
             </div>
-            <div>
-              <div className="text-lg font-semibold text-red-600">
-                {campaign?.error_count || 0}
-              </div>
-              <div className="text-xs text-gray-500">Failed</div>
-            </div>
-            <div>
-              <div className="text-lg font-semibold text-gray-600">
-                {campaign?.total_count || 0}
-              </div>
-              <div className="text-xs text-gray-500">Total</div>
-            </div>
-          </div>
+          )}
 
-          {campaign?.status === 'completed' || campaign?.status === 'failed' ? (
-            <Button onClick={onClose} className="w-full">
-              Close
-            </Button>
-          ) : (
-            <div className="text-center">
-              <p className="text-xs text-gray-500">
-                This dialog will update automatically as messages are sent
-              </p>
+          {isFailed && (
+            <div className="flex items-center gap-2 text-red-600 bg-red-50 p-3 rounded-lg">
+              <AlertCircle className="h-5 w-5" />
+              <span className="text-sm font-medium">Campaign failed to send</span>
             </div>
           )}
         </div>
@@ -191,3 +145,5 @@ export const CampaignProgressDialog: React.FC<CampaignProgressDialogProps> = ({
     </Dialog>
   );
 };
+
+export default CampaignProgressDialog;

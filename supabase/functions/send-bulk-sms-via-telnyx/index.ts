@@ -29,7 +29,7 @@ serve(async (req) => {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     const payload = await req.json();
-    const { segment_name, text, from, media_urls, campaign_id } = payload;
+    const { segment_name, text, from, media_urls, campaign_id, send_at } = payload;
 
     // Validate required fields
     if (!segment_name || !text || !campaign_id) {
@@ -37,6 +37,9 @@ serve(async (req) => {
     }
 
     console.log(`Processing bulk SMS for segment: ${segment_name}, campaign: ${campaign_id}`);
+    if (send_at) {
+      console.log(`Scheduled for: ${send_at}`);
+    }
 
     // Query contacts by segment
     const { data: segmentData, error: segmentError } = await supabase
@@ -99,17 +102,18 @@ serve(async (req) => {
       );
     }
 
-    // Update campaign with initial progress and set status to sending
+    // Update campaign with initial progress and set status to sending or scheduled
+    const initialStatus = send_at ? 'scheduled' : 'sending';
     const { error: initUpdateError } = await supabase
       .from('telnyx_campaigns')
       .update({
         recipients: phoneNumbers,
         segment_name: segment_name,
-        status: 'sending',
+        status: initialStatus,
         total_count: phoneNumbers.length,
         sent_count: 0,
         error_count: 0,
-        progress_percentage: 0
+        progress_percentage: send_at ? 100 : 0
       })
       .eq('id', campaign_id);
     
@@ -127,7 +131,84 @@ serve(async (req) => {
       );
     }
 
-    // Start background SMS sending process
+    // If scheduled for later, send all messages with send_at timestamp
+    if (send_at) {
+      console.log(`Scheduling ${phoneNumbers.length} messages for ${send_at}`);
+      
+      const fromNumber = from || '+17733897839';
+      let sentCount = 0;
+      let errorCount = 0;
+      
+      for (const phoneNumber of phoneNumbers) {
+        try {
+          const telnyxPayload = {
+            to: phoneNumber,
+            from: fromNumber,
+            text: text,
+            send_at: send_at,
+            ...(media_urls && media_urls.length > 0 && { media_urls })
+          };
+
+          const telnyxResponse = await fetch('https://api.telnyx.com/v2/messages', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+              'Authorization': `Bearer ${TELNYX_API_KEY}`
+            },
+            body: JSON.stringify(telnyxPayload)
+          });
+
+          const responseData = await telnyxResponse.json();
+
+          if (!telnyxResponse.ok) {
+            console.error(`Telnyx scheduling error for ${phoneNumber}:`, responseData);
+            errorCount++;
+          } else {
+            console.log(`SMS scheduled successfully for ${phoneNumber}:`, responseData.data?.id);
+            sentCount++;
+          }
+
+          // Small delay to avoid rate limiting
+          await new Promise(resolve => setTimeout(resolve, 100));
+
+        } catch (error) {
+          console.error(`Error scheduling for ${phoneNumber}:`, error.message);
+          errorCount++;
+        }
+      }
+
+      // Update campaign with final scheduled status
+      await supabase
+        .from('telnyx_campaigns')
+        .update({
+          status: 'scheduled',
+          sent_count: sentCount,
+          error_count: errorCount,
+          progress_percentage: 100
+        })
+        .eq('id', campaign_id);
+
+      const messageType = media_urls ? 'MMS' : 'SMS';
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: `Bulk ${messageType} campaign scheduled successfully`,
+          campaign_id,
+          segment_name,
+          total_recipients: phoneNumbers.length,
+          scheduled_count: sentCount,
+          error_count: errorCount,
+          status: 'scheduled',
+          send_at: send_at
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    // Start background SMS sending process for immediate sending
     const backgroundSendProcess = async () => {
       const fromNumber = from || '+17733897839';
       let sentCount = 0;
@@ -169,7 +250,6 @@ serve(async (req) => {
             } else {
               console.log(`SMS sent successfully to ${phoneNumber}:`, responseData.data?.id);
               sentCount++;
-              
             }
 
             // Small delay to avoid rate limiting
@@ -216,10 +296,11 @@ serve(async (req) => {
       if (finalError) {
         console.error('Error updating final status:', finalError);
       }
+
       // Insert records into messages table for all campaign recipients
-      const messagesToInsert = segmentData.map(contact => ({
+      const messagesToInsert = contacts.map(contact => ({
         contact_id: contact.id,
-        content: text, // Using text from the campaign payload
+        content: text,
         sender: 'user',
         channel: 'sms',
         sent_at: new Date().toISOString(),
