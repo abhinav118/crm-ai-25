@@ -1,3 +1,4 @@
+/// <reference types="https://deno.land/x/deno/cli/tsc/dts/lib.deno.d.ts" />
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -9,7 +10,7 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
-  console.log("Twilio webhook received request")
+  console.log("Telnyx webhook received request")
   
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -49,17 +50,17 @@ serve(async (req) => {
     })
     console.log("Request headers:", JSON.stringify(headers))
 
-    // Get the request body (Twilio sends form data)
-    let formData: FormData
+    // Get the request body (Telnyx sends JSON)
+    let webhookData: any
     try {
-      formData = await req.formData()
-    } catch (formError) {
-      console.error("Error parsing form data:", formError)
+      webhookData = await req.json()
+    } catch (jsonError) {
+      console.error("Error parsing JSON data:", jsonError)
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: "Failed to parse form data",
-          details: (formError as Error).message 
+          error: "Failed to parse JSON data",
+          details: (jsonError as Error).message 
         }),
         { 
           status: 400, 
@@ -72,20 +73,23 @@ serve(async (req) => {
     }
     
     // Log all form fields for debugging
-    const formFields: Record<string, string> = {}
-    for (const [key, value] of formData.entries()) {
-      formFields[key] = value.toString()
+    console.log("Webhook data received:", JSON.stringify(webhookData))
+    
+    // Extract payload from webhook data
+    const payload = webhookData?.data?.payload
+
+    if (!payload) {
+      throw new Error('Invalid Telnyx webhook payload')
     }
-    console.log("Form data received:", JSON.stringify(formFields))
     
     // Get specific fields we need
-    const incomingMessage = formData.get('Body')?.toString() || ''
-    const fromNumber = formData.get('From')?.toString() || ''
-    const toNumber = formData.get('To')?.toString() || ''
-    const messageSid = formData.get('MessageSid')?.toString() || ''
+    const incomingMessage = payload.text || ''
+    const fromNumber = payload.from?.phone_number || ''
+    const toNumber = payload.to?.[0]?.phone_number || ''
+    const messageId = payload.id || ''
 
     console.log(`Received SMS from ${fromNumber} to ${toNumber}: ${incomingMessage}`)
-    console.log(`Message SID: ${messageSid}, Contact ID: ${contactId || 'not provided'}`)
+    console.log(`Message ID: ${messageId}, Contact ID: ${contactId || 'not provided'}`)
 
     if (!incomingMessage) {
       throw new Error('No message body received')
@@ -93,7 +97,7 @@ serve(async (req) => {
 
     // Create a message object to store
     const messageObj = {
-      id: messageSid,
+      id: messageId,
       text: incomingMessage,
       sender: 'external',
       timestamp: new Date().toISOString(),
@@ -271,15 +275,14 @@ serve(async (req) => {
       }
     }
 
-    // Return a TwiML response to acknowledge receipt (similar to what the Node.js app returns)
+    // Return a 200 OK response to acknowledge receipt
     return new Response(
-      `<?xml version="1.0" encoding="UTF-8"?>
-      <Response></Response>`,
+      JSON.stringify({ success: true }),
       { 
         status: 200,
         headers: { 
           ...corsHeaders,
-          'Content-Type': 'text/xml' 
+          'Content-Type': 'application/json'
         } 
       }
     )
