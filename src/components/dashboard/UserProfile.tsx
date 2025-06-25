@@ -1,9 +1,8 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Edit2, Calendar, Phone, Mail, User, MapPin, Award, AtSign, Tag, X, Building } from 'lucide-react';
+import { Edit2, Calendar, Phone, Mail, User, MapPin, Award, AtSign, Tag, X, Building, Users } from 'lucide-react';
 import { Contact } from './ContactsTable';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
@@ -31,6 +30,31 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [newTag, setNewTag] = useState('');
+  
+  // Segment editing state
+  const [availableSegments, setAvailableSegments] = useState<string[]>([]);
+  const [selectedSegment, setSelectedSegment] = useState(contact.segment_name || '');
+  const [isUpdatingSegment, setIsUpdatingSegment] = useState(false);
+
+  // Load available segments on component mount
+  useEffect(() => {
+    const loadSegments = async () => {
+      try {
+        const { data: segments, error } = await supabase
+          .from('contacts_segments')
+          .select('segment_name');
+
+        if (error) throw error;
+
+        const segmentNames = segments?.map(s => s.segment_name) || [];
+        setAvailableSegments(segmentNames);
+      } catch (error) {
+        console.error('Error loading segments:', error);
+      }
+    };
+
+    loadSegments();
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -58,6 +82,123 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
     if (e.key === 'Enter' && newTag.trim()) {
       e.preventDefault();
       handleAddTag();
+    }
+  };
+
+  const handleSegmentUpdate = async () => {
+    setIsUpdatingSegment(true);
+    
+    try {
+      const currentTime = new Date().toISOString();
+      
+      // Update the contact's segment_name
+      const { error: contactUpdateError } = await supabase
+        .from('contacts')
+        .update({
+          segment_name: selectedSegment || null,
+          updated_at: currentTime
+        })
+        .eq('id', contact.id);
+
+      if (contactUpdateError) throw contactUpdateError;
+
+      // If contact had a previous segment, remove it from that segment's membership
+      if (contact.segment_name && contact.segment_name !== selectedSegment) {
+        const { data: oldSegmentData, error: oldSegmentError } = await supabase
+          .from('contacts_segments')
+          .select('contacts_membership')
+          .eq('segment_name', contact.segment_name)
+          .single();
+
+        if (!oldSegmentError && oldSegmentData) {
+          const currentMembers = Array.isArray(oldSegmentData.contacts_membership) 
+            ? oldSegmentData.contacts_membership 
+            : [];
+          
+          const updatedMembers = currentMembers.filter((member: any) => 
+            member && typeof member === 'object' && member.id !== contact.id
+          );
+
+          await supabase
+            .from('contacts_segments')
+            .update({ 
+              contacts_membership: updatedMembers,
+              updated_at: currentTime
+            })
+            .eq('segment_name', contact.segment_name);
+        }
+      }
+
+      // If a new segment is selected, add contact to that segment's membership
+      if (selectedSegment) {
+        const { data: newSegmentData, error: newSegmentError } = await supabase
+          .from('contacts_segments')
+          .select('contacts_membership')
+          .eq('segment_name', selectedSegment)
+          .single();
+
+        if (!newSegmentError && newSegmentData) {
+          const currentMembers = Array.isArray(newSegmentData.contacts_membership) 
+            ? newSegmentData.contacts_membership 
+            : [];
+          
+          // Check if contact is already in the segment
+          const isAlreadyMember = currentMembers.some((member: any) => 
+            member && typeof member === 'object' && member.id === contact.id
+          );
+
+          if (!isAlreadyMember) {
+            const contactInfo = {
+              id: contact.id,
+              first_name: contact.first_name,
+              last_name: contact.last_name,
+              email: contact.email,
+              phone: contact.phone,
+              company: contact.company,
+              status: contact.status,
+              tags: contact.tags,
+              created_at: contact.createdAt,
+              updated_at: currentTime
+            };
+
+            const updatedMembers = [...currentMembers, contactInfo];
+
+            await supabase
+              .from('contacts_segments')
+              .update({ 
+                contacts_membership: updatedMembers,
+                updated_at: currentTime
+              })
+              .eq('segment_name', selectedSegment);
+          }
+        }
+      }
+
+      // Update local contact object and notify parent
+      const updatedContact = {
+        ...contact,
+        segment_name: selectedSegment || undefined,
+        updated_at: currentTime
+      };
+
+      if (onSave) {
+        onSave(updatedContact as Contact);
+      }
+
+      toast({
+        title: 'Success',
+        description: 'Contact segment updated successfully',
+      });
+      
+    } catch (error) {
+      console.error('Error updating segment:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update contact segment',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsUpdatingSegment(false);
     }
   };
 
@@ -92,7 +233,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
       }
       
       console.log('Update response:', data);
-      
+
       await logContactAction('update', {
         id: contact.id,
         first_name: updateData.first_name,
@@ -137,7 +278,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
         email: data[0].email || '',
         phone: data[0].phone || '',
         company: data[0].company || '',
-        last_activity: data[0].last_activity || '', // Fixed property name
+        last_activity: data[0].last_activity || '',
         status: data[0].status as 'active' | 'inactive',
         tags: data[0].tags || [],
         createdAt: data[0].created_at
@@ -312,7 +453,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
               <ProfileItem 
                 icon={<Calendar className="h-5 w-5" />}
                 label="Last Activity" 
-                value={formatDate(contact.last_activity)} // Fixed property name
+                value={formatDate(contact.last_activity)}
               />
               <ProfileItem 
                 icon={<MapPin className="h-5 w-5" />} 
@@ -323,6 +464,47 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
                   </Badge>
                 } 
               />
+              
+              {/* Segment Section */}
+              <div className="flex items-start gap-3">
+                <div className="text-gray-400 mt-1"><Users className="h-5 w-5" /></div>
+                <div className="flex-1">
+                  <p className="text-sm text-gray-500 mb-2">Segment</p>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Select
+                        value={selectedSegment}
+                        onValueChange={setSelectedSegment}
+                      >
+                        <SelectTrigger className="flex-1">
+                          <SelectValue placeholder="Select segment" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">No Segment</SelectItem>
+                          {availableSegments.map(segment => (
+                            <SelectItem key={segment} value={segment}>
+                              {segment}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button 
+                        size="sm" 
+                        onClick={handleSegmentUpdate}
+                        disabled={isUpdatingSegment || selectedSegment === (contact.segment_name || '')}
+                      >
+                        {isUpdatingSegment ? 'Updating...' : 'Update'}
+                      </Button>
+                    </div>
+                    {contact.segment_name && (
+                      <Badge variant="outline" className="px-2 py-0.5 text-xs">
+                        Current: {contact.segment_name}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               <ProfileItem 
                 icon={<AtSign className="h-5 w-5" />} 
                 label="Created" 

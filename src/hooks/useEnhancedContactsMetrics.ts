@@ -53,6 +53,24 @@ interface ContactsSegment {
   updated_at: string;
 }
 
+// Helper function to safely parse contacts from JSONB
+function safelyParseContacts(jsonbData: any): Contact[] {
+  if (!Array.isArray(jsonbData)) return [];
+  
+  return jsonbData.filter((item): item is Contact => {
+    return (
+      typeof item === 'object' &&
+      item !== null &&
+      typeof item.id === 'string' &&
+      typeof item.first_name === 'string' &&
+      typeof item.status === 'string' &&
+      Array.isArray(item.tags) &&
+      typeof item.created_at === 'string' &&
+      typeof item.updated_at === 'string'
+    );
+  });
+}
+
 export function useEnhancedContactsMetrics(dateRange: DateRange | undefined) {
   return useQuery({
     queryKey: ['enhanced-contacts-metrics', dateRange],
@@ -176,10 +194,8 @@ export function useEnhancedContactsMetrics(dateRange: DateRange | undefined) {
       
       if (segments && segments.length > 0) {
         for (const segment of segments) {
-          // Cast contacts_membership as Contact array
-          const segmentContacts = Array.isArray(segment.contacts_membership) 
-            ? segment.contacts_membership as Contact[]
-            : [];
+          // Safely parse contacts membership
+          const segmentContacts = safelyParseContacts(segment.contacts_membership);
           const segmentName = segment.segment_name;
           
           // Calculate growth rate for this segment
@@ -263,9 +279,7 @@ export function useEnhancedContactsMetrics(dateRange: DateRange | undefined) {
       // Create segment data based on real segments
       const segmentData = segments?.map((segment, index) => {
         const colors = ['#f59e0b', '#3b82f6', '#22c55e', '#ef4444', '#8b5cf6'];
-        const segmentContacts = Array.isArray(segment.contacts_membership) 
-          ? segment.contacts_membership as Contact[]
-          : [];
+        const segmentContacts = safelyParseContacts(segment.contacts_membership);
         
         // Calculate engagement based on contact logs
         const segmentContactIds = segmentContacts.map((contact: Contact) => contact.id);
