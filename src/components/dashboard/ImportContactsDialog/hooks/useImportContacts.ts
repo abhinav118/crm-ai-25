@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { logContactAction } from '@/utils/contactLogger';
 import { Contact } from '@/components/dashboard/ContactsTable';
 import { syncContactToSegment } from '@/utils/segmentSync';
@@ -50,13 +50,17 @@ export const useImportContacts = () => {
       const batchResults = await Promise.allSettled(
         batch.map(async (contact) => {
           try {
+            // Ensure status is properly typed
+            const validStatus: 'active' | 'inactive' = 
+              contact.status === 'inactive' ? 'inactive' : 'active';
+
             const contactData = {
               first_name: contact.first_name,
               last_name: contact.last_name || null,
               email: contact.email || null,
               phone: contact.phone || null,
               company: contact.company || null,
-              status: (contact.status as 'active' | 'inactive') || 'active',
+              status: validStatus,
               tags: contact.tags || [],
               segment_name: contact.segment_name || 'UNASSIGNED',
               created_at: new Date().toISOString(),
@@ -104,7 +108,7 @@ export const useImportContacts = () => {
               contact: transformedContact,
               originalData: contact
             };
-          } catch (error) {
+          } catch (error: any) {
             console.error('Error importing contact:', error);
             return {
               success: false,
