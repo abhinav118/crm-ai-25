@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { CsvColumn } from './types';
 import { CheckCircle, HelpCircle, XCircle, Info } from 'lucide-react';
@@ -27,7 +28,7 @@ import {
 import { toast } from "@/components/ui/use-toast";
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { formatPhoneNumber } from './hooks/useImportContacts';
+import { formatPhoneNumber } from './utils/phoneUtils';
 
 interface MapStageProps {
   columns: CsvColumn[];

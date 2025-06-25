@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
@@ -70,6 +71,23 @@ export const useImportContacts = () => {
 
             if (error) throw error;
 
+            // Transform the database contact to match the Contact interface
+            const transformedContact: Contact = {
+              id: newContact.id,
+              first_name: newContact.first_name,
+              last_name: newContact.last_name,
+              email: newContact.email,
+              phone: newContact.phone,
+              company: newContact.company,
+              status: newContact.status,
+              tags: newContact.tags,
+              segment_name: newContact.segment_name,
+              notes: newContact.notes,
+              last_activity: newContact.last_activity,
+              createdAt: newContact.created_at,
+              updatedAt: newContact.updated_at
+            };
+
             // Sync the new contact to its segment
             try {
               await syncContactToSegment(newContact);
@@ -79,11 +97,11 @@ export const useImportContacts = () => {
             }
 
             // Log the import action
-            await logContactAction('add', newContact);
+            await logContactAction('add', transformedContact);
 
             return {
               success: true,
-              contact: newContact,
+              contact: transformedContact,
               originalData: contact
             };
           } catch (error) {
