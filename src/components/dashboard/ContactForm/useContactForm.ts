@@ -79,6 +79,7 @@ export const useContactForm = ({ onSubmit, onClose, initialData }: UseContactFor
         company: values.company || null,
         status: initialData?.status || 'active',
         tags: values.tags || [],
+        segment_name: initialData?.segment_name || 'UNASSIGNED',
         updated_at: new Date().toISOString()
       };
       
