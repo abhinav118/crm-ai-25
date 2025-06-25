@@ -49,27 +49,24 @@ interface Contact {
 
 interface ContactsSegment {
   segment_name: string;
-  contacts_membership: Contact[];
+  contacts_membership: any; // Use any for JSONB data from Supabase
   updated_at: string;
 }
 
-// Helper function to safely parse contacts from JSONB
-function safelyParseContacts(jsonbData: any): Contact[] {
-  if (!Array.isArray(jsonbData)) return [];
+// Helper function to safely cast JSONB data to Contact array
+const safelyParseContacts = (contactsMembership: any): Contact[] => {
+  if (!Array.isArray(contactsMembership)) {
+    return [];
+  }
   
-  return jsonbData.filter((item): item is Contact => {
-    return (
-      typeof item === 'object' &&
-      item !== null &&
-      typeof item.id === 'string' &&
-      typeof item.first_name === 'string' &&
-      typeof item.status === 'string' &&
-      Array.isArray(item.tags) &&
-      typeof item.created_at === 'string' &&
-      typeof item.updated_at === 'string'
-    );
-  });
-}
+  return contactsMembership.filter((contact: any) => 
+    contact && 
+    typeof contact === 'object' && 
+    contact.id && 
+    contact.first_name && 
+    contact.created_at
+  ) as Contact[];
+};
 
 export function useEnhancedContactsMetrics(dateRange: DateRange | undefined) {
   return useQuery({
@@ -194,7 +191,7 @@ export function useEnhancedContactsMetrics(dateRange: DateRange | undefined) {
       
       if (segments && segments.length > 0) {
         for (const segment of segments) {
-          // Safely parse contacts membership
+          // Safely parse contacts_membership JSONB data
           const segmentContacts = safelyParseContacts(segment.contacts_membership);
           const segmentName = segment.segment_name;
           
