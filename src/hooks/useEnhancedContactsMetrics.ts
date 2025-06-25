@@ -34,6 +34,25 @@ interface EnhancedContactsMetrics {
   }>;
 }
 
+interface Contact {
+  id: string;
+  first_name: string;
+  last_name?: string;
+  email?: string;
+  phone?: string;
+  company?: string;
+  status: string;
+  tags: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+interface ContactsSegment {
+  segment_name: string;
+  contacts_membership: Contact[];
+  updated_at: string;
+}
+
 export function useEnhancedContactsMetrics(dateRange: DateRange | undefined) {
   return useQuery({
     queryKey: ['enhanced-contacts-metrics', dateRange],
@@ -157,19 +176,22 @@ export function useEnhancedContactsMetrics(dateRange: DateRange | undefined) {
       
       if (segments && segments.length > 0) {
         for (const segment of segments) {
-          const segmentContacts = segment.contacts_membership || [];
+          // Cast contacts_membership as Contact array
+          const segmentContacts = Array.isArray(segment.contacts_membership) 
+            ? segment.contacts_membership as Contact[]
+            : [];
           const segmentName = segment.segment_name;
           
           // Calculate growth rate for this segment
           const previousPeriodStart = subWeeks(startDate, 2);
           const previousPeriodEnd = startDate;
           
-          const currentPeriodContacts = segmentContacts.filter((contact: any) => {
+          const currentPeriodContacts = segmentContacts.filter((contact: Contact) => {
             const createdDate = new Date(contact.created_at);
             return createdDate >= startDate && createdDate <= endDate;
           });
           
-          const previousPeriodContacts = segmentContacts.filter((contact: any) => {
+          const previousPeriodContacts = segmentContacts.filter((contact: Contact) => {
             const createdDate = new Date(contact.created_at);
             return createdDate >= previousPeriodStart && createdDate < previousPeriodEnd;
           });
@@ -188,10 +210,13 @@ export function useEnhancedContactsMetrics(dateRange: DateRange | undefined) {
           );
 
           // Calculate response rate from contact logs
-          const segmentContactIds = segmentContacts.map((contact: any) => contact.id);
+          const segmentContactIds = segmentContacts.map((contact: Contact) => contact.id);
           const segmentResponses = contactLogs?.filter(log => 
             log.action === 'message_received' && 
-            segmentContactIds.includes(log.contact_info?.id)
+            log.contact_info && 
+            typeof log.contact_info === 'object' &&
+            'id' in log.contact_info &&
+            segmentContactIds.includes(log.contact_info.id as string)
           ) || [];
           
           const responseRate = campaignsSent > 0 
@@ -209,7 +234,7 @@ export function useEnhancedContactsMetrics(dateRange: DateRange | undefined) {
             : '0';
 
           // Calculate retention rate (contacts still active)
-          const activeSegmentContacts = segmentContacts.filter((contact: any) => 
+          const activeSegmentContacts = segmentContacts.filter((contact: Contact) => 
             contact.status === 'active'
           );
           const retentionRate = segmentContacts.length > 0 
@@ -238,12 +263,17 @@ export function useEnhancedContactsMetrics(dateRange: DateRange | undefined) {
       // Create segment data based on real segments
       const segmentData = segments?.map((segment, index) => {
         const colors = ['#f59e0b', '#3b82f6', '#22c55e', '#ef4444', '#8b5cf6'];
-        const segmentContacts = segment.contacts_membership || [];
+        const segmentContacts = Array.isArray(segment.contacts_membership) 
+          ? segment.contacts_membership as Contact[]
+          : [];
         
         // Calculate engagement based on contact logs
-        const segmentContactIds = segmentContacts.map((contact: any) => contact.id);
+        const segmentContactIds = segmentContacts.map((contact: Contact) => contact.id);
         const segmentLogs = contactLogs?.filter(log => 
-          segmentContactIds.includes(log.contact_info?.id)
+          log.contact_info && 
+          typeof log.contact_info === 'object' &&
+          'id' in log.contact_info &&
+          segmentContactIds.includes(log.contact_info.id as string)
         ) || [];
         
         const engagementRate = segmentContacts.length > 0 
