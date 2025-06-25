@@ -76,6 +76,10 @@ export const useImportContacts = () => {
             if (error) throw error;
 
             // Transform the database contact to match the Contact interface
+            // Ensure status is properly typed for the Contact interface as well
+            const contactStatus: 'active' | 'inactive' = 
+              newContact.status === 'inactive' ? 'inactive' : 'active';
+
             const transformedContact: Contact = {
               id: newContact.id,
               first_name: newContact.first_name,
@@ -83,7 +87,7 @@ export const useImportContacts = () => {
               email: newContact.email,
               phone: newContact.phone,
               company: newContact.company,
-              status: newContact.status,
+              status: contactStatus,
               tags: newContact.tags,
               segment_name: newContact.segment_name,
               notes: newContact.notes,
