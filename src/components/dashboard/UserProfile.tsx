@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,7 +12,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { logContactAction } from '@/utils/contactLogger';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { getFullName } from '@/utils/contactHelpers';
-import SegmentSelector from './SegmentSelector';
 
 interface UserProfileProps {
   contact: Contact;
@@ -137,7 +137,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
         email: data[0].email || '',
         phone: data[0].phone || '',
         company: data[0].company || '',
-        last_activity: data[0].last_activity || '',
+        last_activity: data[0].last_activity || '', // Fixed property name
         status: data[0].status as 'active' | 'inactive',
         tags: data[0].tags || [],
         createdAt: data[0].created_at
@@ -162,18 +162,6 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
       });
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleSegmentUpdated = (newSegment: string | null) => {
-    // Update the contact object with the new segment
-    const updatedContact = {
-      ...contact,
-      segment_name: newSegment
-    };
-    
-    if (onSave) {
-      onSave(updatedContact as Contact);
     }
   };
 
@@ -324,7 +312,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
               <ProfileItem 
                 icon={<Calendar className="h-5 w-5" />}
                 label="Last Activity" 
-                value={formatDate(contact.last_activity)}
+                value={formatDate(contact.last_activity)} // Fixed property name
               />
               <ProfileItem 
                 icon={<MapPin className="h-5 w-5" />} 
@@ -357,15 +345,6 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
                   </div>
                 </div>
               </div>
-            </div>
-            
-            {/* Segment Selector Section */}
-            <div className="border-t pt-4">
-              <SegmentSelector
-                contactId={contact.id}
-                currentSegment={(contact as any).segment_name}
-                onSegmentUpdated={handleSegmentUpdated}
-              />
             </div>
           </div>
         </ScrollArea>

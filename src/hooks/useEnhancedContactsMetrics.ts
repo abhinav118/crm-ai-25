@@ -49,35 +49,8 @@ interface Contact {
 
 interface ContactsSegment {
   segment_name: string;
-  contacts_membership: any;
+  contacts_membership: Contact[];
   updated_at: string;
-}
-
-// Helper function to safely parse contacts from JSONB
-function safelyParseContacts(contactsData: any): Contact[] {
-  if (!contactsData || !Array.isArray(contactsData)) {
-    return [];
-  }
-
-  return contactsData.filter((contact: any) => {
-    return (
-      contact &&
-      typeof contact === 'object' &&
-      typeof contact.id === 'string' &&
-      typeof contact.first_name === 'string'
-    );
-  }).map((contact: any) => ({
-    id: contact.id,
-    first_name: contact.first_name,
-    last_name: contact.last_name || '',
-    email: contact.email || '',
-    phone: contact.phone || '',
-    company: contact.company || '',
-    status: contact.status || 'active',
-    tags: Array.isArray(contact.tags) ? contact.tags : [],
-    created_at: contact.created_at || new Date().toISOString(),
-    updated_at: contact.updated_at || new Date().toISOString(),
-  }));
 }
 
 export function useEnhancedContactsMetrics(dateRange: DateRange | undefined) {
@@ -203,8 +176,10 @@ export function useEnhancedContactsMetrics(dateRange: DateRange | undefined) {
       
       if (segments && segments.length > 0) {
         for (const segment of segments) {
-          // Safely parse contacts_membership
-          const segmentContacts = safelyParseContacts(segment.contacts_membership);
+          // Cast contacts_membership as Contact array
+          const segmentContacts = Array.isArray(segment.contacts_membership) 
+            ? segment.contacts_membership as Contact[]
+            : [];
           const segmentName = segment.segment_name;
           
           // Calculate growth rate for this segment
@@ -288,7 +263,9 @@ export function useEnhancedContactsMetrics(dateRange: DateRange | undefined) {
       // Create segment data based on real segments
       const segmentData = segments?.map((segment, index) => {
         const colors = ['#f59e0b', '#3b82f6', '#22c55e', '#ef4444', '#8b5cf6'];
-        const segmentContacts = safelyParseContacts(segment.contacts_membership);
+        const segmentContacts = Array.isArray(segment.contacts_membership) 
+          ? segment.contacts_membership as Contact[]
+          : [];
         
         // Calculate engagement based on contact logs
         const segmentContactIds = segmentContacts.map((contact: Contact) => contact.id);

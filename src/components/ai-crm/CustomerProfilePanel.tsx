@@ -20,7 +20,6 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { getFullName } from '@/utils/contactHelpers';
-import SegmentSelector from '@/components/dashboard/SegmentSelector';
 
 interface Contact {
   id: string;
@@ -35,7 +34,6 @@ interface Contact {
   created_at: string;
   updated_at: string;
   notes: string | null;
-  segment_name?: string | null;
 }
 
 interface CustomerProfilePanelProps {
@@ -119,12 +117,6 @@ const CustomerProfilePanel: React.FC<CustomerProfilePanelProps> = ({ contactId, 
       });
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleSegmentUpdated = (newSegment: string | null) => {
-    if (contact) {
-      setContact({ ...contact, segment_name: newSegment });
     }
   };
 
@@ -280,20 +272,6 @@ const CustomerProfilePanel: React.FC<CustomerProfilePanelProps> = ({ contactId, 
                 </div>
               </div>
             )}
-          </CardContent>
-        </Card>
-
-        {/* Segment */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Segment</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <SegmentSelector
-              contactId={contact.id}
-              currentSegment={contact.segment_name}
-              onSegmentUpdated={handleSegmentUpdated}
-            />
           </CardContent>
         </Card>
 
