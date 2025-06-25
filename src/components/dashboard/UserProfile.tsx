@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -107,13 +106,25 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
 
       // Remove contact from old segment if it exists
       if (contact.segment_name && contact.segment_name !== formData.segment_name) {
-        const { error: removeError } = await supabase.rpc('remove_contact_from_segment', {
-          contact_id: contact.id,
-          segment_name: contact.segment_name
-        });
-        
-        if (removeError) {
-          console.error('Error removing from old segment:', removeError);
+        const { data: oldSegmentData, error: fetchOldError } = await supabase
+          .from('contacts_segments')
+          .select('contacts_membership')
+          .eq('segment_name', contact.segment_name)
+          .single();
+
+        if (!fetchOldError && oldSegmentData) {
+          const currentMembers = Array.isArray(oldSegmentData.contacts_membership) 
+            ? oldSegmentData.contacts_membership 
+            : [];
+          
+          const updatedMembers = currentMembers.filter((member: any) => 
+            member && typeof member === 'object' && member.id !== contact.id
+          );
+
+          await supabase
+            .from('contacts_segments')
+            .update({ contacts_membership: updatedMembers })
+            .eq('segment_name', contact.segment_name);
         }
       }
 
@@ -131,23 +142,24 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
         updated_at: new Date().toISOString()
       };
 
-      const { error: addError } = await supabase.rpc('add_contact_to_segment', {
-        contact_data: contactData,
-        segment_name: formData.segment_name
-      });
+      const { data: segmentData, error: fetchError } = await supabase
+        .from('contacts_segments')
+        .select('contacts_membership')
+        .eq('segment_name', formData.segment_name)
+        .single();
 
-      if (addError) {
-        console.error('Error adding to segment:', addError);
-        // Fallback to direct JSONB manipulation
-        const { data: segmentData, error: fetchError } = await supabase
-          .from('contacts_segments')
-          .select('contacts_membership')
-          .eq('segment_name', formData.segment_name)
-          .single();
+      if (fetchError) throw fetchError;
 
-        if (fetchError) throw fetchError;
+      const currentMembers = Array.isArray(segmentData?.contacts_membership) 
+        ? segmentData.contacts_membership 
+        : [];
+      
+      // Check if contact is already in the segment
+      const contactExists = currentMembers.some((member: any) => 
+        member && typeof member === 'object' && member.id === contact.id
+      );
 
-        const currentMembers = segmentData?.contacts_membership || [];
+      if (!contactExists) {
         const updatedMembers = [...currentMembers, contactData];
 
         const { error: updateError } = await supabase
