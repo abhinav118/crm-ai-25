@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CalendarIcon, Search, MessageSquare, Users, Eye, Plus, Image as ImageIcon } from 'lucide-react';
+import { CalendarIcon, Search, MessageSquare, Users, Plus, Image as ImageIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { DateRange } from 'react-day-picker';
@@ -13,6 +13,9 @@ import { useNavigate } from 'react-router-dom';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useScheduledTelnyxCampaigns, TelnyxCampaign, useDeleteTelnyxCampaign } from '@/hooks/useTelnyxCampaigns';
 import { toast } from '@/hooks/use-toast';
+import { Badge } from '@/components/ui/badge';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 
 // Simple inline MessageCell component
 interface MessageCellProps {
@@ -56,40 +59,46 @@ const MessageCell: React.FC<MessageCellProps> = ({
   );
 };
 
-// Sample scheduled campaign data for demonstration
-const sampleCampaigns = [
-  {
-    id: '1',
-    name: 'Flash Sale Alert',
-    message: 'Hey {{first_name}}! ⚡ Flash sale happening now - 30% off everything until midnight. Don\'t miss out! Use code FLASH30 🛍️',
-    recipients: 320,
-    scheduledDate: '2024-01-18',
-    status: 'scheduled'
-  },
-  {
-    id: '2', 
-    name: 'Weekly Newsletter',
-    message: 'Hi {{first_name}}, here\'s what\'s new this week at our restaurant! Check out our new seasonal menu items. 🍂',
-    recipients: 150,
-    scheduledDate: '2024-01-20',
-    status: 'scheduled'
-  }
-];
-
 const ScheduledCampaignsView: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
-  const [recipientsFilter, setRecipientsFilter] = useState('all');
+  const [selectedSegment, setSelectedSegment] = useState('all');
   
   const navigate = useNavigate();
 
   const { data: scheduledCampaigns = [], isLoading, error } = useScheduledTelnyxCampaigns();
   const deleteCampaign = useDeleteTelnyxCampaign();
 
+  // Fetch segments for the filter dropdown
+  const { data: segments = [] } = useQuery({
+    queryKey: ['campaign-segments-scheduled'],
+    queryFn: async () => {
+      console.log('Fetching segments for scheduled campaigns filter...');
+      
+      const { data, error } = await supabase
+        .from('contacts_segments')
+        .select('segment_name')
+        .order('segment_name', { ascending: true });
+      
+      if (error) {
+        console.error('Error fetching segments:', error);
+        return [];
+      }
+
+      // Remove duplicates and ensure values are trimmed
+      const segmentOptions = Array.from(
+        new Set((data ?? []).map(seg => seg.segment_name?.trim()).filter(Boolean))
+      );
+
+      console.log('Processed segment options for scheduled campaigns:', segmentOptions);
+      return segmentOptions;
+    },
+  });
+
   const handleClearFilters = () => {
     setSearchQuery('');
     setDateRange(undefined);
-    setRecipientsFilter('all');
+    setSelectedSegment('all');
   };
 
   const handleCreateCampaign = () => {
@@ -121,11 +130,24 @@ const ScheduledCampaignsView: React.FC = () => {
     }
   };
 
-  // Filter campaigns based on search query and recipients
+  // Enhanced filtering logic
   const filteredCampaigns = scheduledCampaigns.filter((campaign) => {
-    const matchesSearch = campaign.campaign_name?.toLowerCase().includes(searchQuery.toLowerCase())
-      || campaign.message?.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesSearch;
+    // Search filter - check campaign name and message content
+    const matchesSearch = searchQuery === '' || 
+      campaign.campaign_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      campaign.message?.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    // Date range filter for schedule_time
+    const matchesDateRange = !dateRange?.from || !dateRange?.to || 
+      (campaign.schedule_time && 
+       new Date(campaign.schedule_time) >= dateRange.from && 
+       new Date(campaign.schedule_time) <= dateRange.to);
+    
+    // Segment filter
+    const matchesSegment = selectedSegment === 'all' || 
+      campaign.segment_name === selectedSegment;
+    
+    return matchesSearch && matchesDateRange && matchesSegment;
   });
 
   return (
@@ -147,21 +169,21 @@ const ScheduledCampaignsView: React.FC = () => {
         </Button>
       </div>
 
-      {/* Filters Section */}
+      {/* Enhanced Filters Section */}
       <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
           {/* Search Field */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
             <Input
-              placeholder="Search"
+              placeholder="Search campaigns or message content..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
             />
           </div>
 
-          {/* Date Range Picker */}
+          {/* Date Range Picker for Schedule Time */}
           <div>
             <Popover>
               <PopoverTrigger asChild>
@@ -182,7 +204,7 @@ const ScheduledCampaignsView: React.FC = () => {
                       format(dateRange.from, "MM/dd/yyyy")
                     )
                   ) : (
-                    <span>mm/dd/yyyy – mm/dd/yyyy</span>
+                    <span>Select schedule date range</span>
                   )}
                 </Button>
               </PopoverTrigger>
@@ -200,32 +222,60 @@ const ScheduledCampaignsView: React.FC = () => {
             </Popover>
           </div>
 
-          {/* Recipients Filter */}
+          {/* Segment Filter */}
           <div>
-            <Select value={recipientsFilter} onValueChange={setRecipientsFilter}>
+            <Select value={selectedSegment} onValueChange={setSelectedSegment}>
               <SelectTrigger>
-                <SelectValue placeholder="Recipients: All" />
+                <SelectValue placeholder="All Segments" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Recipients: All</SelectItem>
-                <SelectItem value="customers">Customers</SelectItem>
-                <SelectItem value="prospects">Prospects</SelectItem>
-                <SelectItem value="vip">VIP</SelectItem>
+                <SelectItem value="all">All Segments</SelectItem>
+                {segments.map(segment => (
+                  <SelectItem key={segment} value={segment}>
+                    {segment}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
+
+          {/* Clear Filters Button */}
+          <div>
+            <Button 
+              variant="outline" 
+              onClick={handleClearFilters}
+              className="w-full"
+            >
+              Clear Filters
+            </Button>
+          </div>
         </div>
 
-        <div className="flex justify-end items-center mt-4">
-          {/* Clear Filter */}
-          <Button 
-            variant="link" 
-            onClick={handleClearFilters}
-            className="text-blue-600 hover:text-blue-700 font-medium"
-          >
-            CLEAR
-          </Button>
-        </div>
+        {/* Active Filters Summary */}
+        {(searchQuery || dateRange?.from || selectedSegment !== 'all') && (
+          <div className="mt-4 flex flex-wrap gap-2 items-center">
+            <span className="text-sm text-gray-600">Active filters:</span>
+            {searchQuery && (
+              <Badge variant="secondary" className="text-xs">
+                Search: "{searchQuery}"
+              </Badge>
+            )}
+            {dateRange?.from && (
+              <Badge variant="secondary" className="text-xs">
+                Schedule Date: {format(dateRange.from, "MM/dd/yyyy")} 
+                {dateRange.to && ` - ${format(dateRange.to, "MM/dd/yyyy")}`}
+              </Badge>
+            )}
+            {selectedSegment !== 'all' && (
+              <Badge variant="secondary" className="text-xs">
+                Segment: {selectedSegment}
+              </Badge>
+            )}
+            <span className="text-sm text-gray-500">
+              ({filteredCampaigns.length} of {scheduledCampaigns.length} campaigns)
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Data loading/error states */}
@@ -240,6 +290,7 @@ const ScheduledCampaignsView: React.FC = () => {
               <TableRow>
                 <TableHead>Campaign Name</TableHead>
                 <TableHead>Recipients</TableHead>
+                <TableHead>Segment</TableHead>
                 <TableHead>Scheduled Date</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Message</TableHead>
@@ -250,7 +301,12 @@ const ScheduledCampaignsView: React.FC = () => {
               {filteredCampaigns.map((campaign) => (
                 <TableRow key={campaign.id}>
                   <TableCell className="font-medium">{campaign.campaign_name}</TableCell>
-                  <TableCell>{campaign.recipients?.length || 0}</TableCell>
+                  <TableCell>
+                    {Array.isArray(campaign.recipients) && typeof campaign.recipients[0] === 'string' && campaign.recipients[0].startsWith('+') 
+                      ? campaign.recipients.length 
+                      : campaign.recipients?.length || 0}
+                  </TableCell>
+                  <TableCell>{campaign.segment_name || 'N/A'}</TableCell>
                   <TableCell>
                     {campaign.schedule_time
                       ? format(new Date(campaign.schedule_time), 'MMM d, yyyy, h:mm a')
@@ -294,15 +350,27 @@ const ScheduledCampaignsView: React.FC = () => {
               </div>
             </div>
             <h3 className="text-xl font-medium text-gray-900 mb-4">
-              You haven't scheduled any group texts yet
+              {scheduledCampaigns.length === 0 
+                ? "You haven't scheduled any group texts yet"
+                : "No campaigns match your filters"}
             </h3>
-            <Button 
-              variant="link" 
-              onClick={handleCreateCampaign}
-              className="text-blue-600 hover:text-blue-700 font-medium text-base"
-            >
-              CREATE A NEW TEXT NOW!
-            </Button>
+            {scheduledCampaigns.length === 0 ? (
+              <Button 
+                variant="link" 
+                onClick={handleCreateCampaign}
+                className="text-blue-600 hover:text-blue-700 font-medium text-base"
+              >
+                CREATE A NEW TEXT NOW!
+              </Button>
+            ) : (
+              <Button 
+                variant="link" 
+                onClick={handleClearFilters}
+                className="text-blue-600 hover:text-blue-700 font-medium text-base"
+              >
+                CLEAR FILTERS
+              </Button>
+            )}
           </div>
         </div>
       )}
