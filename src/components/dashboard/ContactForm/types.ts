@@ -1,8 +1,7 @@
-
 export interface ContactData {
   id?: string;
   first_name: string;
-  last_name: string;
+  last_name: string | null;
   email: string | null;
   phone: string | null;
   company: string | null;
@@ -10,7 +9,7 @@ export interface ContactData {
   tags: string[];
   notes?: string | null;
   updated_at: string;
-  segment_name?: string;
+  segment_name: string;
 }
 
 export interface ContactFormProps {

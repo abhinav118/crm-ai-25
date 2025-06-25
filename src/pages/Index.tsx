@@ -18,6 +18,7 @@ import { logContactAction } from '@/utils/contactLogger';
 import { getFullName } from '@/utils/contactHelpers';
 import { ContactData } from '@/components/dashboard/ContactForm/types';
 import { syncContactToSegment } from '@/utils/segmentSync';
+import AddContactForm from '@/components/dashboard/AddContactForm';
 
 const Index = () => {
   const [selectedContacts, setSelectedContacts] = useState<Contact[]>([]);
@@ -277,7 +278,8 @@ const Index = () => {
         // Log the update action
         await logContactAction('update', { ...data, id: selectedContact.id });
       } else {
-        // Create new contact
+        // Create new contact - this is now handled directly in AddContactForm
+        // But we still need this for the old ContactForm component
         const contactData = {
           first_name: data.first_name,
           last_name: data.last_name,
@@ -504,31 +506,17 @@ const Index = () => {
         </div>
       )}
 
-      {/* Contact Form Modal */}
-      {isContactFormOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <ContactForm
-              onSubmit={handleSubmitContact}
-              onClose={() => {
-                setIsContactFormOpen(false);
-                setSelectedContact(null);
-              }}
-              initialData={selectedContact ? {
-                id: selectedContact.id,
-                first_name: selectedContact.first_name,
-                last_name: selectedContact.last_name || '',
-                email: selectedContact.email,
-                phone: selectedContact.phone,
-                company: selectedContact.company,
-                status: selectedContact.status,
-                tags: selectedContact.tags || [],
-                updated_at: new Date().toISOString()
-              } : undefined}
-            />
-          </div>
-        </div>
-      )}
+      {/* Contact Form Modal - Updated to use AddContactForm */}
+      <AddContactForm
+        open={isContactFormOpen}
+        onOpenChange={(open) => {
+          setIsContactFormOpen(open);
+          if (!open) {
+            setSelectedContact(null);
+          }
+        }}
+        onSubmit={handleSubmitContact}
+      />
     </div>
   );
 };

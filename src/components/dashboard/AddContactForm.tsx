@@ -1,61 +1,132 @@
 
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Form } from '@/components/ui/form';
-import ProfileImageSection from './ContactForm/ProfileImageSection';
-import BasicInfoSection from './ContactForm/BasicInfoSection';
-import EmailsSection from './ContactForm/EmailsSection';
-import PhonesSection from './ContactForm/PhonesSection';
-import DndPreferenceSection from './ContactForm/DndPreferenceSection';
-import FormActions from './ContactForm/FormActions';
-import { useContactForm } from './ContactForm/useContactForm';
-import { ContactData } from './ContactForm/types';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { useForm } from 'react-hook-form';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { logContactAction } from '@/utils/contactLogger';
+import { syncContactToSegment } from '@/utils/segmentSync';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
+
+interface ContactFormData {
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string;
+  company: string;
+  segment_name: string;
+}
 
 interface AddContactFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (data: ContactData) => Promise<void>;
+  onSubmit: (data: ContactFormData) => Promise<void>;
 }
 
 const AddContactForm: React.FC<AddContactFormProps> = ({ open, onOpenChange, onSubmit }) => {
-  const {
-    form,
-    isLoading,
-    phones,
-    emails,
-    handleAddPhone,
-    handleAddEmail,
-    handlePhoneChange,
-    handleEmailChange,
-    removePhone,
-    removeEmail,
-    handleFormSubmit
-  } = useContactForm({ 
-    onSubmit: async (data) => {
-      try {
-        // Ensure updated_at is set
-        data.updated_at = new Date().toISOString();
-        
-        console.log('Submitting contact with data:', data);
-        await onSubmit(data);
-        
-        // Log the contact addition
-        await logContactAction('add', data);
-      } catch (error) {
-        console.error('Error in contact submission:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to add contact',
-          variant: 'destructive'
-        });
-        throw error;
-      }
-    }, 
-    onClose: () => onOpenChange(false)
+  const [isLoading, setIsLoading] = useState(false);
+  const queryClient = useQueryClient();
+
+  const form = useForm<ContactFormData>({
+    defaultValues: {
+      first_name: '',
+      last_name: '',
+      email: '',
+      phone: '',
+      company: '',
+      segment_name: 'UNASSIGNED'
+    }
   });
+
+  // Fetch available segments
+  const { data: segments = [] } = useQuery({
+    queryKey: ['contact-segments'],
+    queryFn: async () => {
+      console.log('Fetching available segments...');
+      
+      const { data, error } = await supabase
+        .from('contacts_segments')
+        .select('segment_name')
+        .order('segment_name');
+      
+      if (error) {
+        console.error('Error fetching segments:', error);
+        return [];
+      }
+
+      return data?.map(item => item.segment_name) || [];
+    },
+  });
+
+  const handleFormSubmit = async (data: ContactFormData) => {
+    setIsLoading(true);
+    
+    try {
+      // Prepare contact data
+      const contactData = {
+        first_name: data.first_name.trim(),
+        last_name: data.last_name?.trim() || null,
+        email: data.email?.trim() || null,
+        phone: data.phone?.trim() || null,
+        company: data.company?.trim() || null,
+        status: 'active' as const,
+        segment_name: data.segment_name || 'UNASSIGNED',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        tags: []
+      };
+
+      console.log('Submitting contact with data:', contactData);
+
+      // Create new contact
+      const { data: newContact, error } = await supabase
+        .from('contacts')
+        .insert([contactData])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Sync the new contact to its segment
+      try {
+        await syncContactToSegment(newContact);
+      } catch (syncError) {
+        console.error('Failed to sync contact to segment:', syncError);
+        // Don't fail the whole operation if segment sync fails
+      }
+
+      // Log the contact addition
+      await logContactAction('add', newContact);
+
+      toast({
+        title: 'Contact created',
+        description: 'The new contact has been successfully created.',
+      });
+
+      // Invalidate and refetch contacts
+      queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      queryClient.invalidateQueries({ queryKey: ['contact-segments'] });
+      
+      // Reset form and close dialog
+      form.reset();
+      onOpenChange(false);
+      
+    } catch (error) {
+      console.error('Error creating contact:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to create contact. Please try again.',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -69,33 +140,124 @@ const AddContactForm: React.FC<AddContactFormProps> = ({ open, onOpenChange, onS
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
-            {/* Profile Image Section */}
-            <ProfileImageSection />
+            {/* First Name and Last Name */}
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="first_name"
+                rules={{ required: 'First name is required' }}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>First Name *</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter first name" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="last_name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Last Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter last name" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
-            {/* Basic Information */}
-            <BasicInfoSection form={form} />
-
-            {/* Email Addresses */}
-            <EmailsSection 
-              emails={emails}
-              onEmailChange={handleEmailChange}
-              onAddEmail={handleAddEmail}
-              onRemoveEmail={removeEmail}
+            {/* Email */}
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input type="email" placeholder="Enter email address" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
 
-            {/* Phone Numbers */}
-            <PhonesSection 
-              phones={phones}
-              onPhoneChange={handlePhoneChange}
-              onAddPhone={handleAddPhone}
-              onRemovePhone={removePhone}
+            {/* Phone */}
+            <FormField
+              control={form.control}
+              name="phone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Phone</FormLabel>
+                  <FormControl>
+                    <Input type="tel" placeholder="Enter phone number" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
 
-            {/* DND Preferences */}
-            <DndPreferenceSection form={form} />
+            {/* Company */}
+            <FormField
+              control={form.control}
+              name="company"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Company</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter company name" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Segment Selector */}
+            <FormField
+              control={form.control}
+              name="segment_name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Segment</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a segment" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="UNASSIGNED">UNASSIGNED</SelectItem>
+                      {segments.map(segment => (
+                        <SelectItem key={segment} value={segment}>
+                          {segment}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             {/* Form Actions */}
-            <FormActions isLoading={isLoading} onCancel={() => onOpenChange(false)} />
+            <div className="flex justify-end gap-3 pt-4">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => onOpenChange(false)}
+                disabled={isLoading}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isLoading}>
+                {isLoading ? 'Creating...' : 'Create Contact'}
+              </Button>
+            </div>
           </form>
         </Form>
       </DialogContent>
