@@ -256,7 +256,7 @@ const AddContactForm: React.FC<AddContactFormProps> = ({ open, onOpenChange, onS
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="UNASSIGNED">UNASSIGNED</SelectItem>
+                      <SelectItem value="UNASSIGNED"></SelectItem>
                       {segments.map(segment => (
                         <SelectItem key={segment} value={segment}>
                           {segment}
