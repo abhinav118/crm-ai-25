@@ -1,12 +1,12 @@
 
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Users, UserPlus, TrendingDown, Activity } from "lucide-react";
 import { useDateRange as ImportedUseDateRange } from "./ReportingPage";
-import { useContactsMetrics } from "@/hooks/useContactsMetrics";
+import { useEnhancedContactsMetrics } from "@/hooks/useEnhancedContactsMetrics";
+import { EnhancedSegmentTable } from "@/components/analytics/EnhancedSegmentTable";
 import { subDays } from "date-fns";
 
 const chartConfig = {
@@ -17,7 +17,7 @@ const chartConfig = {
 
 const ContactsOverviewComponent = () => {
   const { dateRange } = ImportedUseDateRange();
-  const { data: metrics, isLoading, error } = useContactsMetrics(dateRange);
+  const { data: metrics, isLoading, error } = useEnhancedContactsMetrics(dateRange);
 
   const contactStats = [
     { 
@@ -32,10 +32,10 @@ const ContactsOverviewComponent = () => {
       value: metrics?.active_contacts?.toLocaleString() || "0", 
       icon: Activity, 
       color: "text-green-600", 
-      change: "+890" 
+      change: `${Math.round((metrics?.active_contacts || 0) / (metrics?.total_contacts || 1) * 100)}%`
     },
     { 
-      label: "New This Month", 
+      label: "New This Period", 
       value: metrics?.new_contacts?.toLocaleString() || "0", 
       icon: UserPlus, 
       color: "text-purple-600", 
@@ -49,13 +49,6 @@ const ContactsOverviewComponent = () => {
       change: "-0.3%" 
     }
   ];
-
-  const getGrowthBadge = (growth: string) => {
-    const isPositive = growth.startsWith('+');
-    return `px-2 py-1 rounded-full text-xs font-medium ${
-      isPositive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-    }`;
-  };
 
   if (error) {
     console.error('Error loading contacts metrics:', error);
@@ -93,6 +86,7 @@ const ContactsOverviewComponent = () => {
           </Card>
         ))}
       </div>
+
       {/* Charts side by side on desktop, stacked on mobile */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Contact Growth Chart */}
@@ -205,56 +199,19 @@ const ContactsOverviewComponent = () => {
         </Card>
       </div>
 
-      {/* Table: make sure it scrolls on mobile */}
+      {/* Enhanced Segment Performance Table */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Segment Performance</CardTitle>
-          <CardDescription>Detailed performance metrics for each contact segment</CardDescription>
+          <CardTitle className="text-lg">Segment Performance (Real Metrics)</CardTitle>
+          <CardDescription>
+            Real-time performance metrics for each contact segment with campaign data and engagement rates
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
-            <div className="flex items-center justify-center p-8 text-muted-foreground">
-              <p>Loading segment performance...</p>
-            </div>
-          ) : metrics?.segment_performance && metrics.segment_performance.length > 0 ? (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="min-w-[120px]">Segment</TableHead>
-                    <TableHead className="min-w-[80px]">Contacts</TableHead>
-                    <TableHead className="min-w-[80px]">Growth</TableHead>
-                    <TableHead className="min-w-[100px]">Engagement Rate</TableHead>
-                    <TableHead className="min-w-[80px]">Avg. Value</TableHead>
-                    <TableHead className="min-w-[100px]">Retention Rate</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {metrics.segment_performance.map((segment) => (
-                    <TableRow key={segment.segment}>
-                      <TableCell className="font-medium">{segment.segment}</TableCell>
-                      <TableCell>{segment.contacts.toLocaleString()}</TableCell>
-                      <TableCell>
-                        <span className={getGrowthBadge(segment.growth)}>
-                          {segment.growth}
-                        </span>
-                      </TableCell>
-                      <TableCell>{segment.engagement}</TableCell>
-                      <TableCell className="font-medium">{segment.avgValue}</TableCell>
-                      <TableCell>{segment.retention}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          ) : (
-            <div className="flex items-center justify-center p-8 text-muted-foreground">
-              <div className="text-center">
-                <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No segment performance data available</p>
-              </div>
-            </div>
-          )}
+          <EnhancedSegmentTable 
+            segmentPerformance={metrics?.segment_performance || []}
+            isLoading={isLoading}
+          />
         </CardContent>
       </Card>
     </div>
