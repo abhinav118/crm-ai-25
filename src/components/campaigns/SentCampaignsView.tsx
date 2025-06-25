@@ -16,6 +16,7 @@ import { CampaignProgressDialog } from './CampaignProgressDialog';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 
 // Simple inline MessageCell component
 interface MessageCellProps {
@@ -59,41 +60,10 @@ const MessageCell: React.FC<MessageCellProps> = ({
   );
 };
 
-// Sample campaign data for demonstration
-const sampleCampaigns = [
-  {
-    id: '1',
-    name: 'Welcome Campaign',
-    message: 'Hi {{first_name}}, welcome to our restaurant! Get 15% off your first order with code WELCOME15. 🎉',
-    recipients: 250,
-    sent: '2024-01-15',
-    deliveryRate: 98.4,
-    status: 'completed'
-  },
-  {
-    id: '2', 
-    name: 'Weekend Special',
-    message: 'Hey {{first_name}}! Join us this weekend for our special brunch menu. Fresh ingredients, great atmosphere! Book now: restaurantlink.com 🍳',
-    recipients: 180,
-    sent: '2024-01-12',
-    deliveryRate: 96.7,
-    status: 'completed'
-  },
-  {
-    id: '3',
-    name: 'Birthday Promotion',
-    message: 'Happy Birthday {{first_name}}! 🎂 Celebrate with us and get a FREE dessert on your special day. Valid until {{date}}.',
-    recipients: 45,
-    sent: '2024-01-10',
-    deliveryRate: 100.0,
-    status: 'completed'
-  }
-];
-
 const SentCampaignsView: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
-  const [recipientsFilter, setRecipientsFilter] = useState('all');
+  const [selectedSegment, setSelectedSegment] = useState('all');
   const [progressDialogOpen, setProgressDialogOpen] = useState(false);
   const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null);
   const [selectedCampaignName, setSelectedCampaignName] = useState<string>('');
@@ -101,6 +71,32 @@ const SentCampaignsView: React.FC = () => {
   const navigate = useNavigate();
 
   const { data: sentCampaigns = [], isLoading, error, refetch } = useSentTelnyxCampaigns();
+
+  // Fetch segments for the filter dropdown
+  const { data: segments = [] } = useQuery({
+    queryKey: ['campaign-segments'],
+    queryFn: async () => {
+      console.log('Fetching segments for campaign filter...');
+      
+      const { data, error } = await supabase
+        .from('contacts_segments')
+        .select('segment_name')
+        .order('segment_name', { ascending: true });
+      
+      if (error) {
+        console.error('Error fetching segments:', error);
+        return [];
+      }
+
+      // Remove duplicates and ensure values are trimmed
+      const segmentOptions = Array.from(
+        new Set((data ?? []).map(seg => seg.segment_name?.trim()).filter(Boolean))
+      );
+
+      console.log('Processed segment options for campaigns:', segmentOptions);
+      return segmentOptions;
+    },
+  });
 
   // Set up Supabase Realtime listener for campaign progress updates
   useEffect(() => {
@@ -144,13 +140,10 @@ const SentCampaignsView: React.FC = () => {
     }
   }, [sentCampaigns, refetch]);
 
-  console.log('SentCampaignsView - recipientsFilter value:', recipientsFilter);
-  console.log('SentCampaignsView - recipientsFilter type:', typeof recipientsFilter);
-
   const handleClearFilters = () => {
     setSearchQuery('');
     setDateRange(undefined);
-    setRecipientsFilter('all');
+    setSelectedSegment('all');
   };
 
   const handleCreateCampaign = () => {
@@ -214,15 +207,25 @@ const SentCampaignsView: React.FC = () => {
     );
   };
 
-  // Filtering logic (search + recipients)
+  // Enhanced filtering logic
   const filteredCampaigns = sentCampaigns.filter((campaign) => {
-    const matchesSearch = campaign.campaign_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    // Search filter - check campaign name and message content
+    const matchesSearch = searchQuery === '' || 
+      campaign.campaign_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       campaign.message?.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesSearch;
+    
+    // Date range filter
+    const matchesDateRange = !dateRange?.from || !dateRange?.to || 
+      (campaign.created_at && 
+       new Date(campaign.created_at) >= dateRange.from && 
+       new Date(campaign.created_at) <= dateRange.to);
+    
+    // Segment filter
+    const matchesSegment = selectedSegment === 'all' || 
+      campaign.segment_name === selectedSegment;
+    
+    return matchesSearch && matchesDateRange && matchesSegment;
   });
-
-  // Ensure recipientsFilter is never empty or undefined
-  const safeRecipientsFilter = recipientsFilter && recipientsFilter.trim() !== '' ? recipientsFilter : 'all';
 
   return (
     <div>
@@ -240,14 +243,14 @@ const SentCampaignsView: React.FC = () => {
         </Button>
       </div>
 
-      {/* Filters Section */}
+      {/* Enhanced Filters Section */}
       <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
           {/* Search Field */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
             <Input
-              placeholder="Search"
+              placeholder="Search campaigns or message content..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
@@ -275,7 +278,7 @@ const SentCampaignsView: React.FC = () => {
                       format(dateRange.from, "MM/dd/yyyy")
                     )
                   ) : (
-                    <span>mm/dd/yyyy – mm/dd/yyyy</span>
+                    <span>Select date range</span>
                   )}
                 </Button>
               </PopoverTrigger>
@@ -293,32 +296,60 @@ const SentCampaignsView: React.FC = () => {
             </Popover>
           </div>
 
-          {/* Recipients Filter */}
+          {/* Segment Filter */}
           <div>
-            <Select value={safeRecipientsFilter} onValueChange={setRecipientsFilter}>
+            <Select value={selectedSegment} onValueChange={setSelectedSegment}>
               <SelectTrigger>
-                <SelectValue placeholder="Recipients: All" />
+                <SelectValue placeholder="All Segments" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Recipients: All</SelectItem>
-                <SelectItem value="customers">Customers</SelectItem>
-                <SelectItem value="prospects">Prospects</SelectItem>
-                <SelectItem value="vip">VIP</SelectItem>
+                <SelectItem value="all">All Segments</SelectItem>
+                {segments.map(segment => (
+                  <SelectItem key={segment} value={segment}>
+                    {segment}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
+
+          {/* Clear Filters Button */}
+          <div>
+            <Button 
+              variant="outline" 
+              onClick={handleClearFilters}
+              className="w-full"
+            >
+              Clear Filters
+            </Button>
+          </div>
         </div>
 
-        <div className="flex justify-end items-center mt-4">
-          {/* Clear Filter */}
-          <Button 
-            variant="link" 
-            onClick={handleClearFilters}
-            className="text-blue-600 hover:text-blue-700 font-medium"
-          >
-            CLEAR
-          </Button>
-        </div>
+        {/* Active Filters Summary */}
+        {(searchQuery || dateRange?.from || selectedSegment !== 'all') && (
+          <div className="mt-4 flex flex-wrap gap-2 items-center">
+            <span className="text-sm text-gray-600">Active filters:</span>
+            {searchQuery && (
+              <Badge variant="secondary" className="text-xs">
+                Search: "{searchQuery}"
+              </Badge>
+            )}
+            {dateRange?.from && (
+              <Badge variant="secondary" className="text-xs">
+                Date: {format(dateRange.from, "MM/dd/yyyy")} 
+                {dateRange.to && ` - ${format(dateRange.to, "MM/dd/yyyy")}`}
+              </Badge>
+            )}
+            {selectedSegment !== 'all' && (
+              <Badge variant="secondary" className="text-xs">
+                Segment: {selectedSegment}
+              </Badge>
+            )}
+            <span className="text-sm text-gray-500">
+              ({filteredCampaigns.length} of {sentCampaigns.length} campaigns)
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Data loading/error states */}
@@ -375,15 +406,27 @@ const SentCampaignsView: React.FC = () => {
               </div>
             </div>
             <h3 className="text-xl font-medium text-gray-900 mb-4">
-              You haven't created any group texts yet
+              {sentCampaigns.length === 0 
+                ? "You haven't created any group texts yet"
+                : "No campaigns match your filters"}
             </h3>
-            <Button 
-              variant="link" 
-              onClick={handleCreateCampaign}
-              className="text-blue-600 hover:text-blue-700 font-medium text-base"
-            >
-              CREATE A NEW TEXT NOW!
-            </Button>
+            {sentCampaigns.length === 0 ? (
+              <Button 
+                variant="link" 
+                onClick={handleCreateCampaign}
+                className="text-blue-600 hover:text-blue-700 font-medium text-base"
+              >
+                CREATE A NEW TEXT NOW!
+              </Button>
+            ) : (
+              <Button 
+                variant="link" 
+                onClick={handleClearFilters}
+                className="text-blue-600 hover:text-blue-700 font-medium text-base"
+              >
+                CLEAR FILTERS
+              </Button>
+            )}
           </div>
         </div>
       )}
