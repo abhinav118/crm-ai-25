@@ -90,10 +90,8 @@ export const useImportContacts = () => {
               status: contactStatus,
               tags: newContact.tags,
               segment_name: newContact.segment_name,
-              notes: newContact.notes,
               last_activity: newContact.last_activity,
-              createdAt: newContact.created_at,
-              updatedAt: newContact.updated_at
+              createdAt: newContact.created_at
             };
 
             // Sync the new contact to its segment
