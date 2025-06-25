@@ -17,6 +17,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { logContactAction } from '@/utils/contactLogger';
 import { getFullName } from '@/utils/contactHelpers';
 import { ContactData } from '@/components/dashboard/ContactForm/types';
+import { syncContactToSegment } from '@/utils/segmentSync';
 
 const Index = () => {
   const [selectedContacts, setSelectedContacts] = useState<Contact[]>([]);
@@ -261,7 +262,7 @@ const Index = () => {
             company: data.company,
             status: data.status,
             tags: data.tags,
-            segment_name: data.segment_name || null,
+            segment_name: data.segment_name || 'UNASSIGNED',
             updated_at: new Date().toISOString()
           })
           .eq('id', selectedContact.id);
@@ -277,20 +278,22 @@ const Index = () => {
         await logContactAction('update', { ...data, id: selectedContact.id });
       } else {
         // Create new contact
+        const contactData = {
+          first_name: data.first_name,
+          last_name: data.last_name,
+          email: data.email,
+          phone: data.phone,
+          company: data.company,
+          status: data.status,
+          tags: data.tags,
+          segment_name: data.segment_name || 'UNASSIGNED',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+
         const { data: newContact, error } = await supabase
           .from('contacts')
-          .insert([{
-            first_name: data.first_name,
-            last_name: data.last_name,
-            email: data.email,
-            phone: data.phone,
-            company: data.company,
-            status: data.status,
-            tags: data.tags,
-            segment_name: data.segment_name || null,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          }])
+          .insert([contactData])
           .select()
           .single();
 
@@ -304,11 +307,20 @@ const Index = () => {
         // Log the create action
         if (newContact) {
           await logContactAction('add', newContact);
+          
+          // Sync the new contact to its segment
+          try {
+            await syncContactToSegment(newContact);
+          } catch (syncError) {
+            console.error('Failed to sync contact to segment:', syncError);
+            // Don't fail the whole operation if segment sync fails
+          }
         }
       }
 
       // Invalidate and refetch contacts
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      queryClient.invalidateQueries({ queryKey: ['contact-segments'] });
       
       // Close the form
       setIsContactFormOpen(false);
