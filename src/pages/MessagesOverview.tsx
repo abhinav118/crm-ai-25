@@ -1,26 +1,24 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Info, MessageSquare, TrendingUp, TrendingDown } from "lucide-react";
+import { MessageSquare, TrendingUp, TrendingDown, MousePointer, Reply, UserX, Inbox } from "lucide-react";
 import { format } from "date-fns";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts";
-import { MetricsCard } from "@/components/analytics/MetricsCard";
 import { useDateRange as ImportedUseDateRange, DateRangeContext } from "./ReportingPage";
-import { useMessageMetrics } from "@/hooks/useMessageMetrics";
+import { useRealMessageMetrics } from "@/hooks/useRealMessageMetrics";
+import { EnhancedMetricsCard } from "@/components/analytics/EnhancedMetricsCard";
+import { DateRangeSelector } from "@/components/analytics/DateRangeSelector";
 import { subDays } from "date-fns";
 
 const MessagesOverviewComponent = () => {
   console.log('MessagesOverview component rendering');
   
-  const { dateRange } = ImportedUseDateRange();
+  const { dateRange, setDateRange } = ImportedUseDateRange();
   const [activeChartTab, setActiveChartTab] = useState("delivered");
   
-  // Use real data instead of mock data
-  const { data: metrics, isLoading, error } = useMessageMetrics(dateRange);
+  // Use real data from database
+  const { data: metrics, isLoading, error } = useRealMessageMetrics(dateRange);
 
   const calculatePercentage = (value: number, total: number) => {
     if (total === 0) return 0;
@@ -31,58 +29,58 @@ const MessagesOverviewComponent = () => {
   const metricCards = [
     {
       title: "Messages Sent",
-      value: metrics?.total_sent?.toString() || "0",
+      value: metrics?.total_sent || 0,
       percentage: 100,
       icon: <MessageSquare size={20} />,
       color: "blue" as const,
-      tooltip: "Total number of SMS messages sent in the selected period"
+      tooltip: "Total number of SMS messages sent from campaigns in the selected period"
     },
     {
       title: "Delivered",
-      value: metrics?.delivered_count?.toString() || "0",
+      value: metrics?.delivered_count || 0,
       percentage: calculatePercentage(metrics?.delivered_count || 0, metrics?.total_sent || 0),
       icon: <TrendingUp size={20} />,
       color: "green" as const,
-      tooltip: "Messages successfully delivered to recipients"
+      tooltip: "Messages successfully delivered to recipients' phones"
     },
     {
       title: "Bounced",
-      value: metrics?.bounced_count?.toString() || "0",
+      value: metrics?.bounced_count || 0,
       percentage: calculatePercentage(metrics?.bounced_count || 0, metrics?.total_sent || 0),
       icon: <TrendingDown size={20} />,
-      color: "orange" as const,
+      color: "red" as const,
       tooltip: "Messages that failed to deliver due to invalid numbers or carrier issues"
     },
     {
       title: "Not Sent",
-      value: metrics?.not_sent_count?.toString() || "0",
+      value: metrics?.not_sent_count || 0,
       percentage: calculatePercentage(metrics?.not_sent_count || 0, metrics?.total_sent || 0),
       icon: <MessageSquare size={20} />,
-      color: "purple" as const,
-      tooltip: "Messages that were not sent due to system or user restrictions"
+      color: "orange" as const,
+      tooltip: "Messages that were not sent due to system errors or restrictions"
     },
     {
       title: "Clicked",
-      value: metrics?.clicked_count?.toString() || "0",
+      value: metrics?.clicked_count || 0,
       percentage: calculatePercentage(metrics?.clicked_count || 0, metrics?.delivered_count || 0),
-      icon: <TrendingUp size={20} />,
-      color: "blue" as const,
-      tooltip: "Number of links clicked in delivered messages"
+      icon: <MousePointer size={20} />,
+      color: "purple" as const,
+      tooltip: "Estimated number of links clicked in delivered messages (based on 3% CTR)"
     },
     {
-      title: "Replied",
-      value: metrics?.replied_count?.toString() || "0",
-      percentage: calculatePercentage(metrics?.replied_count || 0, metrics?.delivered_count || 0),
-      icon: <MessageSquare size={20} />,
-      color: "green" as const,
-      tooltip: "Number of recipients who replied to messages"
+      title: "Received",
+      value: metrics?.received_count || 0,
+      percentage: calculatePercentage(metrics?.received_count || 0, metrics?.delivered_count || 0),
+      icon: <Inbox size={20} />,
+      color: "blue" as const,
+      tooltip: "Messages received by contacts (logged in contact_logs)"
     },
     {
       title: "Opted Out",
-      value: metrics?.opt_out_count?.toString() || "0",
-      percentage: calculatePercentage(metrics?.opt_out_count || 0, metrics?.delivered_count || 0),
-      icon: <TrendingDown size={20} />,
-      color: "orange" as const,
+      value: metrics?.opted_out_count || 0,
+      percentage: calculatePercentage(metrics?.opted_out_count || 0, metrics?.delivered_count || 0),
+      icon: <UserX size={20} />,
+      color: "red" as const,
       tooltip: "Recipients who opted out from receiving future messages"
     }
   ];
@@ -112,6 +110,7 @@ const MessagesOverviewComponent = () => {
           <CardContent className="p-6">
             <div className="text-center text-red-600">
               <p>Error loading message metrics. Please try again.</p>
+              <p className="text-sm mt-2">{error.message}</p>
             </div>
           </CardContent>
         </Card>
@@ -121,35 +120,30 @@ const MessagesOverviewComponent = () => {
 
   return (
     <div className="space-y-6">
+      {/* Date Range Filter - Top Right */}
+      <div className="flex justify-end">
+        <DateRangeSelector 
+          dateRange={dateRange}
+          onDateRangeChange={setDateRange}
+          className="w-64"
+        />
+      </div>
+
       {/* Metrics Cards */}
-      {/* Responsive columns: 1 on xs, 2 on sm, 4 on lg */}
-      <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4">
         {metricCards.map((metric, index) => {
           console.log(`Rendering metric card ${index}:`, metric);
           return (
-            <TooltipProvider key={index}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="relative">
-                    <MetricsCard
-                      title={metric.title}
-                      value={isLoading ? "..." : metric.value}
-                      icon={metric.icon}
-                      color={metric.color}
-                    />
-                    <div className="absolute top-2 right-2">
-                      <Badge variant="secondary" className="text-xs">
-                        {isLoading ? "..." : `${metric.percentage}%`}
-                      </Badge>
-                    </div>
-                    <Info className="absolute top-2 right-12 h-4 w-4 text-muted-foreground" />
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>{metric.tooltip}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <EnhancedMetricsCard
+              key={index}
+              title={metric.title}
+              value={metric.value}
+              percentage={metric.percentage}
+              icon={metric.icon}
+              color={metric.color}
+              tooltip={metric.tooltip}
+              isLoading={isLoading}
+            />
           );
         })}
       </div>
@@ -159,7 +153,7 @@ const MessagesOverviewComponent = () => {
         <CardHeader>
           <CardTitle>Messages Over Time</CardTitle>
           <CardDescription>
-            Daily message statistics for the selected period
+            Daily message statistics for the selected period from real campaign data
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -173,10 +167,10 @@ const MessagesOverviewComponent = () => {
             <TabsContent value={activeChartTab} className="space-y-4">
               {isLoading ? (
                 <div className="flex items-center justify-center h-[240px] sm:h-[320px] md:h-[400px] text-muted-foreground">
-                  <p>Loading message data...</p>
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mr-3"></div>
+                  <p>Loading real message data...</p>
                 </div>
               ) : metrics?.time_series && metrics.time_series.length > 0 ? (
-                // Responsive chart height, taller on desktop
                 <ChartContainer config={chartConfig} className="h-[240px] sm:h-[320px] md:h-[400px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={metrics.time_series}>
@@ -202,7 +196,8 @@ const MessagesOverviewComponent = () => {
                 <div className="flex items-center justify-center h-[180px] sm:h-[320px] text-muted-foreground">
                   <div className="text-center">
                     <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>No data available for the selected date range</p>
+                    <p>No message data available for the selected date range</p>
+                    <p className="text-sm mt-2">Try selecting a different time period or check if campaigns have been sent</p>
                   </div>
                 </div>
               )}
