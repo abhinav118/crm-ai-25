@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -27,10 +27,33 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
     phone: contact.phone || '',
     company: contact.company || '',
     status: contact.status,
-    tags: contact.tags || []
+    tags: contact.tags || [],
+    segment_name: contact.segment_name || ''
   });
   const [isLoading, setIsLoading] = useState(false);
   const [newTag, setNewTag] = useState('');
+  const [availableSegments, setAvailableSegments] = useState<string[]>([]);
+  const [isUpdatingSegment, setIsUpdatingSegment] = useState(false);
+
+  // Fetch available segments on component mount
+  useEffect(() => {
+    fetchAvailableSegments();
+  }, []);
+
+  const fetchAvailableSegments = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('contacts_segments')
+        .select('segment_name');
+      
+      if (error) throw error;
+      
+      const segments = data?.map(s => s.segment_name) || [];
+      setAvailableSegments(segments);
+    } catch (error) {
+      console.error('Error fetching segments:', error);
+    }
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -61,6 +84,107 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
     }
   };
 
+  const handleSegmentUpdate = async () => {
+    if (!formData.segment_name) {
+      toast({
+        title: 'Error',
+        description: 'Please select a segment',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    setIsUpdatingSegment(true);
+    
+    try {
+      // Update the contact's segment_name field
+      const { error: contactError } = await supabase
+        .from('contacts')
+        .update({ segment_name: formData.segment_name })
+        .eq('id', contact.id);
+
+      if (contactError) throw contactError;
+
+      // Remove contact from old segment if it exists
+      if (contact.segment_name && contact.segment_name !== formData.segment_name) {
+        const { error: removeError } = await supabase.rpc('remove_contact_from_segment', {
+          contact_id: contact.id,
+          segment_name: contact.segment_name
+        });
+        
+        if (removeError) {
+          console.error('Error removing from old segment:', removeError);
+        }
+      }
+
+      // Add contact to new segment
+      const contactData = {
+        id: contact.id,
+        first_name: contact.first_name,
+        last_name: contact.last_name,
+        email: contact.email,
+        phone: contact.phone,
+        company: contact.company,
+        status: contact.status,
+        tags: contact.tags,
+        created_at: contact.createdAt,
+        updated_at: new Date().toISOString()
+      };
+
+      const { error: addError } = await supabase.rpc('add_contact_to_segment', {
+        contact_data: contactData,
+        segment_name: formData.segment_name
+      });
+
+      if (addError) {
+        console.error('Error adding to segment:', addError);
+        // Fallback to direct JSONB manipulation
+        const { data: segmentData, error: fetchError } = await supabase
+          .from('contacts_segments')
+          .select('contacts_membership')
+          .eq('segment_name', formData.segment_name)
+          .single();
+
+        if (fetchError) throw fetchError;
+
+        const currentMembers = segmentData?.contacts_membership || [];
+        const updatedMembers = [...currentMembers, contactData];
+
+        const { error: updateError } = await supabase
+          .from('contacts_segments')
+          .update({ contacts_membership: updatedMembers })
+          .eq('segment_name', formData.segment_name);
+
+        if (updateError) throw updateError;
+      }
+
+      // Update local contact data
+      const updatedContact = {
+        ...contact,
+        segment_name: formData.segment_name
+      };
+
+      if (onSave) {
+        onSave(updatedContact as Contact);
+      }
+
+      toast({
+        title: 'Success',
+        description: 'Contact segment updated successfully'
+      });
+
+    } catch (error) {
+      console.error('Error updating segment:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update segment. Please try again.',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsUpdatingSegment(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -75,6 +199,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
         company: formData.company || null,
         status: formData.status,
         tags: formData.tags || [],
+        segment_name: formData.segment_name || null,
         updated_at: currentTime
       };
       
@@ -112,6 +237,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
           company: updateData.company,
           status: updateData.status,
           tags: updateData.tags,
+          segment_name: updateData.segment_name,
           updated_at: currentTime
         };
         
@@ -137,9 +263,10 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
         email: data[0].email || '',
         phone: data[0].phone || '',
         company: data[0].company || '',
-        last_activity: data[0].last_activity || '', // Fixed property name
+        last_activity: data[0].last_activity || '',
         status: data[0].status as 'active' | 'inactive',
         tags: data[0].tags || [],
+        segment_name: data[0].segment_name || '',
         createdAt: data[0].created_at
       };
       
@@ -254,6 +381,35 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
               </Select>
             </div>
             <div>
+              <Label htmlFor="segment">Segment</Label>
+              <div className="flex gap-2">
+                <Select 
+                  value={formData.segment_name} 
+                  onValueChange={(value) => handleSelectChange('segment_name', value)}
+                >
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Select segment" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableSegments.map(segment => (
+                      <SelectItem key={segment} value={segment}>
+                        {segment}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleSegmentUpdate}
+                  disabled={isUpdatingSegment || !formData.segment_name}
+                >
+                  {isUpdatingSegment ? 'Updating...' : 'Update Segment'}
+                </Button>
+              </div>
+            </div>
+            <div>
               <Label htmlFor="tags">Tags</Label>
               <div className="flex flex-wrap gap-2 mb-2">
                 {(formData.tags || []).map(tag => (
@@ -310,9 +466,14 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
               <ProfileItem icon={<Mail className="h-5 w-5" />} label="Email" value={contact.email || 'Not provided'} />
               <ProfileItem icon={<Building className="h-5 w-5" />} label="Company" value={contact.company || 'Not provided'} />
               <ProfileItem 
+                icon={<Award className="h-5 w-5" />} 
+                label="Segment" 
+                value={contact.segment_name || 'No segment assigned'} 
+              />
+              <ProfileItem 
                 icon={<Calendar className="h-5 w-5" />}
                 label="Last Activity" 
-                value={formatDate(contact.last_activity)} // Fixed property name
+                value={formatDate(contact.last_activity)}
               />
               <ProfileItem 
                 icon={<MapPin className="h-5 w-5" />} 
