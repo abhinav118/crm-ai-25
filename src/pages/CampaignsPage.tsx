@@ -21,7 +21,7 @@ const CampaignsPage: React.FC = () => {
             <TabsList className="mb-6">
               <TabsTrigger value="sent">Sent</TabsTrigger>
               <TabsTrigger value="scheduled">Scheduled</TabsTrigger>
-              <TabsTrigger value="under-review">Under Review</TabsTrigger>
+              {/* <TabsTrigger value="under-review">Under Review</TabsTrigger> */}
               <TabsTrigger value="calendar">Calendar</TabsTrigger>
             </TabsList>
 
