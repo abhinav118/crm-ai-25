@@ -43,7 +43,7 @@ const AddContactForm: React.FC<AddContactFormProps> = ({ open, onOpenChange, onS
     }
   });
 
-  // Fetch available segments
+  // Fetch available segments with proper deduplication
   const { data: segments = [] } = useQuery({
     queryKey: ['contact-segments'],
     queryFn: async () => {
@@ -52,14 +52,20 @@ const AddContactForm: React.FC<AddContactFormProps> = ({ open, onOpenChange, onS
       const { data, error } = await supabase
         .from('contacts_segments')
         .select('segment_name')
-        .order('segment_name');
+        .order('segment_name', { ascending: true });
       
       if (error) {
         console.error('Error fetching segments:', error);
         return [];
       }
 
-      return data?.map(item => item.segment_name) || [];
+      // Remove duplicates and ensure values are trimmed
+      const segmentOptions = Array.from(
+        new Set((data ?? []).map(seg => seg.segment_name?.trim()).filter(Boolean))
+      );
+
+      console.log('Processed segment options:', segmentOptions);
+      return segmentOptions;
     },
   });
 
@@ -67,6 +73,14 @@ const AddContactForm: React.FC<AddContactFormProps> = ({ open, onOpenChange, onS
     setIsLoading(true);
     
     try {
+      // Validate segment_name is from the fetched list or UNASSIGNED
+      const validSegments = ['UNASSIGNED', ...segments];
+      const selectedSegment = data.segment_name?.trim() || 'UNASSIGNED';
+      
+      if (!validSegments.includes(selectedSegment)) {
+        throw new Error('Invalid segment selection');
+      }
+
       // Prepare contact data
       const contactData = {
         first_name: data.first_name.trim(),
@@ -75,7 +89,7 @@ const AddContactForm: React.FC<AddContactFormProps> = ({ open, onOpenChange, onS
         phone: data.phone?.trim() || null,
         company: data.company?.trim() || null,
         status: 'active' as const,
-        segment_name: data.segment_name || 'UNASSIGNED',
+        segment_name: selectedSegment,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         tags: []
@@ -113,7 +127,14 @@ const AddContactForm: React.FC<AddContactFormProps> = ({ open, onOpenChange, onS
       queryClient.invalidateQueries({ queryKey: ['contact-segments'] });
       
       // Reset form and close dialog
-      form.reset();
+      form.reset({
+        first_name: '',
+        last_name: '',
+        email: '',
+        phone: '',
+        company: '',
+        segment_name: 'UNASSIGNED'
+      });
       onOpenChange(false);
       
     } catch (error) {
@@ -224,7 +245,11 @@ const AddContactForm: React.FC<AddContactFormProps> = ({ open, onOpenChange, onS
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Segment</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select 
+                    onValueChange={field.onChange} 
+                    value={field.value}
+                    defaultValue="UNASSIGNED"
+                  >
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select a segment" />
