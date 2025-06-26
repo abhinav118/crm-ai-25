@@ -7,14 +7,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Function to personalize message with contact data
-function personalizeMessage(template: string, contact: any) {
-  return template
-    .replace(/{{first_name}}/gi, contact.first_name || contact.name?.split(' ')[0] || 'there')
-    .replace(/{{last_name}}/gi, contact.last_name || contact.name?.split(' ').slice(1).join(' ') || '')
-    .replace(/{{company}}/gi, contact.company || '');
-}
-
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -74,29 +66,28 @@ serve(async (req) => {
     const contacts = segmentData.contacts_membership || [];
     console.log(`Found ${contacts.length} contacts in segment`);
 
-    // Extract and format phone numbers with contact data
-    const contactsWithPhones = contacts
+    // Extract and format phone numbers
+    const phoneNumbers = contacts
       .map(contact => {
         if (!contact.phone) return null;
         
         // Clean phone number (remove all non-digits)
         const cleaned = contact.phone.replace(/\D/g, '');
         
-        let formattedPhone = null;
         // Handle different formats
         if (cleaned.length === 10) {
-          formattedPhone = `+1${cleaned}`;
+          return `+1${cleaned}`;
         } else if (cleaned.length === 11 && cleaned.startsWith('1')) {
-          formattedPhone = `+${cleaned}`;
+          return `+${cleaned}`;
         }
         
-        return formattedPhone ? { ...contact, formattedPhone } : null;
+        return null;
       })
-      .filter(contact => contact !== null);
+      .filter(phone => phone !== null);
 
-    console.log(`Extracted ${contactsWithPhones.length} valid phone numbers`);
+    console.log(`Extracted ${phoneNumbers.length} valid phone numbers`);
 
-    if (contactsWithPhones.length === 0) {
+    if (phoneNumbers.length === 0) {
       return new Response(
         JSON.stringify({ 
           success: false, 
@@ -116,10 +107,10 @@ serve(async (req) => {
     const { error: initUpdateError } = await supabase
       .from('telnyx_campaigns')
       .update({
-        recipients: contactsWithPhones.map(c => c.formattedPhone),
+        recipients: phoneNumbers,
         segment_name: segment_name,
         status: initialStatus,
-        total_count: contactsWithPhones.length,
+        total_count: phoneNumbers.length,
         sent_count: 0,
         error_count: 0,
         progress_percentage: 0
@@ -147,24 +138,20 @@ serve(async (req) => {
       let errorCount = 0;
       const batchSize = 10; // Process 10 messages at a time
       
-      console.log(`Starting background SMS sending for ${contactsWithPhones.length} recipients`);
+      console.log(`Starting background SMS sending for ${phoneNumbers.length} recipients`);
 
-      for (let i = 0; i < contactsWithPhones.length; i += batchSize) {
-        const batch = contactsWithPhones.slice(i, i + batchSize);
+      for (let i = 0; i < phoneNumbers.length; i += batchSize) {
+        const batch = phoneNumbers.slice(i, i + batchSize);
         
         // Process batch
-        for (const contact of batch) {
+        for (const phoneNumber of batch) {
           try {
-            console.log(`Sending SMS to ${contact.formattedPhone}`);
-            
-            // Personalize the message for each contact
-            const personalizedText = personalizeMessage(text, contact);
-            console.log(`Personalized message: ${personalizedText}`);
+            console.log(`Sending SMS to ${phoneNumber}`);
             
             const telnyxPayload = {
-              to: contact.formattedPhone,
+              to: phoneNumber,
               from: fromNumber,
-              text: personalizedText,
+              text: text,
               send_at: send_at ? send_at : undefined,
               ...(media_urls && media_urls.length > 0 && { media_urls })
             };
@@ -182,25 +169,26 @@ serve(async (req) => {
             const responseData = await telnyxResponse.json();
 
             if (!telnyxResponse.ok) {
-              console.error(`Telnyx error for ${contact.formattedPhone}:`, responseData);
+              console.error(`Telnyx error for ${phoneNumber}:`, responseData);
               errorCount++;
             } else {
-              console.log(`SMS sent successfully to ${contact.formattedPhone}:`, responseData.data?.id);
+              console.log(`SMS sent successfully to ${phoneNumber}:`, responseData.data?.id);
               sentCount++;
+              
             }
 
             // Small delay to avoid rate limiting
             await new Promise(resolve => setTimeout(resolve, 100));
 
           } catch (error) {
-            console.error(`Error sending to ${contact.formattedPhone}:`, error.message);
+            console.error(`Error sending to ${phoneNumber}:`, error.message);
             errorCount++;
           }
         }
 
         // Update progress after each batch
         const totalProcessed = sentCount + errorCount;
-        const progressPercentage = Math.round((totalProcessed / contactsWithPhones.length) * 100);
+        const progressPercentage = Math.round((totalProcessed / phoneNumbers.length) * 100);
         
         const { error: progressError } = await supabase
           .from('telnyx_campaigns')
@@ -215,11 +203,11 @@ serve(async (req) => {
           console.error('Error updating progress:', progressError);
         }
 
-        console.log(`Progress: ${totalProcessed}/${contactsWithPhones.length} (${progressPercentage}%)`);
+        console.log(`Progress: ${totalProcessed}/${phoneNumbers.length} (${progressPercentage}%)`);
       }
 
       // Final status update
-      const finalStatus = errorCount === contactsWithPhones.length ? 'failed' : 'completed';
+      const finalStatus = errorCount === phoneNumbers.length ? 'failed' : 'completed';
       const { error: finalError } = await supabase
         .from('telnyx_campaigns')
         .update({
@@ -233,11 +221,10 @@ serve(async (req) => {
       if (finalError) {
         console.error('Error updating final status:', finalError);
       }
-
-      // Insert personalized records into messages table for all campaign recipients
-      const messagesToInsert = contactsWithPhones.map(contact => ({
+      // Insert records into messages table for all campaign recipients
+      const messagesToInsert = segmentData.contacts_membership.map(contact => ({
         contact_id: contact.id,
-        content: personalizeMessage(text, contact), // Store the personalized message
+        content: text, // Using text from the campaign payload
         sender: 'user',
         channel: 'sms',
         sent_at: new Date().toISOString(),
@@ -269,9 +256,8 @@ serve(async (req) => {
         message: send_at ? 'Bulk SMS campaign scheduled successfully' : 'Bulk SMS sending started',
         campaign_id,
         segment_name,
-        total_recipients: contactsWithPhones.length,
+        total_recipients: phoneNumbers.length,
         status: send_at ? 'scheduled' : 'sending',
-        personalization_enabled: true,
         ...(send_at && { scheduled_for: send_at })
       }),
       {
