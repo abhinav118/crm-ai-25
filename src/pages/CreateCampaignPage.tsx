@@ -148,6 +148,24 @@ const CreateCampaignPage: React.FC = () => {
     { label: 'Company', tag: '{{company}}' }
   ];
 
+  // Function to personalize message with contact data
+  const personalizeMessage = (template: string, contact: any) => {
+    return template
+      .replace(/{{first_name}}/gi, contact?.first_name || contact?.name?.split(' ')[0] || 'there')
+      .replace(/{{last_name}}/gi, contact?.last_name || contact?.name?.split(' ').slice(1).join(' ') || '')
+      .replace(/{{company}}/gi, contact?.company || '');
+  };
+
+  // Function to clean unfilled personalization tokens from preview
+  const cleanUnfilledTokens = (text: string) => {
+    return text
+      .replace(/{{first_name}}/gi, '')
+      .replace(/{{last_name}}/gi, '')
+      .replace(/{{company}}/gi, '')
+      .replace(/\s{2,}/g, ' ') // clean double spaces
+      .trim();
+  };
+
   // Load available segments from Supabase
   useEffect(() => {
     const loadSegments = async () => {
@@ -180,7 +198,8 @@ const CreateCampaignPage: React.FC = () => {
   useEffect(() => {
     if (selectedSegment) {
       const segment = availableSegments.find(s => s.name === selectedSegment);
-      setSegmentContactCount(segment?.contactCount || 0);
+      const contactCount = Array.isArray(segment?.contactCount) ? segment.contactCount.length : segment?.contactCount || 0;
+      setSegmentContactCount(contactCount);
     } else {
       setSegmentContactCount(0);
     }
@@ -1238,11 +1257,11 @@ const CreateCampaignPage: React.FC = () => {
                   <Textarea 
                     ref={messageRef}
                     id="message"
-                    placeholder="Type your message here..." 
+                    placeholder="Type your message here... Use {{first_name}}, {{last_name}}, or {{company}} for personalization" 
                     className="border-0 focus-visible:ring-0 resize-none min-h-[120px]"
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
-                    maxLength={160}
+                    maxLength={500}
                   />
                   
                   {/* Attached Image Display */}
@@ -1278,6 +1297,13 @@ const CreateCampaignPage: React.FC = () => {
                     <span>{attachedImage ? 'MMS' : `${getSmsSegments()} SMS segment${getSmsSegments() !== 1 ? 's' : ''}`}</span>
                   </div>
                 </div>
+                
+                {/* Personalization Help Text */}
+                {message.includes('{{') && (
+                  <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded">
+                    💡 Personalization tokens like {{first_name}} will be replaced with actual contact data when sent
+                  </div>
+                )}
               </div>
 
               {/* Schedule Options */}
@@ -1383,7 +1409,7 @@ const CreateCampaignPage: React.FC = () => {
                       <div className="text-xs text-gray-500 text-center mb-2">
                         +1773-389-7839
                       </div>
-                      {message || attachedImage ? (
+                      {(message || attachedImage) ? (
                         <div className="bg-blue-500 text-white p-3 rounded-lg max-w-[85%] text-sm leading-relaxed space-y-2">
                           {attachedImage && (
                             <div className="rounded overflow-hidden">
@@ -1394,7 +1420,7 @@ const CreateCampaignPage: React.FC = () => {
                               />
                             </div>
                           )}
-                          {message && <div>{message}</div>}
+                          {message && <div>{getPreviewMessage()}</div>}
                         </div>
                       ) : (
                         <div className="flex items-center justify-center h-24 text-gray-400 text-xs">
