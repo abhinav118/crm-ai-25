@@ -64,7 +64,8 @@ const CreateCampaignPage: React.FC = () => {
 
   // Get a sample contact from selected segment for preview
   const selectedSegmentData = segments.find(seg => seg.segment_name === selectedSegment);
-  const sampleContact = selectedSegmentData?.contacts_membership?.[0];
+  const contactsMembership = selectedSegmentData?.contacts_membership as any[] | null;
+  const sampleContact = contactsMembership?.[0];
 
   // Prefill form if coming from another page with state
   useEffect(() => {
@@ -205,11 +206,15 @@ const CreateCampaignPage: React.FC = () => {
                       <SelectValue placeholder="Choose a segment" />
                     </SelectTrigger>
                     <SelectContent>
-                      {segments.map((segment) => (
-                        <SelectItem key={segment.segment_name} value={segment.segment_name}>
-                          {segment.segment_name} ({segment.contacts_membership?.length || 0} contacts)
-                        </SelectItem>
-                      ))}
+                      {segments.map((segment) => {
+                        const membershipArray = segment.contacts_membership as any[] | null;
+                        const memberCount = Array.isArray(membershipArray) ? membershipArray.length : 0;
+                        return (
+                          <SelectItem key={segment.segment_name} value={segment.segment_name}>
+                            {segment.segment_name} ({memberCount} contacts)
+                          </SelectItem>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
                 </div>
@@ -227,9 +232,9 @@ const CreateCampaignPage: React.FC = () => {
                   <div className="mt-2 text-sm text-gray-600">
                     <p>Available personalization tokens:</p>
                     <ul className="list-disc list-inside mt-1">
-                      <li><code>{{first_name}}</code> - Contact's first name (defaults to "there")</li>
-                      <li><code>{{last_name}}</code> - Contact's last name</li>
-                      <li><code>{{company}}</code> - Contact's company</li>
+                      <li><code>{`{{first_name}}`}</code> - Contact's first name (defaults to "there")</li>
+                      <li><code>{`{{last_name}}`}</code> - Contact's last name</li>
+                      <li><code>{`{{company}}`}</code> - Contact's company</li>
                     </ul>
                   </div>
                 </div>
@@ -382,7 +387,7 @@ const CreateCampaignPage: React.FC = () => {
                     <div className="flex justify-between">
                       <span>Recipients:</span>
                       <span className="font-semibold">
-                        {selectedSegmentData?.contacts_membership?.length || 0}
+                        {Array.isArray(contactsMembership) ? contactsMembership.length : 0}
                       </span>
                     </div>
                     <div className="flex justify-between">
