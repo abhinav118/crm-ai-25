@@ -184,7 +184,7 @@ serve(async (req) => {
             });
 
             const responseData = await telnyxResponse.json();
-
+            console.log(">>telnyx response :",JSON.stringify(responseData));
             if (!telnyxResponse.ok) {
               console.error(`Telnyx error for ${contact.formattedPhone}:`, responseData);
               errorCount++;
