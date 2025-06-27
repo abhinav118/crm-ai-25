@@ -125,7 +125,8 @@ serve(async (req) => {
         total_count: contactsWithPhones.length,
         sent_count: 0,
         error_count: 0,
-        progress_percentage: 0
+        progress_percentage: 0,
+        errors: []
       })
       .eq('id', campaign_id);
     
@@ -148,6 +149,7 @@ serve(async (req) => {
       const fromNumber = from || '+17733897839';
       let sentCount = 0;
       let errorCount = 0;
+      const errors: Array<{error_details: string, phone_number: string, contact_id: string}> = [];
       const batchSize = 10; // Process 10 messages at a time
       
       console.log(`Starting background SMS sending for ${contactsWithPhones.length} recipients`);
@@ -186,6 +188,13 @@ serve(async (req) => {
             if (!telnyxResponse.ok) {
               console.error(`Telnyx error for ${contact.formattedPhone}:`, responseData);
               errorCount++;
+              
+              // Store detailed error information
+              errors.push({
+                error_details: responseData.errors?.[0]?.detail || responseData.message || 'Unknown Telnyx API error',
+                phone_number: contact.formattedPhone,
+                contact_id: contact.id || 'unknown'
+              });
             } else {
               console.log(`SMS sent successfully to ${contact.formattedPhone}:`, responseData.data?.id);
               sentCount++;
@@ -197,6 +206,13 @@ serve(async (req) => {
           } catch (error) {
             console.error(`Error sending to ${contact.formattedPhone}:`, error.message);
             errorCount++;
+            
+            // Store detailed error information
+            errors.push({
+              error_details: error.message || 'Failed to send SMS',
+              phone_number: contact.formattedPhone,
+              contact_id: contact.id || 'unknown'
+            });
           }
         }
 
@@ -209,7 +225,8 @@ serve(async (req) => {
           .update({
             sent_count: sentCount,
             error_count: errorCount,
-            progress_percentage: progressPercentage
+            progress_percentage: progressPercentage,
+            errors: errors
           })
           .eq('id', campaign_id);
 
@@ -228,7 +245,8 @@ serve(async (req) => {
           status: finalStatus,
           progress_percentage: 100,
           sent_count: sentCount,
-          error_count: errorCount
+          error_count: errorCount,
+          errors: errors
         })
         .eq('id', campaign_id);
 
@@ -253,7 +271,7 @@ serve(async (req) => {
         console.error('Error inserting campaign messages:', messagesError);
       }
 
-      console.log(`Bulk SMS completed: ${sentCount} sent, ${errorCount} failed`);
+      console.log(`Bulk SMS completed: ${sentCount} sent, ${errorCount} failed, ${errors.length} errors logged`);
     };
 
     // Use EdgeRuntime.waitUntil to run the background process

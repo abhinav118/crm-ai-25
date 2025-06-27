@@ -1,10 +1,11 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CalendarIcon, Search, MessageSquare, Users, Eye, Plus, Image as ImageIcon } from 'lucide-react';
+import { CalendarIcon, Search, MessageSquare, Users, Eye, Plus, Image as ImageIcon, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { DateRange } from 'react-day-picker';
@@ -13,6 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useSentTelnyxCampaigns, TelnyxCampaign } from '@/hooks/useTelnyxCampaigns';
 import { toast } from '@/hooks/use-toast';
 import { CampaignProgressDialog } from './CampaignProgressDialog';
+import { CampaignErrorsDialog } from './CampaignErrorsDialog';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
@@ -65,8 +67,10 @@ const SentCampaignsView: React.FC = () => {
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [selectedSegment, setSelectedSegment] = useState('all');
   const [progressDialogOpen, setProgressDialogOpen] = useState(false);
+  const [errorsDialogOpen, setErrorsDialogOpen] = useState(false);
   const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null);
   const [selectedCampaignName, setSelectedCampaignName] = useState<string>('');
+  const [selectedCampaignErrors, setSelectedCampaignErrors] = useState<any[]>([]);
   
   const navigate = useNavigate();
 
@@ -168,6 +172,12 @@ const SentCampaignsView: React.FC = () => {
     setProgressDialogOpen(true);
   };
 
+  const handleViewErrors = (campaign: TelnyxCampaign) => {
+    setSelectedCampaignName(campaign.campaign_name);
+    setSelectedCampaignErrors(campaign.errors || []);
+    setErrorsDialogOpen(true);
+  };
+
   const renderProgressCell = (campaign: TelnyxCampaign) => {
     if (campaign.progress_percentage < 100 && (campaign.status === 'sending' || campaign.status === 'scheduled')) {
       return (
@@ -204,6 +214,27 @@ const SentCampaignsView: React.FC = () => {
       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
         {campaign.status}
       </span>
+    );
+  };
+
+  const renderErrorsCell = (campaign: TelnyxCampaign) => {
+    const errorCount = campaign.error_count || 0;
+    const errors = campaign.errors || [];
+    
+    if (errorCount === 0) {
+      return <span className="text-sm text-gray-500">No errors</span>;
+    }
+    
+    return (
+      <Button
+        variant="link"
+        size="sm"
+        onClick={() => handleViewErrors(campaign)}
+        className="text-red-600 hover:text-red-700 font-medium flex items-center gap-1 p-0"
+      >
+        <AlertCircle className="w-4 h-4" />
+        {errorCount} Error{errorCount !== 1 ? 's' : ''}
+      </Button>
     );
   };
 
@@ -368,6 +399,7 @@ const SentCampaignsView: React.FC = () => {
                 <TableHead>Sent Date</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Progress</TableHead>
+                <TableHead>Errors</TableHead>
                 <TableHead>Message</TableHead>
               </TableRow>
             </TableHeader>
@@ -384,6 +416,7 @@ const SentCampaignsView: React.FC = () => {
                   <TableCell>{campaign.created_at ? format(new Date(campaign.created_at), 'MMM d, yyyy, h:mm a') : ''}</TableCell>
                   <TableCell>{renderStatusCell(campaign)}</TableCell>
                   <TableCell>{renderProgressCell(campaign)}</TableCell>
+                  <TableCell>{renderErrorsCell(campaign)}</TableCell>
                   <TableCell>
                     <MessageCell
                       message={campaign.message}
@@ -430,11 +463,19 @@ const SentCampaignsView: React.FC = () => {
           </div>
         </div>
       )}
+      
       <CampaignProgressDialog
         isOpen={progressDialogOpen}
         onClose={() => setProgressDialogOpen(false)}
         campaignId={selectedCampaignId}
         campaignName={selectedCampaignName}
+      />
+      
+      <CampaignErrorsDialog
+        isOpen={errorsDialogOpen}
+        onClose={() => setErrorsDialogOpen(false)}
+        campaignName={selectedCampaignName}
+        errors={selectedCampaignErrors}
       />
     </div>
   );

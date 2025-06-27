@@ -21,6 +21,11 @@ export interface TelnyxCampaign {
   error_count?: number;
   repeat_frequency?: string | null;
   repeat_days?: string[] | null;
+  errors?: Array<{
+    error_details: string;
+    phone_number: string;
+    contact_id: string;
+  }>;
   [key: string]: any;
 }
 
@@ -67,7 +72,7 @@ export function useSentTelnyxCampaigns() {
       const { data, error } = await supabase
         .from('telnyx_campaigns')
         .select('*')
-        .in('status', ['sent', 'completed', 'failed'])
+        .in('status', ['sent', 'completed', 'failed', 'sending'])
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data as TelnyxCampaign[];

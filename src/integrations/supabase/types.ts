@@ -922,6 +922,7 @@ export type Database = {
           campaign_name: string
           created_at: string | null
           error_count: number | null
+          errors: Json | null
           id: string
           media_url: string | null
           message: string
@@ -941,6 +942,7 @@ export type Database = {
           campaign_name: string
           created_at?: string | null
           error_count?: number | null
+          errors?: Json | null
           id?: string
           media_url?: string | null
           message: string
@@ -960,6 +962,7 @@ export type Database = {
           campaign_name?: string
           created_at?: string | null
           error_count?: number | null
+          errors?: Json | null
           id?: string
           media_url?: string | null
           message?: string
