@@ -21,13 +21,15 @@ export const useConversations = (filterStatus: 'open' | 'closed', sortOrder: 'ne
             email,
             created_at,
             updated_at,
-            messages!inner (
+            messages (
               id,
               content,
               sender,
               sent_at,
               channel,
-              contact_id
+              contact_id,
+              direction,
+              is_read
             )
           `)
           .order('updated_at', { ascending: false })
@@ -46,39 +48,43 @@ export const useConversations = (filterStatus: 'open' | 'closed', sortOrder: 'ne
         console.log(`Found ${contactsWithMessages.length} contacts with messages`);
 
         // Transform data to match our Conversation interface
-        const conversations: Conversation[] = contactsWithMessages.map(contact => {
-          // Get the latest message for this contact
-          const messages = contact.messages || [];
-          const sortedMessages = messages.sort((a, b) => 
-            new Date(b.sent_at).getTime() - new Date(a.sent_at).getTime()
-          );
-          const lastMessage = sortedMessages[0] || null;
+        const conversations: Conversation[] = contactsWithMessages
+          .filter(contact => contact.messages && contact.messages.length > 0)
+          .map(contact => {
+            // Get the latest message for this contact
+            const messages = contact.messages || [];
+            const sortedMessages = messages.sort((a, b) => 
+              new Date(b.sent_at).getTime() - new Date(a.sent_at).getTime()
+            );
+            const lastMessage = sortedMessages[0] || null;
 
-          // Count unread messages (messages from contact)
-          const unreadCount = messages.filter(msg => msg.sender === 'contact').length;
+            // Count unread inbound messages
+            const unreadCount = messages.filter(msg => 
+              msg.direction === 'inbound' && !msg.is_read
+            ).length;
 
-          return {
-            contact: {
-              id: contact.id,
-              first_name: contact.first_name,
-              last_name: contact.last_name,
-              phone: contact.phone,
-              email: contact.email,
-              created_at: contact.created_at,
-              updated_at: contact.updated_at
-            },
-            lastMessage: lastMessage ? {
-              id: lastMessage.id,
-              contact_id: lastMessage.contact_id,
-              content: lastMessage.content,
-              sender: lastMessage.sender as 'user' | 'contact',
-              sent_at: lastMessage.sent_at,
-              channel: lastMessage.channel
-            } : null,
-            unreadCount,
-            assignedTo: null // Will be enhanced when assignment logic is added
-          };
-        });
+            return {
+              contact: {
+                id: contact.id,
+                first_name: contact.first_name,
+                last_name: contact.last_name,
+                phone: contact.phone,
+                email: contact.email,
+                created_at: contact.created_at,
+                updated_at: contact.updated_at
+              },
+              lastMessage: lastMessage ? {
+                id: lastMessage.id,
+                contact_id: lastMessage.contact_id,
+                content: lastMessage.content,
+                sender: lastMessage.sender as 'user' | 'contact',
+                sent_at: lastMessage.sent_at,
+                channel: lastMessage.channel
+              } : null,
+              unreadCount,
+              assignedTo: null // Will be enhanced when assignment logic is added
+            };
+          });
 
         // Filter conversations based on status (for now, all are considered 'open')
         const filteredConversations = conversations.filter(conv => {

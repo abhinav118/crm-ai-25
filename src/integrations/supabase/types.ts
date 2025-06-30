@@ -508,7 +508,9 @@ export type Database = {
           channel: string
           contact_id: string
           content: string
+          direction: string | null
           id: string
+          is_read: boolean | null
           sender: string
           sent_at: string
         }
@@ -516,7 +518,9 @@ export type Database = {
           channel?: string
           contact_id: string
           content: string
+          direction?: string | null
           id?: string
+          is_read?: boolean | null
           sender: string
           sent_at?: string
         }
@@ -524,7 +528,9 @@ export type Database = {
           channel?: string
           contact_id?: string
           content?: string
+          direction?: string | null
           id?: string
+          is_read?: boolean | null
           sender?: string
           sent_at?: string
         }
