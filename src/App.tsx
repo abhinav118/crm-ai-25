@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -14,7 +15,6 @@ import AiCrm from "./pages/AiCrm";
 import ReportingPage from "./pages/ReportingPage";
 import Settings from "./pages/Settings";
 import Inbox from "./pages/Inbox";
-import AIChat from "./components/AIChat";
 
 // Configure QueryClient with better error handling
 const queryClient = new QueryClient({
@@ -68,7 +68,6 @@ const App = () => {
           </div>
           <Toaster />
           <Sonner />
-          <AIChat />
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>

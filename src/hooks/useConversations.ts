@@ -3,39 +3,50 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { Conversation } from '@/pages/Inbox';
 
-export const useConversations = (filterStatus: string, sortOrder: 'newest' | 'oldest') => {
+export const useConversations = (filterStatus: 'open' | 'closed', sortOrder: 'newest' | 'oldest') => {
   return useQuery({
     queryKey: ['conversations', filterStatus, sortOrder],
     queryFn: async (): Promise<Conversation[]> => {
-      console.log('Fetching conversations with single optimized query...');
+      console.log('Fetching conversations with optimized query...');
       
       try {
-        // Single optimized query using window functions to get contacts with their latest messages
+        // Single optimized query to get contacts with messages
         const { data: conversationData, error } = await supabase
-          .from('contacts')
-          .select(`
-            id,
-            first_name,
-            last_name,
-            phone,
-            email,
-            created_at,
-            updated_at,
-            messages!inner (
-              id,
-              content,
-              sender,
-              sent_at,
-              channel,
-              contact_id
-            )
-          `)
-          .order('updated_at', { ascending: false })
-          .limit(100); // Limit to first 100 conversations for performance
+          .rpc('get_conversations_with_messages')
+          .limit(100); // Limit for performance
 
         if (error) {
-          console.error('Error fetching conversations:', error);
-          throw error;
+          console.log('RPC function not available, falling back to manual query');
+          
+          // Fallback to manual query if RPC doesn't exist
+          const { data: fallbackData, error: fallbackError } = await supabase
+            .from('contacts')
+            .select(`
+              id,
+              first_name,
+              last_name,
+              phone,
+              email,
+              created_at,
+              updated_at,
+              messages!inner (
+                id,
+                content,
+                sender,
+                sent_at,
+                channel,
+                contact_id
+              )
+            `)
+            .order('updated_at', { ascending: false })
+            .limit(100);
+
+          if (fallbackError) {
+            console.error('Error fetching conversations:', fallbackError);
+            throw fallbackError;
+          }
+
+          conversationData = fallbackData;
         }
 
         if (!conversationData || conversationData.length === 0) {
@@ -80,24 +91,31 @@ export const useConversations = (filterStatus: string, sortOrder: 'newest' | 'ol
           };
         });
 
+        // Filter conversations based on status (for now, all are considered 'open')
+        const filteredConversations = conversations.filter(conv => {
+          if (filterStatus === 'open') return true; // Show all for now
+          if (filterStatus === 'closed') return false; // No closed conversations yet
+          return true;
+        });
+
         // Sort conversations by last message time
-        conversations.sort((a, b) => {
+        filteredConversations.sort((a, b) => {
           const aTime = a.lastMessage ? new Date(a.lastMessage.sent_at).getTime() : 0;
           const bTime = b.lastMessage ? new Date(b.lastMessage.sent_at).getTime() : 0;
           
           return sortOrder === 'newest' ? bTime - aTime : aTime - bTime;
         });
 
-        console.log(`Successfully fetched ${conversations.length} conversations`);
+        console.log(`Successfully fetched ${filteredConversations.length} conversations`);
         
-        return conversations;
+        return filteredConversations;
 
       } catch (error) {
         console.error('Fatal error in useConversations:', error);
         throw error;
       }
     },
-    refetchInterval: 30000, // Refetch every 30 seconds instead of 5 for better performance
+    refetchInterval: 30000, // Refetch every 30 seconds
     staleTime: 10000, // Consider data stale after 10 seconds
   });
 };

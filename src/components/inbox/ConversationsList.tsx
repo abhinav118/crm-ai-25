@@ -11,8 +11,8 @@ import { format } from 'date-fns';
 interface ConversationsListProps {
   selectedContactId: string | null;
   onSelectContact: (contactId: string) => void;
-  filterStatus: 'open' | 'snoozed' | 'closed';
-  onFilterChange: (status: 'open' | 'snoozed' | 'closed') => void;
+  filterStatus: 'open' | 'closed';
+  onFilterChange: (status: 'open' | 'closed') => void;
   sortOrder: 'newest' | 'oldest';
   onSortChange: (order: 'newest' | 'oldest') => void;
 }
@@ -69,13 +69,6 @@ export const ConversationsList: React.FC<ConversationsListProps> = ({
             onClick={() => onFilterChange('open')}
           >
             OPEN
-          </Button>
-          <Button
-            variant={filterStatus === 'snoozed' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => onFilterChange('snoozed')}
-          >
-            SNOOZED
           </Button>
           <Button
             variant={filterStatus === 'closed' ? 'default' : 'outline'}
