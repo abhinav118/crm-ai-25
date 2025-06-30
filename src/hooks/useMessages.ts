@@ -22,7 +22,12 @@ export const useMessages = (contactId: string) => {
       }
 
       console.log('Fetched messages:', data?.length || 0);
-      return data || [];
+      
+      // Type cast the database results to match our Message interface
+      return (data || []).map(msg => ({
+        ...msg,
+        sender: msg.sender as 'user' | 'contact'
+      }));
     },
     enabled: !!contactId,
   });

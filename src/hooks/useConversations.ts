@@ -43,7 +43,10 @@ export const useConversations = (filterStatus: string, sortOrder: 'newest' | 'ol
         if (lastMessage) {
           conversations.push({
             contact,
-            lastMessage,
+            lastMessage: {
+              ...lastMessage,
+              sender: lastMessage.sender as 'user' | 'contact'
+            },
             unreadCount: unreadCount || 0,
             assignedTo: null // Will be enhanced when assignment logic is added
           });
