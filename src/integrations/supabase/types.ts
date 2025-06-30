@@ -267,50 +267,6 @@ export type Database = {
         }
         Relationships: []
       }
-      conversations: {
-        Row: {
-          assigned_at: string | null
-          assigned_to: string | null
-          contact_id: string
-          created_at: string
-          id: string
-          last_message_at: string | null
-          notes: string | null
-          status: string
-          updated_at: string
-        }
-        Insert: {
-          assigned_at?: string | null
-          assigned_to?: string | null
-          contact_id: string
-          created_at?: string
-          id?: string
-          last_message_at?: string | null
-          notes?: string | null
-          status?: string
-          updated_at?: string
-        }
-        Update: {
-          assigned_at?: string | null
-          assigned_to?: string | null
-          contact_id?: string
-          created_at?: string
-          id?: string
-          last_message_at?: string | null
-          notes?: string | null
-          status?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "conversations_contact_id_fkey"
-            columns: ["contact_id"]
-            isOneToOne: true
-            referencedRelation: "contacts"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       favorite_recipes: {
         Row: {
           calories: number | null
