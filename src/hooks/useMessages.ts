@@ -10,24 +10,30 @@ export const useMessages = (contactId: string) => {
     queryFn: async (): Promise<Message[]> => {
       console.log('Fetching messages for contact:', contactId);
       
-      const { data, error } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('contact_id', contactId)
-        .order('sent_at', { ascending: true });
+      try {
+        const { data, error } = await supabase
+          .from('messages')
+          .select('*')
+          .eq('contact_id', contactId)
+          .order('sent_at', { ascending: true });
 
-      if (error) {
-        console.error('Error fetching messages:', error);
+        if (error) {
+          console.error('Error fetching messages:', error);
+          throw error;
+        }
+
+        console.log(`Fetched ${data?.length || 0} messages for contact ${contactId}`);
+        
+        // Type cast the database results to match our Message interface
+        return (data || []).map(msg => ({
+          ...msg,
+          sender: msg.sender as 'user' | 'contact'
+        }));
+        
+      } catch (error) {
+        console.error('Fatal error in useMessages:', error);
         throw error;
       }
-
-      console.log('Fetched messages:', data?.length || 0);
-      
-      // Type cast the database results to match our Message interface
-      return (data || []).map(msg => ({
-        ...msg,
-        sender: msg.sender as 'user' | 'contact'
-      }));
     },
     enabled: !!contactId,
   });

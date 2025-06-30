@@ -24,13 +24,27 @@ export const ConversationsList: React.FC<ConversationsListProps> = ({
   sortOrder,
   onSortChange,
 }) => {
-  const { data: conversations = [], isLoading } = useConversations(filterStatus, sortOrder);
+  const { data: conversations = [], isLoading, error } = useConversations(filterStatus, sortOrder);
 
   const handleTakeConversation = (contactId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     // TODO: Implement assignment logic
     console.log('Taking conversation:', contactId);
   };
+
+  if (error) {
+    console.error('Error in ConversationsList:', error);
+    return (
+      <div className="p-4">
+        <div className="text-center text-red-500">
+          <p>Error loading conversations</p>
+          <p className="text-sm text-gray-500 mt-2">
+            {error instanceof Error ? error.message : 'Unknown error'}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -91,7 +105,10 @@ export const ConversationsList: React.FC<ConversationsListProps> = ({
       <div className="flex-1 overflow-y-auto">
         {conversations.length === 0 ? (
           <div className="p-4 text-center text-gray-500">
-            No conversations found
+            <div className="space-y-2">
+              <p>No conversations found</p>
+              <p className="text-sm">Conversations will appear here when you have messages with your contacts.</p>
+            </div>
           </div>
         ) : (
           conversations.map((conversation) => (
@@ -119,9 +136,13 @@ export const ConversationsList: React.FC<ConversationsListProps> = ({
                     {conversation.contact.phone}
                   </p>
                   
-                  {conversation.lastMessage && (
+                  {conversation.lastMessage ? (
                     <p className="text-sm text-gray-700 truncate mb-2">
                       {conversation.lastMessage.content}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-gray-400 italic truncate mb-2">
+                      No messages yet
                     </p>
                   )}
                   
