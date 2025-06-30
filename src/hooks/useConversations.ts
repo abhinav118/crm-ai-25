@@ -7,57 +7,46 @@ export const useConversations = (filterStatus: 'open' | 'closed', sortOrder: 'ne
   return useQuery({
     queryKey: ['conversations', filterStatus, sortOrder],
     queryFn: async (): Promise<Conversation[]> => {
-      console.log('Fetching conversations with optimized query...');
+      console.log('Fetching conversations...');
       
       try {
-        // Single optimized query to get contacts with messages
-        const { data: conversationData, error } = await supabase
-          .rpc('get_conversations_with_messages')
-          .limit(100); // Limit for performance
+        // Get contacts with their messages using a single query
+        const { data: contactsWithMessages, error } = await supabase
+          .from('contacts')
+          .select(`
+            id,
+            first_name,
+            last_name,
+            phone,
+            email,
+            created_at,
+            updated_at,
+            messages!inner (
+              id,
+              content,
+              sender,
+              sent_at,
+              channel,
+              contact_id
+            )
+          `)
+          .order('updated_at', { ascending: false })
+          .limit(100);
 
         if (error) {
-          console.log('RPC function not available, falling back to manual query');
-          
-          // Fallback to manual query if RPC doesn't exist
-          const { data: fallbackData, error: fallbackError } = await supabase
-            .from('contacts')
-            .select(`
-              id,
-              first_name,
-              last_name,
-              phone,
-              email,
-              created_at,
-              updated_at,
-              messages!inner (
-                id,
-                content,
-                sender,
-                sent_at,
-                channel,
-                contact_id
-              )
-            `)
-            .order('updated_at', { ascending: false })
-            .limit(100);
-
-          if (fallbackError) {
-            console.error('Error fetching conversations:', fallbackError);
-            throw fallbackError;
-          }
-
-          conversationData = fallbackData;
+          console.error('Error fetching conversations:', error);
+          throw error;
         }
 
-        if (!conversationData || conversationData.length === 0) {
+        if (!contactsWithMessages || contactsWithMessages.length === 0) {
           console.log('No conversations found');
           return [];
         }
 
-        console.log(`Found ${conversationData.length} contacts with messages`);
+        console.log(`Found ${contactsWithMessages.length} contacts with messages`);
 
         // Transform data to match our Conversation interface
-        const conversations: Conversation[] = conversationData.map(contact => {
+        const conversations: Conversation[] = contactsWithMessages.map(contact => {
           // Get the latest message for this contact
           const messages = contact.messages || [];
           const sortedMessages = messages.sort((a, b) => 
