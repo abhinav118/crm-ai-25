@@ -1,11 +1,10 @@
-
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { Link, useLocation } from 'react-router-dom';
 import { 
   Grid, 
   User, 
-  Clock, 
+  MessageSquare,
   Archive, 
   List, 
   Settings,
@@ -51,13 +50,13 @@ const Sidebar: React.FC<SidebarProps> = ({
             collapsed={true}
             active={isActive('/contacts')}
           />
-          {/* <SidebarLink 
-            icon={<Clock size={20} />} 
+          <SidebarLink 
+            icon={<MessageSquare size={20} />} 
             label="Conversations" 
-            to="/conversations" 
+            to="/inbox" 
             collapsed={true}
-            active={isActive('/conversations')}
-          /> */}
+            active={isActive('/inbox')}
+          />
           <SidebarLink 
             icon={<Archive size={20} />} 
             label="Campaigns" 
@@ -117,12 +116,12 @@ const Sidebar: React.FC<SidebarProps> = ({
             to="/contacts" 
             active={isActive('/contacts')}
           />
-          {/* <SidebarLink 
-            icon={<Clock size={20} />} 
+          <SidebarLink 
+            icon={<MessageSquare size={20} />} 
             label="Conversations" 
-            to="/conversations" 
-            active={isActive('/conversations')}
-          /> */}
+            to="/inbox" 
+            active={isActive('/inbox')}
+          />
           <SidebarLink 
             icon={<Archive size={20} />} 
             label="Campaigns" 
