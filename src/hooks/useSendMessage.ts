@@ -6,50 +6,77 @@ interface SendMessageProps {
   contactId: string;
   content: string;
   channel: 'sms' | 'chat';
+  contactPhone?: string;
 }
 
 export const useSendMessage = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ contactId, content, channel }: SendMessageProps) => {
-      console.log('Sending message:', { contactId, content, channel });
+    mutationFn: async ({ contactId, content, channel, contactPhone }: SendMessageProps) => {
+      console.log('Sending message:', { contactId, content, channel, contactPhone });
 
-      // Insert message into database
-      const { data, error } = await supabase
+      // First insert message into database as outbound and read
+      const { data: messageData, error: messageError } = await supabase
         .from('messages')
         .insert({
           contact_id: contactId,
           content,
           sender: 'user',
-          channel
+          channel,
+          direction: 'outbound',
+          is_read: true
         })
         .select()
         .single();
 
-      if (error) {
-        console.error('Error sending message:', error);
-        throw error;
+      if (messageError) {
+        console.error('Error saving message to database:', messageError);
+        throw messageError;
       }
 
-      // If SMS enabled, also send via Telnyx (would integrate with existing SMS logic)
-      if (channel === 'sms') {
+      // If SMS and we have a phone number, send via Telnyx
+      if (channel === 'sms' && contactPhone) {
         try {
-          // This would call the existing Telnyx integration
-          console.log('Would send SMS via Telnyx integration');
+          console.log('Sending SMS via Telnyx to:', contactPhone);
+          
+          const { data: telnyxResponse, error: telnyxError } = await supabase.functions.invoke('send-via-telnyx', {
+            body: {
+              // Use the default Telnyx number from environment
+              to: contactPhone,
+              text: content,
+              schedule_type: 'now'
+            }
+          });
+
+          console.log('Telnyx response:', telnyxResponse);
+
+          if (telnyxError) {
+            console.error('Telnyx error:', telnyxError);
+            throw new Error(`Failed to send SMS: ${telnyxError.message}`);
+          }
+
+          if (telnyxResponse && !telnyxResponse.success) {
+            console.error('Telnyx API error:', telnyxResponse.error);
+            throw new Error(`Telnyx API error: ${telnyxResponse.error || 'Unknown error'}`);
+          }
+
+          console.log('SMS sent successfully via Telnyx');
         } catch (smsError) {
-          console.error('SMS sending failed, but message saved to database:', smsError);
+          console.error('SMS sending failed:', smsError);
+          // Don't throw here - message is already saved to database
+          // Just log the error and continue
         }
       }
 
-      return data;
+      return messageData;
     },
     onSuccess: (data, variables) => {
-      // Invalidate and refetch messages
+      // Invalidate and refetch messages and conversations
       queryClient.invalidateQueries({ queryKey: ['messages', variables.contactId] });
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
       
-      console.log('Message sent successfully:', data);
+      console.log('Message sent and saved successfully:', data);
     },
     onError: (error) => {
       console.error('Failed to send message:', error);

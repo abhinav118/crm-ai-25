@@ -27,7 +27,9 @@ export const useConversations = (filterStatus: 'open' | 'closed', sortOrder: 'ne
               sender,
               sent_at,
               channel,
-              contact_id
+              contact_id,
+              is_read,
+              direction
             )
           `)
           .order('updated_at', { ascending: false })
@@ -54,8 +56,10 @@ export const useConversations = (filterStatus: 'open' | 'closed', sortOrder: 'ne
           );
           const lastMessage = sortedMessages[0] || null;
 
-          // Count unread messages (messages from contact)
-          const unreadCount = messages.filter(msg => msg.sender === 'contact').length;
+          // Count unread inbound messages only (don't show alerts for outbound messages)
+          const unreadCount = messages.filter(msg => 
+            msg.direction === 'inbound' && !msg.is_read
+          ).length;
 
           return {
             contact: {

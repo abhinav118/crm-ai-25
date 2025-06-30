@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useConversations } from '@/hooks/useConversations';
+import { useMarkMessagesRead } from '@/hooks/useMarkMessagesRead';
 import { getFullName } from '@/utils/contactHelpers';
 import { format } from 'date-fns';
 
@@ -26,11 +27,24 @@ export const ConversationsList: React.FC<ConversationsListProps> = ({
   onSortChange,
 }) => {
   const { data: conversations = [], isLoading, error, isError } = useConversations(filterStatus, sortOrder);
+  const markMessagesRead = useMarkMessagesRead();
 
   const handleTakeConversation = (contactId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     // TODO: Implement assignment logic
     console.log('Taking conversation:', contactId);
+  };
+
+  const handleSelectContact = async (contactId: string) => {
+    // Mark messages as read when conversation is opened
+    try {
+      await markMessagesRead.mutateAsync(contactId);
+    } catch (error) {
+      console.error('Failed to mark messages as read:', error);
+    }
+    
+    // Select the contact
+    onSelectContact(contactId);
   };
 
   if (isError) {
@@ -124,7 +138,7 @@ export const ConversationsList: React.FC<ConversationsListProps> = ({
                 className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
                   selectedContactId === conversation.contact.id ? 'bg-blue-50 border-blue-200' : ''
                 }`}
-                onClick={() => onSelectContact(conversation.contact.id)}
+                onClick={() => handleSelectContact(conversation.contact.id)}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
