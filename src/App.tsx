@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -14,6 +13,7 @@ import CreateCampaignPage from "./pages/CreateCampaignPage";
 import AiCrm from "./pages/AiCrm";
 import ReportingPage from "./pages/ReportingPage";
 import Settings from "./pages/Settings";
+import Inbox from "./pages/Inbox";
 import AIChat from "./components/AIChat";
 
 // Configure QueryClient with better error handling
@@ -57,6 +57,7 @@ const App = () => {
               <Route path="/" element={<Index />} />
               <Route path="/contacts" element={<Index />} />
               <Route path="/conversations" element={<Index />} />
+              <Route path="/inbox" element={<Inbox />} />
               <Route path="/campaigns" element={<CampaignsPage />} />
               <Route path="/campaigns/create" element={<CreateCampaignPage />} />
               <Route path="/reporting" element={<ReportingPage />} />
