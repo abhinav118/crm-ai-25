@@ -19,6 +19,7 @@ export const useConversations = (filterStatus: string, sortOrder: 'newest' | 'ol
             last_name,
             phone,
             email,
+            created_at,
             updated_at
           `)
           .order('updated_at', { ascending: false });

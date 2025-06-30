@@ -9,6 +9,8 @@ export interface Contact {
   last_name: string | null;
   phone: string | null;
   email: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Message {
