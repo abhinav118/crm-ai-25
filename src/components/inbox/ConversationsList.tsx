@@ -5,7 +5,6 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useConversations } from '@/hooks/useConversations';
-import { useMarkMessagesRead } from '@/hooks/useMarkMessagesRead';
 import { getFullName } from '@/utils/contactHelpers';
 import { format } from 'date-fns';
 
@@ -27,13 +26,6 @@ export const ConversationsList: React.FC<ConversationsListProps> = ({
   onSortChange,
 }) => {
   const { data: conversations = [], isLoading, error, isError } = useConversations(filterStatus, sortOrder);
-  const { mutate: markMessagesRead } = useMarkMessagesRead();
-
-  const handleSelectContact = (contactId: string) => {
-    // Mark messages as read when conversation is opened
-    markMessagesRead(contactId);
-    onSelectContact(contactId);
-  };
 
   const handleTakeConversation = (contactId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -132,7 +124,7 @@ export const ConversationsList: React.FC<ConversationsListProps> = ({
                 className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
                   selectedContactId === conversation.contact.id ? 'bg-blue-50 border-blue-200' : ''
                 }`}
-                onClick={() => handleSelectContact(conversation.contact.id)}
+                onClick={() => onSelectContact(conversation.contact.id)}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
@@ -141,8 +133,8 @@ export const ConversationsList: React.FC<ConversationsListProps> = ({
                         {getFullName(conversation.contact)}
                       </h3>
                       {conversation.unreadCount > 0 && (
-                        <Badge variant="destructive" className="text-xs flex items-center gap-1">
-                          🔴 {conversation.unreadCount}
+                        <Badge variant="destructive" className="text-xs">
+                          {conversation.unreadCount}
                         </Badge>
                       )}
                     </div>

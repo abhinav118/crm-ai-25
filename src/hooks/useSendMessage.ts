@@ -22,9 +22,7 @@ export const useSendMessage = () => {
           contact_id: contactId,
           content,
           sender: 'user',
-          channel,
-          direction: 'outbound',
-          is_read: true // Outbound messages are always considered "read"
+          channel
         })
         .select()
         .single();
