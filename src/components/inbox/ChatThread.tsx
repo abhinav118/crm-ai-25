@@ -34,8 +34,8 @@ const ChatThread: React.FC<ChatThreadProps> = ({ conversation, onClose }) => {
   const [smsEnabled, setSmsEnabled] = useState(true);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
-  const { messages, isLoading } = useMessages(conversation.contact_id);
-  const { sendMessage, isLoading: isSending } = useSendMessage();
+  const { data: messages, isLoading } = useMessages(conversation.contact_id);
+  const { mutate: sendMessage, isPending: isSending } = useSendMessage();
 
   const formatPhone = (phone?: string) => {
     if (!phone) return '';

@@ -9,7 +9,7 @@ const Inbox: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<'open' | 'closed'>('open');
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
 
-  const { conversations, isLoading } = useConversations({
+  const { data: conversations, isLoading } = useConversations({
     status: statusFilter,
     sortOrder
   });
