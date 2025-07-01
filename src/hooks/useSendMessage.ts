@@ -18,16 +18,19 @@ export const useSendMessage = () => {
       console.log('Sending message:', { contactId, content, channel, contactPhone, media_url });
 
       // First insert message into database as outbound and read
-      const { data: messageData, error: messageError } = await supabase
+      const messageData = {
+        contact_id: contactId,
+        content,
+        sender: 'user',
+        channel,
+        direction: 'outbound',
+        is_read: true,
+        ...(media_url && { media_url })
+      };
+
+      const { data: savedMessage, error: messageError } = await supabase
         .from('messages')
-        .insert({
-          contact_id: contactId,
-          content,
-          sender: 'user',
-          channel,
-          direction: 'outbound',
-          is_read: true
-        })
+        .insert(messageData)
         .select()
         .single();
 
@@ -76,7 +79,7 @@ export const useSendMessage = () => {
         }
       }
 
-      return messageData;
+      return savedMessage;
     },
     onSuccess: (data, variables) => {
       // Invalidate and refetch messages and conversations
