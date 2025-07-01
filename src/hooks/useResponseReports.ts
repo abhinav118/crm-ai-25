@@ -42,12 +42,12 @@ export function useResponseReports(dateRange?: DateRange, page: number = 1, page
       if (dateRange?.from) {
         const fromDate = new Date(dateRange.from);
         fromDate.setUTCHours(0, 0, 0, 0);
-        campaignsQuery = campaignsQuery.gte('schedule_time', fromDate.toISOString());
+        campaignsQuery = campaignsQuery.gte('created_at', fromDate.toISOString());
       }
       if (dateRange?.to) {
         const toDate = new Date(dateRange.to);
         toDate.setUTCHours(23, 59, 59, 999);
-        campaignsQuery = campaignsQuery.lte('schedule_time', toDate.toISOString());
+        campaignsQuery = campaignsQuery.lte('created_at', toDate.toISOString());
       }
 
       const { data: campaigns, error: campaignsError } = await campaignsQuery;
