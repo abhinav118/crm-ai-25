@@ -21,6 +21,15 @@ export interface ContactsReportData {
   retention: string;
 }
 
+export interface ResponseReportData {
+  campaignName: string;
+  contactName: string;
+  phone: string;
+  sentTime: string;
+  firstReplyTime: string;
+  message: string;
+}
+
 export function exportToCsv(data: any[], filename: string, headers: string[]) {
   // Create CSV content
   const csvContent = [
@@ -69,6 +78,17 @@ export function exportContactsReport(data: ContactsReportData[], dateRange?: { f
   
   const filename = `contacts_report_${dateStr}.csv`;
   const headers = ['segment', 'contacts', 'growth', 'engagement', 'avgValue', 'retention'];
+  
+  exportToCsv(data, filename, headers);
+}
+
+export function exportResponseReports(data: ResponseReportData[], dateRange?: { from?: Date; to?: Date }) {
+  const dateStr = dateRange?.from && dateRange?.to 
+    ? `${format(dateRange.from, 'yyyy-MM-dd')}_to_${format(dateRange.to, 'yyyy-MM-dd')}`
+    : format(new Date(), 'yyyy-MM-dd');
+  
+  const filename = `response_report_${dateStr}.csv`;
+  const headers = ['campaignName', 'contactName', 'phone', 'sentTime', 'firstReplyTime', 'message'];
   
   exportToCsv(data, filename, headers);
 }
