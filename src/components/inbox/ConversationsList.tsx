@@ -76,7 +76,7 @@ export const ConversationsList: React.FC<ConversationsListProps> = ({
         <h2 className="text-lg font-semibold mb-4">Conversations</h2>
         
         {/* Filters */}
-        <div className="flex gap-2 mb-4">
+        {/* <div className="flex gap-2 mb-4">
           <Button
             variant={filterStatus === 'open' ? 'default' : 'outline'}
             size="sm"
@@ -91,7 +91,7 @@ export const ConversationsList: React.FC<ConversationsListProps> = ({
           >
             CLOSED
           </Button>
-        </div>
+        </div> */}
 
         {/* Sort */}
         <Select value={sortOrder} onValueChange={(value: 'newest' | 'oldest') => onSortChange(value)}>
@@ -171,7 +171,7 @@ export const ConversationsList: React.FC<ConversationsListProps> = ({
                     )}
                     
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
+                      {/* <div className="flex items-center gap-2">
                         <span className="text-xs text-gray-500">
                           {conversation.assignedTo || 'Unassigned'}
                         </span>
@@ -185,7 +185,7 @@ export const ConversationsList: React.FC<ConversationsListProps> = ({
                             TAKE
                           </Button>
                         )}
-                      </div>
+                      </div> */}
                       
                       {conversation.lastMessage && (
                         <span className="text-xs text-gray-400">
