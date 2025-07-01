@@ -131,49 +131,49 @@ export function useResponseReports(dateRange?: DateRange, page: number = 1, page
         }
 
         // Also check for messages where phone matches directly (fallback for contacts not in contacts table)
-        const { data: directMessages, error: directMessagesError } = await supabase
-          .from('messages')
-          .select(`
-            content, 
-            sent_at, 
-            sender,
-            contact_id,
-            contacts!inner(first_name, last_name, phone)
-          `)
-          .eq('sender', 'contact')
-          .gte('sent_at', campaignSentTime)
-          .in('contacts.phone', recipients);
+        // const { data: directMessages, error: directMessagesError } = await supabase
+        //   .from('messages')
+        //   .select(`
+        //     content, 
+        //     sent_at, 
+        //     sender,
+        //     contact_id,
+        //     contacts!inner(first_name, last_name, phone)
+        //   `)
+        //   .eq('sender', 'contact')
+        //   .gte('sent_at', campaignSentTime)
+        //   .in('contacts.phone', recipients);
 
-        if (!directMessagesError && directMessages && directMessages.length > 0) {
-          // Group by contact and get first message for each
-          const messagesByContact = directMessages.reduce((acc, msg) => {
-            const contactId = msg.contact_id;
-            if (!acc[contactId] || new Date(msg.sent_at) < new Date(acc[contactId].sent_at)) {
-              acc[contactId] = msg;
-            }
-            return acc;
-          }, {} as Record<string, any>);
+        // if (!directMessagesError && directMessages && directMessages.length > 0) {
+        //   // Group by contact and get first message for each
+        //   const messagesByContact = directMessages.reduce((acc, msg) => {
+        //     const contactId = msg.contact_id;
+        //     if (!acc[contactId] || new Date(msg.sent_at) < new Date(acc[contactId].sent_at)) {
+        //       acc[contactId] = msg;
+        //     }
+        //     return acc;
+        //   }, {} as Record<string, any>);
 
-          // Add any new responses not already captured
-          Object.values(messagesByContact).forEach((msg: any) => {
-            if (!uniqueRespondents.has(msg.contact_id)) {
-              uniqueRespondents.add(msg.contact_id);
-              const contact = msg.contacts;
-              if (!responses.find(r => r.contactId === msg.contact_id && r.campaignId === campaign.id)) {
-                responses.push({
-                  campaignName: campaign.campaign_name,
-                  contactName: `${contact.first_name} ${contact.last_name || ''}`.trim(),
-                  phone: contact.phone || '',
-                  sentTime: new Date(campaignSentTime).toLocaleString(),
-                  firstReplyTime: new Date(msg.sent_at).toLocaleString(),
-                  message: msg.content,
-                  campaignId: campaign.id,
-                  contactId: msg.contact_id,
-                });
-              }
-            }
-          });
-        }
+        //   // Add any new responses not already captured
+        //   Object.values(messagesByContact).forEach((msg: any) => {
+        //     if (!uniqueRespondents.has(msg.contact_id)) {
+        //       uniqueRespondents.add(msg.contact_id);
+        //       const contact = msg.contacts;
+        //       if (!responses.find(r => r.contactId === msg.contact_id && r.campaignId === campaign.id)) {
+        //         responses.push({
+        //           campaignName: campaign.campaign_name,
+        //           contactName: `${contact.first_name} ${contact.last_name || ''}`.trim(),
+        //           phone: contact.phone || '',
+        //           sentTime: new Date(campaignSentTime).toLocaleString(),
+        //           firstReplyTime: new Date(msg.sent_at).toLocaleString(),
+        //           message: msg.content,
+        //           campaignId: campaign.id,
+        //           contactId: msg.contact_id,
+        //         });
+        //       }
+        //     }
+        //   });
+        // }
 
         const responseRate = totalRecipients > 0 ? (uniqueRespondents.size / totalRecipients) * 100 : 0;
 
