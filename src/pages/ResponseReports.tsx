@@ -26,18 +26,22 @@ const ResponseReports = () => {
   const [campaignResponsesPageSize, setCampaignResponsesPageSize] = useState(25);
 
   const { 
-    data: allResponses, 
-    isLoading: allResponsesLoading,
-    totalCount: allResponsesTotal
+    data: allResponsesResult, 
+    isLoading: allResponsesLoading
   } = useResponseReports.getAllResponses(dateRange, allResponsesPage, allResponsesPageSize);
 
   const { 
-    data: campaignResponses, 
-    isLoading: campaignResponsesLoading,
-    totalCount: campaignResponsesTotal
+    data: campaignResponsesResult, 
+    isLoading: campaignResponsesLoading
   } = useResponseReports.getCampaignResponses(dateRange, campaignResponsesPage, campaignResponsesPageSize);
 
   const { data: responseRateData } = useResponseReports.getResponseRateChart(dateRange);
+
+  // Extract data and totalCount from the query results
+  const allResponsesData = allResponsesResult?.data || [];
+  const allResponsesTotal = allResponsesResult?.totalCount || 0;
+  const campaignResponsesData = campaignResponsesResult?.data || [];
+  const campaignResponsesTotal = campaignResponsesResult?.totalCount || 0;
 
   const allResponsesColumns = [
     {
@@ -123,8 +127,8 @@ const ResponseReports = () => {
   ];
 
   const handleExportAllResponses = () => {
-    if (allResponses?.length) {
-      exportResponsesReport(allResponses, dateRange);
+    if (allResponsesData.length) {
+      exportResponsesReport(allResponsesData, dateRange);
       toast({
         title: "Export Successful",
         description: "All responses report has been downloaded as CSV.",
@@ -139,8 +143,8 @@ const ResponseReports = () => {
   };
 
   const handleExportCampaignResponses = () => {
-    if (campaignResponses?.length) {
-      exportCampaignResponsesReport(campaignResponses, dateRange);
+    if (campaignResponsesData.length) {
+      exportCampaignResponsesReport(campaignResponsesData, dateRange);
       toast({
         title: "Export Successful",
         description: "Campaign responses report has been downloaded as CSV.",
@@ -173,7 +177,7 @@ const ResponseReports = () => {
         <CardContent>
           <div className="space-y-4">
             <DataTable
-              data={allResponses || []}
+              data={allResponsesData}
               columns={allResponsesColumns}
               className="min-w-full"
             />
@@ -210,13 +214,13 @@ const ResponseReports = () => {
                   Previous
                 </Button>
                 <span className="text-sm text-gray-500">
-                  Page {allResponsesPage} of {Math.ceil((allResponsesTotal || 0) / allResponsesPageSize)}
+                  Page {allResponsesPage} of {Math.ceil(allResponsesTotal / allResponsesPageSize)}
                 </span>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setAllResponsesPage(allResponsesPage + 1)}
-                  disabled={allResponsesPage >= Math.ceil((allResponsesTotal || 0) / allResponsesPageSize)}
+                  disabled={allResponsesPage >= Math.ceil(allResponsesTotal / allResponsesPageSize)}
                 >
                   Next
                 </Button>
@@ -238,7 +242,7 @@ const ResponseReports = () => {
         <CardContent>
           <div className="space-y-4">
             <DataTable
-              data={campaignResponses || []}
+              data={campaignResponsesData}
               columns={campaignResponsesColumns}
               className="min-w-full"
             />
@@ -275,13 +279,13 @@ const ResponseReports = () => {
                   Previous
                 </Button>
                 <span className="text-sm text-gray-500">
-                  Page {campaignResponsesPage} of {Math.ceil((campaignResponsesTotal || 0) / campaignResponsesPageSize)}
+                  Page {campaignResponsesPage} of {Math.ceil(campaignResponsesTotal / campaignResponsesPageSize)}
                 </span>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setCampaignResponsesPage(campaignResponsesPage + 1)}
-                  disabled={campaignResponsesPage >= Math.ceil((campaignResponsesTotal || 0) / campaignResponsesPageSize)}
+                  disabled={campaignResponsesPage >= Math.ceil(campaignResponsesTotal / campaignResponsesPageSize)}
                 >
                   Next
                 </Button>
