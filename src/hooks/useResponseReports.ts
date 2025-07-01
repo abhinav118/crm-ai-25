@@ -108,7 +108,7 @@ export function useResponseReports(dateRange?: DateRange, page: number = 1, page
               .order('sent_at', { ascending: true })
               .limit(1)
               .maybeSingle();
-
+              console.log('---firstReply--',firstReply)
             if (messageError) {
               console.error('Error fetching messages for contact:', contact.id, messageError);
               continue;
