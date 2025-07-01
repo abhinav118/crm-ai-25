@@ -29,7 +29,17 @@ const ResponseRateChart: React.FC<ResponseRateChartProps> = ({ data }) => {
     return null;
   };
 
-  if (!data || data.length === 0) {
+  // Validate and sanitize data
+  const validData = (data || [])
+    .filter(item => item && typeof item === 'object')
+    .map(item => ({
+      ...item,
+      responseRate: isNaN(item.responseRate) || !isFinite(item.responseRate) ? 0 : item.responseRate,
+      totalRecipients: item.totalRecipients || 0,
+      uniqueRespondents: item.uniqueRespondents || 0,
+    }));
+
+  if (!validData || validData.length === 0) {
     return (
       <div className="h-64 flex items-center justify-center text-gray-500">
         No response data available for the selected date range.
@@ -40,7 +50,7 @@ const ResponseRateChart: React.FC<ResponseRateChartProps> = ({ data }) => {
   return (
     <div className="h-64">
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+        <BarChart data={validData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
           <XAxis 
             dataKey="campaignName" 
@@ -52,12 +62,14 @@ const ResponseRateChart: React.FC<ResponseRateChartProps> = ({ data }) => {
           <YAxis 
             tick={{ fontSize: 12 }}
             label={{ value: 'Response Rate (%)', angle: -90, position: 'insideLeft' }}
+            domain={[0, 'dataMax']}
           />
           <Tooltip content={<CustomTooltip />} />
           <Bar 
             dataKey="responseRate" 
             fill="#6366F1" 
             radius={[4, 4, 0, 0]}
+            minPointSize={2} // Ensures bars are visible even for 0% values
           />
         </BarChart>
       </ResponsiveContainer>
