@@ -9,8 +9,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Send } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getFullName } from '@/utils/contactHelpers';
-import { format } from 'date-fns';
 import { MessageHelpers } from './MessageHelpers';
+import { MessageBubble } from './MessageBubble';
 
 interface ChatThreadProps {
   contactId: string;
@@ -51,12 +51,12 @@ export const ChatThread: React.FC<ChatThreadProps> = ({ contactId }) => {
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!messageText.trim() || !contact) return;
+    if ((!messageText.trim() && !attachedImageUrl) || !contact) return;
 
     try {
       const payload = {
         contactId: contact.id,
-        content: messageText.trim(),
+        content: messageText.trim() || '',
         channel: 'sms' as const,
         contactPhone: contact.phone || undefined,
         ...(attachedImageUrl && { media_url: attachedImageUrl })
@@ -159,25 +159,7 @@ export const ChatThread: React.FC<ChatThreadProps> = ({ contactId }) => {
         ) : (
           <div className="space-y-4">
             {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                <div
-                  className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                    message.sender === 'user'
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-gray-200 text-gray-800'
-                  }`}
-                >
-                  <p className="text-sm">{message.content}</p>
-                  <p className={`text-xs mt-1 ${
-                    message.sender === 'user' ? 'text-blue-100' : 'text-gray-500'
-                  }`}>
-                    {format(new Date(message.sent_at), 'MMM d, h:mm a')}
-                  </p>
-                </div>
-              </div>
+              <MessageBubble key={message.id} message={message} />
             ))}
             <div ref={messagesEndRef} />
           </div>
@@ -248,7 +230,7 @@ export const ChatThread: React.FC<ChatThreadProps> = ({ contactId }) => {
               <Button
                 type="submit"
                 size="sm"
-                disabled={!messageText.trim() || sendMessage.isPending}
+                disabled={(!messageText.trim() && !attachedImageUrl) || sendMessage.isPending}
                 className="px-3"
               >
                 {sendMessage.isPending ? (

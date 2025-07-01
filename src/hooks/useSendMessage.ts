@@ -26,7 +26,8 @@ export const useSendMessage = () => {
           sender: 'user',
           channel,
           direction: 'outbound',
-          is_read: true
+          is_read: false,
+          ...(media_url && { media_url })
         })
         .select()
         .single();

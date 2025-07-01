@@ -511,6 +511,7 @@ export type Database = {
           direction: string | null
           id: string
           is_read: boolean | null
+          media_url: string | null
           sender: string
           sent_at: string
         }
@@ -521,6 +522,7 @@ export type Database = {
           direction?: string | null
           id?: string
           is_read?: boolean | null
+          media_url?: string | null
           sender: string
           sent_at?: string
         }
@@ -531,6 +533,7 @@ export type Database = {
           direction?: string | null
           id?: string
           is_read?: boolean | null
+          media_url?: string | null
           sender?: string
           sent_at?: string
         }

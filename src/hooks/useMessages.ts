@@ -2,7 +2,16 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useEffect } from 'react';
-import type { Message } from '@/pages/Inbox';
+
+export interface Message {
+  id: string;
+  contact_id: string;
+  content: string;
+  sender: 'user' | 'contact';
+  sent_at: string;
+  channel: string;
+  media_url?: string;
+}
 
 export const useMessages = (contactId: string) => {
   const query = useQuery({
