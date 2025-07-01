@@ -52,18 +52,27 @@ export const useDeliveryReportMetrics = (dateRange?: DateRange) => {
         throw campaignsError;
       }
 
-      // Fetch some contacts for recent activity display
-      const { data: contacts, error: contactsError } = await supabase
-        .from('contacts')
-        .select('id, first_name, last_name, phone')
-        .limit(5);
+      // Fetch recent delivered messages from messages table
+      const { data: recentMessages, error: messagesError } = await supabase
+        .from('messages')
+        .select(`
+          id,
+          content,
+          sent_at,
+          contact_id,
+          contacts!inner(first_name, last_name, phone)
+        `)
+        .eq('sender', 'user')
+        .order('sent_at', { ascending: false })
+        .limit(10);
 
-      if (contactsError) {
-        console.error('Error fetching contacts:', contactsError);
-        throw contactsError;
+      if (messagesError) {
+        console.error('Error fetching recent messages:', messagesError);
+        throw messagesError;
       }
 
       console.log('Real campaign data:', campaigns);
+      console.log('Recent delivered messages:', recentMessages);
 
       // Calculate metrics from real campaign data
       let totalSent = 0;
@@ -108,13 +117,13 @@ export const useDeliveryReportMetrics = (dateRange?: DateRange) => {
 
       const overallDeliveryRate = totalSent > 0 ? ((delivered / totalSent) * 100) : 0;
 
-      // Generate recent activity from contacts
-      const recentActivity = (contacts || []).map(contact => ({
-        id: contact.id,
-        contact: getFullName(contact),
-        phone: contact.phone || 'No phone',
-        status: Math.random() > 0.1 ? 'delivered' : 'failed',
-        timestamp: new Date(Date.now() - Math.random() * 86400000).toISOString()
+      // Format recent activity from real delivered messages
+      const recentActivity = (recentMessages || []).map(message => ({
+        id: message.id,
+        contact: getFullName(message.contacts),
+        phone: message.contacts.phone || 'No phone',
+        status: 'delivered',
+        timestamp: new Date(message.sent_at).toISOString()
       }));
 
       const metrics: DeliveryMetrics = {
