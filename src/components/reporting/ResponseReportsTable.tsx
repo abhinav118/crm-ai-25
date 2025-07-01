@@ -10,6 +10,7 @@ interface ResponseReportsTableProps {
   currentPage: number;
   pageSize: number;
   onPageChange: (page: number) => void;
+  onCampaignClick?: (campaignName: string) => void;
 }
 
 const ResponseReportsTable: React.FC<ResponseReportsTableProps> = ({
@@ -18,6 +19,7 @@ const ResponseReportsTable: React.FC<ResponseReportsTableProps> = ({
   currentPage,
   pageSize,
   onPageChange,
+  onCampaignClick,
 }) => {
   const totalPages = Math.ceil(totalCount / pageSize);
   
@@ -52,7 +54,18 @@ const ResponseReportsTable: React.FC<ResponseReportsTableProps> = ({
           <TableBody>
             {data.map((response, index) => (
               <TableRow key={`${response.campaignId}-${response.contactId}-${index}`}>
-                <TableCell className="font-medium">{response.campaignName}</TableCell>
+                <TableCell className="font-medium">
+                  {onCampaignClick ? (
+                    <button
+                      onClick={() => onCampaignClick(response.campaignName)}
+                      className="text-[#6366F1] hover:text-[#5855EB] underline hover:no-underline transition-colors cursor-pointer"
+                    >
+                      {response.campaignName}
+                    </button>
+                  ) : (
+                    response.campaignName
+                  )}
+                </TableCell>
                 <TableCell>{response.contactName}</TableCell>
                 <TableCell>{response.phone}</TableCell>
                 <TableCell>{response.sentTime}</TableCell>

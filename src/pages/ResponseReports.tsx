@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
+import { Download, ArrowLeft } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useDateRange } from './ReportingPage';
 import { useResponseReports } from '@/hooks/useResponseReports';
@@ -10,11 +10,13 @@ import { exportResponseReports } from '@/utils/csvExport';
 import { toast } from '@/hooks/use-toast';
 import ResponseRateChart from '@/components/reporting/ResponseRateChart';
 import ResponseReportsTable from '@/components/reporting/ResponseReportsTable';
+import ResponseCampaignSubsection from '@/components/reporting/ResponseCampaignSubsection';
 
 const ResponseReports = () => {
   const { dateRange } = useDateRange();
   const [pageSize, setPageSize] = useState(25);
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedCampaign, setSelectedCampaign] = useState<string | null>(null);
   
   const { data: responseData, isLoading } = useResponseReports(dateRange, currentPage, pageSize);
 
@@ -41,6 +43,14 @@ const ResponseReports = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const handleCampaignClick = (campaignName: string) => {
+    setSelectedCampaign(campaignName);
+  };
+
+  const handleBackToAll = () => {
+    setSelectedCampaign(null);
   };
 
   if (isLoading) {
@@ -95,9 +105,20 @@ const ResponseReports = () => {
             currentPage={currentPage}
             pageSize={pageSize}
             onPageChange={setCurrentPage}
+            onCampaignClick={handleCampaignClick}
           />
         </CardContent>
       </Card>
+
+      {/* Campaign Subsection */}
+      {selectedCampaign && (
+        <ResponseCampaignSubsection
+          campaignName={selectedCampaign}
+          allResponses={responseData?.responses || []}
+          onBack={handleBackToAll}
+          dateRange={dateRange}
+        />
+      )}
     </div>
   );
 };
