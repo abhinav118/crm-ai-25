@@ -6,12 +6,11 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Send, X } from 'lucide-react';
+import { Send } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getFullName } from '@/utils/contactHelpers';
 import { format } from 'date-fns';
 import { MessageHelpers } from './MessageHelpers';
-import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 
 interface ChatThreadProps {
   contactId: string;
@@ -20,7 +19,6 @@ interface ChatThreadProps {
 export const ChatThread: React.FC<ChatThreadProps> = ({ contactId }) => {
   const [messageText, setMessageText] = React.useState('');
   const [attachedImageUrl, setAttachedImageUrl] = useState<string | null>(null);
-  const [fullImageUrl, setFullImageUrl] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   
@@ -53,13 +51,12 @@ export const ChatThread: React.FC<ChatThreadProps> = ({ contactId }) => {
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!messageText.trim() && !attachedImageUrl) return;
-    if (!contact) return;
+    if (!messageText.trim() || !contact) return;
 
     try {
       const payload = {
         contactId: contact.id,
-        content: messageText.trim() || '',
+        content: messageText.trim(),
         channel: 'sms' as const,
         contactPhone: contact.phone || undefined,
         ...(attachedImageUrl && { media_url: attachedImageUrl })
@@ -117,22 +114,6 @@ export const ChatThread: React.FC<ChatThreadProps> = ({ contactId }) => {
     }
   };
 
-  const removeAttachedImage = () => {
-    setAttachedImageUrl(null);
-  };
-
-  const openImageModal = (imageUrl: string) => {
-    setFullImageUrl(imageUrl);
-  };
-
-  // Extract media URLs from message content or use media_url field
-  const getMessageImages = (message: any) => {
-    if (message.media_url) {
-      return [message.media_url];
-    }
-    return [];
-  };
-
   if (!contact) {
     return (
       <div className="flex-1 flex items-center justify-center">
@@ -177,50 +158,27 @@ export const ChatThread: React.FC<ChatThreadProps> = ({ contactId }) => {
           </div>
         ) : (
           <div className="space-y-4">
-            {messages.map((message) => {
-              const messageImages = getMessageImages(message);
-              return (
+            {messages.map((message) => (
+              <div
+                key={message.id}
+                className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
                 <div
-                  key={message.id}
-                  className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                  className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                    message.sender === 'user'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-gray-200 text-gray-800'
+                  }`}
                 >
-                  <div
-                    className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                      message.sender === 'user'
-                        ? 'bg-blue-500 text-white'
-                        : 'bg-gray-200 text-gray-800'
-                    }`}
-                  >
-                    {message.content && (
-                      <p className="text-sm mb-2">{message.content}</p>
-                    )}
-                    
-                    {/* Display attached images */}
-                    {messageImages.length > 0 && (
-                      <div className="space-y-2">
-                        {messageImages.map((imageUrl, index) => (
-                          <div key={index} className="relative">
-                            <img
-                              src={imageUrl}
-                              alt="Attached media"
-                              className="max-w-full h-auto rounded cursor-pointer hover:opacity-90 transition-opacity"
-                              style={{ maxHeight: '200px' }}
-                              onClick={() => openImageModal(imageUrl)}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    
-                    <p className={`text-xs mt-1 ${
-                      message.sender === 'user' ? 'text-blue-100' : 'text-gray-500'
-                    }`}>
-                      {format(new Date(message.sent_at), 'MMM d, h:mm a')}
-                    </p>
-                  </div>
+                  <p className="text-sm">{message.content}</p>
+                  <p className={`text-xs mt-1 ${
+                    message.sender === 'user' ? 'text-blue-100' : 'text-gray-500'
+                  }`}>
+                    {format(new Date(message.sent_at), 'MMM d, h:mm a')}
+                  </p>
                 </div>
-              );
-            })}
+              </div>
+            ))}
             <div ref={messagesEndRef} />
           </div>
         )}
@@ -235,19 +193,18 @@ export const ChatThread: React.FC<ChatThreadProps> = ({ contactId }) => {
               <div className="flex items-center gap-2">
                 <img 
                   src={attachedImageUrl} 
-                  alt="Attached preview" 
-                  className="w-16 h-16 object-cover rounded cursor-pointer"
-                  onClick={() => openImageModal(attachedImageUrl)}
+                  alt="Attached" 
+                  className="w-12 h-12 object-cover rounded"
                 />
                 <span className="text-sm text-gray-600">Image attached</span>
               </div>
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={removeAttachedImage}
+                onClick={() => setAttachedImageUrl(null)}
                 className="text-gray-500 hover:text-gray-700"
               >
-                <X className="h-4 w-4" />
+                Remove
               </Button>
             </div>
           </div>
@@ -291,7 +248,7 @@ export const ChatThread: React.FC<ChatThreadProps> = ({ contactId }) => {
               <Button
                 type="submit"
                 size="sm"
-                disabled={(!messageText.trim() && !attachedImageUrl) || sendMessage.isPending}
+                disabled={!messageText.trim() || sendMessage.isPending}
                 className="px-3"
               >
                 {sendMessage.isPending ? (
@@ -304,19 +261,6 @@ export const ChatThread: React.FC<ChatThreadProps> = ({ contactId }) => {
           </div>
         </form>
       </div>
-
-      {/* Image Lightbox Modal */}
-      <Dialog open={!!fullImageUrl} onOpenChange={() => setFullImageUrl(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] p-2">
-          {fullImageUrl && (
-            <img
-              src={fullImageUrl}
-              alt="Full size image"
-              className="w-full h-auto max-h-[85vh] object-contain rounded"
-            />
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
