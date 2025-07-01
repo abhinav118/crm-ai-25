@@ -7,14 +7,15 @@ interface SendMessageProps {
   content: string;
   channel: 'sms' | 'chat';
   contactPhone?: string;
+  media_url?: string;
 }
 
 export const useSendMessage = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ contactId, content, channel, contactPhone }: SendMessageProps) => {
-      console.log('Sending message:', { contactId, content, channel, contactPhone });
+    mutationFn: async ({ contactId, content, channel, contactPhone, media_url }: SendMessageProps) => {
+      console.log('Sending message:', { contactId, content, channel, contactPhone, media_url });
 
       // First insert message into database as outbound and read
       const { data: messageData, error: messageError } = await supabase
@@ -40,13 +41,19 @@ export const useSendMessage = () => {
         try {
           console.log('Sending SMS via Telnyx to:', contactPhone);
           
+          const telnyxPayload: any = {
+            to: contactPhone,
+            text: content,
+            schedule_type: 'now'
+          };
+
+          // Add media_url if provided
+          if (media_url) {
+            telnyxPayload.media_url = media_url;
+          }
+          
           const { data: telnyxResponse, error: telnyxError } = await supabase.functions.invoke('send-via-telnyx', {
-            body: {
-              // Use the default Telnyx number from environment
-              to: contactPhone,
-              text: content,
-              schedule_type: 'now'
-            }
+            body: telnyxPayload
           });
 
           console.log('Telnyx response:', telnyxResponse);

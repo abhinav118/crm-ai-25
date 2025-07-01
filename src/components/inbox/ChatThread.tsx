@@ -1,5 +1,5 @@
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useMessages } from '@/hooks/useMessages';
 import { useSendMessage } from '@/hooks/useSendMessage';
 import { useQuery } from '@tanstack/react-query';
@@ -10,6 +10,7 @@ import { Send } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getFullName } from '@/utils/contactHelpers';
 import { format } from 'date-fns';
+import { MessageHelpers } from './MessageHelpers';
 
 interface ChatThreadProps {
   contactId: string;
@@ -17,7 +18,9 @@ interface ChatThreadProps {
 
 export const ChatThread: React.FC<ChatThreadProps> = ({ contactId }) => {
   const [messageText, setMessageText] = React.useState('');
+  const [attachedImageUrl, setAttachedImageUrl] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   
   const { data: messages = [], isLoading: messagesLoading } = useMessages(contactId);
   const sendMessage = useSendMessage();
@@ -51,14 +54,18 @@ export const ChatThread: React.FC<ChatThreadProps> = ({ contactId }) => {
     if (!messageText.trim() || !contact) return;
 
     try {
-      await sendMessage.mutateAsync({
+      const payload = {
         contactId: contact.id,
         content: messageText.trim(),
         channel: 'sms',
-        contactPhone: contact.phone || undefined
-      });
+        contactPhone: contact.phone || undefined,
+        ...(attachedImageUrl && { media_url: attachedImageUrl })
+      };
+
+      await sendMessage.mutateAsync(payload);
 
       setMessageText('');
+      setAttachedImageUrl(null);
     } catch (error) {
       console.error('Failed to send message:', error);
     }
@@ -68,6 +75,42 @@ export const ChatThread: React.FC<ChatThreadProps> = ({ contactId }) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage(e as unknown as React.FormEvent);
+    }
+  };
+
+  const handleEmojiSelect = (emoji: string) => {
+    if (textareaRef.current) {
+      const textarea = textareaRef.current;
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const newText = messageText.slice(0, start) + emoji + messageText.slice(end);
+      setMessageText(newText);
+      
+      // Set cursor position after emoji
+      setTimeout(() => {
+        textarea.selectionStart = textarea.selectionEnd = start + emoji.length;
+        textarea.focus();
+      }, 0);
+    }
+  };
+
+  const handleImageUpload = (imageUrl: string) => {
+    setAttachedImageUrl(imageUrl);
+  };
+
+  const handleLinkInsert = (linkText: string) => {
+    if (textareaRef.current) {
+      const textarea = textareaRef.current;
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const newText = messageText.slice(0, start) + linkText + messageText.slice(end);
+      setMessageText(newText);
+      
+      // Set cursor position after link
+      setTimeout(() => {
+        textarea.selectionStart = textarea.selectionEnd = start + linkText.length;
+        textarea.focus();
+      }, 0);
     }
   };
 
@@ -143,29 +186,79 @@ export const ChatThread: React.FC<ChatThreadProps> = ({ contactId }) => {
 
       {/* Message Input */}
       <div className="p-4 border-t border-gray-200">
-        <form onSubmit={handleSendMessage} className="flex items-end space-x-2">
-          <div className="flex-1">
-            <Textarea
-              value={messageText}
-              onChange={(e) => setMessageText(e.target.value)}
-              onKeyDown={handleKeyPress}
-              placeholder="Type your message..."
-              className="min-h-[60px] resize-none"
-              disabled={sendMessage.isPending}
-            />
+        {/* Show attached image preview */}
+        {attachedImageUrl && (
+          <div className="mb-3 p-2 bg-gray-50 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <img 
+                  src={attachedImageUrl} 
+                  alt="Attached" 
+                  className="w-12 h-12 object-cover rounded"
+                />
+                <span className="text-sm text-gray-600">Image attached</span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setAttachedImageUrl(null)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                Remove
+              </Button>
+            </div>
           </div>
-          <Button
-            type="submit"
-            size="sm"
-            disabled={!messageText.trim() || sendMessage.isPending}
-            className="px-3"
-          >
-            {sendMessage.isPending ? (
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <Send className="h-4 w-4" />
-            )}
-          </Button>
+        )}
+
+        <form onSubmit={handleSendMessage} className="space-y-3">
+          {/* Message helpers */}
+          <MessageHelpers
+            onEmojiSelect={handleEmojiSelect}
+            onImageUpload={handleImageUpload}
+            onLinkInsert={handleLinkInsert}
+          />
+          
+          {/* Input area */}
+          <div className="flex items-end space-x-2">
+            <div className="flex-1">
+              <Textarea
+                ref={textareaRef}
+                value={messageText}
+                onChange={(e) => setMessageText(e.target.value)}
+                onKeyDown={handleKeyPress}
+                placeholder="Type your SMS message..."
+                className="min-h-[60px] resize-none"
+                disabled={sendMessage.isPending}
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                type="button"
+                onClick={() => {
+                  setMessageText('');
+                  setAttachedImageUrl(null);
+                }}
+                disabled={(!messageText.trim() && !attachedImageUrl) || sendMessage.isPending}
+                className="px-3"
+              >
+                Clear
+              </Button>
+              <Button
+                type="submit"
+                size="sm"
+                disabled={!messageText.trim() || sendMessage.isPending}
+                className="px-3"
+              >
+                {sendMessage.isPending ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+          </div>
         </form>
       </div>
     </div>
