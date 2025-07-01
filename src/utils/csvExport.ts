@@ -1,128 +1,74 @@
+
 import { format } from 'date-fns';
-import { DateRange } from 'react-day-picker';
 
-const downloadCSV = (data: string, filename: string) => {
-  const blob = new Blob([data], { type: 'text/csv' });
-  const url = window.URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.setAttribute('href', url);
-  a.setAttribute('download', filename);
-  a.click();
-  window.URL.revokeObjectURL(url);
-};
+export interface DeliveryReportData {
+  campaignName: string;
+  totalSent: number;
+  delivered: number;
+  failed: number;
+  pending: number;
+  deliveryRate: number;
+  sentDate: string;
+  status: string;
+}
 
-export const exportDeliveryReport = (data: any[], dateRange?: DateRange | undefined) => {
-  const headers = [
-    'Campaign Name',
-    'Total Sent',
-    'Delivered',
-    'Failed',
-    'Delivery Rate',
-  ];
+export interface ContactsReportData {
+  segment: string;
+  contacts: number;
+  growth: string;
+  engagement: string;
+  avgValue: string;
+  retention: string;
+}
 
-  const csvData = data.map(row => [
-    row.campaign_name,
-    row.total_sent,
-    row.delivered,
-    row.failed,
-    row.delivery_rate,
-  ]);
-
+export function exportToCsv(data: any[], filename: string, headers: string[]) {
+  // Create CSV content
   const csvContent = [
     headers.join(','),
-    ...csvData.map(row => row.join(','))
+    ...data.map(row => 
+      headers.map(header => {
+        const value = row[header] || '';
+        // Escape commas and quotes in values
+        return typeof value === 'string' && (value.includes(',') || value.includes('"')) 
+          ? `"${value.replace(/"/g, '""')}"` 
+          : value;
+      }).join(',')
+    )
   ].join('\n');
 
+  // Create and download file
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  
+  if (link.download !== undefined) {
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+}
+
+export function exportDeliveryReport(data: DeliveryReportData[], dateRange?: { from?: Date; to?: Date }) {
   const dateStr = dateRange?.from && dateRange?.to 
     ? `${format(dateRange.from, 'yyyy-MM-dd')}_to_${format(dateRange.to, 'yyyy-MM-dd')}`
     : format(new Date(), 'yyyy-MM-dd');
-    
-  downloadCSV(csvContent, `delivery_report_${dateStr}.csv`);
-};
+  
+  const filename = `delivery_report_${dateStr}.csv`;
+  const headers = ['campaignName', 'totalSent', 'delivered', 'failed', 'pending', 'deliveryRate', 'sentDate', 'status'];
+  
+  exportToCsv(data, filename, headers);
+}
 
-export const exportContactsReport = (data: any[], dateRange?: DateRange | undefined) => {
-  const headers = [
-    'Segment Name',
-    'Total Contacts',
-    'New Contacts',
-    'Unsubscribed',
-  ];
-
-  const csvData = data.map(row => [
-    row.segment_name,
-    row.total_contacts,
-    row.new_contacts,
-    row.unsubscribed,
-  ]);
-
-  const csvContent = [
-    headers.join(','),
-    ...csvData.map(row => row.join(','))
-  ].join('\n');
-
+export function exportContactsReport(data: ContactsReportData[], dateRange?: { from?: Date; to?: Date }) {
   const dateStr = dateRange?.from && dateRange?.to 
     ? `${format(dateRange.from, 'yyyy-MM-dd')}_to_${format(dateRange.to, 'yyyy-MM-dd')}`
     : format(new Date(), 'yyyy-MM-dd');
-
-  downloadCSV(csvContent, `contacts_report_${dateStr}.csv`);
-};
-
-export const exportResponsesReport = (data: any[], dateRange?: DateRange | undefined) => {
-  const headers = [
-    'Timestamp',
-    'Contact Name', 
-    'Phone',
-    'Message Body',
-    'Campaign Name'
-  ];
-
-  const csvData = data.map(row => [
-    format(new Date(row.sent_at), 'yyyy-MM-dd HH:mm:ss'),
-    row.contact_name,
-    row.phone,
-    `"${row.content.replace(/"/g, '""')}"`, // Escape quotes in message content
-    row.campaign_name || ''
-  ]);
-
-  const csvContent = [
-    headers.join(','),
-    ...csvData.map(row => row.join(','))
-  ].join('\n');
-
-  const dateStr = dateRange?.from && dateRange?.to 
-    ? `${format(dateRange.from, 'yyyy-MM-dd')}_to_${format(dateRange.to, 'yyyy-MM-dd')}`
-    : format(new Date(), 'yyyy-MM-dd');
-    
-  downloadCSV(csvContent, `responses_report_${dateStr}.csv`);
-};
-
-export const exportCampaignResponsesReport = (data: any[], dateRange?: DateRange | undefined) => {
-  const headers = [
-    'Campaign Name',
-    'Contact Name',
-    'Phone', 
-    'Sent Time',
-    'First Reply Time',
-    'Message'
-  ];
-
-  const csvData = data.map(row => [
-    row.campaign_name,
-    row.contact_name,
-    row.phone,
-    format(new Date(row.sent_time), 'yyyy-MM-dd HH:mm:ss'),
-    format(new Date(row.first_reply_time), 'yyyy-MM-dd HH:mm:ss'),
-    `"${row.message.replace(/"/g, '""')}"` // Escape quotes in message content
-  ]);
-
-  const csvContent = [
-    headers.join(','),
-    ...csvData.map(row => row.join(','))
-  ].join('\n');
-
-  const dateStr = dateRange?.from && dateRange?.to 
-    ? `${format(dateRange.from, 'yyyy-MM-dd')}_to_${format(dateRange.to, 'yyyy-MM-dd')}`
-    : format(new Date(), 'yyyy-MM-dd');
-    
-  downloadCSV(csvContent, `campaign_responses_report_${dateStr}.csv`);
-};
+  
+  const filename = `contacts_report_${dateStr}.csv`;
+  const headers = ['segment', 'contacts', 'growth', 'engagement', 'avgValue', 'retention'];
+  
+  exportToCsv(data, filename, headers);
+}

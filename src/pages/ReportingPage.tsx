@@ -1,3 +1,4 @@
+
 import React, { useState, createContext, useContext } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -12,7 +13,6 @@ import Sidebar from '@/components/dashboard/Sidebar';
 import DeliveryReports from './DeliveryReports';
 import ContactsOverview from './ContactsOverview';
 import MessagesOverview from './MessagesOverview';
-import ResponseReports from './ResponseReports';
 import { DateRange } from "react-day-picker";
 import { useDeliveryReportMetrics } from '@/hooks/useDeliveryReportMetrics';
 import { useContactsMetrics } from '@/hooks/useContactsMetrics';
@@ -133,8 +133,6 @@ const ReportingPage = () => {
         return "Detailed delivery status and success rates for your campaigns";
       case "contacts":
         return "Monitor contact growth, segmentation, and engagement trends";
-      case "responses":
-        return "Track and analyze inbound message responses and campaign engagement";
       default:
         return "";
     }
@@ -148,8 +146,6 @@ const ReportingPage = () => {
         return "Delivery Reports";
       case "contacts":
         return "Contacts Overview";
-      case "responses":
-        return "Response Reports";
       default:
         return "";
     }
@@ -167,11 +163,10 @@ const ReportingPage = () => {
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                   <div className="w-full overflow-x-auto">
-                    <TabsList className="flex gap-2 min-w-[380px] xs:min-w-[420px] w-fit sm:w-auto px-1">
+                    <TabsList className="flex gap-2 min-w-[280px] xs:min-w-[320px] w-fit sm:w-auto px-1">
                       <TabsTrigger value="messages" className="text-xs xs:text-sm md:text-base px-3 py-2 whitespace-nowrap">Messages Overview</TabsTrigger>
                       <TabsTrigger value="delivery" className="text-xs xs:text-sm md:text-base px-3 py-2 whitespace-nowrap">Delivery Reports</TabsTrigger>
                       <TabsTrigger value="contacts" className="text-xs xs:text-sm md:text-base px-3 py-2 whitespace-nowrap">Contacts Overview</TabsTrigger>
-                      <TabsTrigger value="responses" className="text-xs xs:text-sm md:text-base px-3 py-2 whitespace-nowrap">Response Reports</TabsTrigger>
                     </TabsList>
                   </div>
                   <div className="flex flex-col gap-2 xs:flex-row xs:items-center xs:gap-3 w-full xs:w-auto">
@@ -259,13 +254,6 @@ const ReportingPage = () => {
                     <p className="text-gray-600 mt-1">{getTabDescription("contacts")}</p>
                   </div>
                   <ContactsOverview />
-                </TabsContent>
-                <TabsContent value="responses" className="space-y-6">
-                  <div className="mb-6">
-                    <h2 className="text-2xl font-bold text-gray-900">{getTabTitle("responses")}</h2>
-                    <p className="text-gray-600 mt-1">{getTabDescription("responses")}</p>
-                  </div>
-                  <ResponseReports />
                 </TabsContent>
               </Tabs>
             </div>
