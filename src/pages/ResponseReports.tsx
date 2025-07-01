@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,6 +10,7 @@ import { toast } from '@/hooks/use-toast';
 import ResponseRateChart from '@/components/reporting/ResponseRateChart';
 import ResponseReportsTable from '@/components/reporting/ResponseReportsTable';
 import ResponseCampaignSubsection from '@/components/reporting/ResponseCampaignSubsection';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const ResponseReports = () => {
   const { dateRange } = useDateRange();
@@ -56,8 +56,39 @@ const ResponseReports = () => {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div className="h-64 bg-gray-100 animate-pulse rounded-lg"></div>
-        <div className="h-96 bg-gray-100 animate-pulse rounded-lg"></div>
+        {/* Chart Skeleton */}
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-1/3 mb-2" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-64 w-full rounded-lg" />
+          </CardContent>
+        </Card>
+        {/* Table Skeleton */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <Skeleton className="h-6 w-1/4 mb-2" />
+            <div className="flex items-center gap-4">
+              <Skeleton className="h-10 w-[100px] rounded" />
+              <Skeleton className="h-10 w-24 rounded" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="flex items-center space-x-4">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-4 w-40" />
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }

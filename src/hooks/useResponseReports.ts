@@ -78,12 +78,20 @@ export function useResponseReports(dateRange?: DateRange, page: number = 1, page
         return { responses: [], chartData: [], totalCount: 0 };
       }
 
+      const sortedCampaigns = [...campaigns].sort((a, b) => {
+        const aTime = new Date(a.schedule_time || a.created_at).getTime();
+        const bTime = new Date(b.schedule_time || b.created_at).getTime();
+        return aTime - bTime;
+      });
+
       const responses: ResponseReportData[] = [];
       const chartData: ResponseRateChartData[] = [];
 
-      for (const campaign of campaigns) {
-        // Use schedule_time if available, otherwise fall back to created_at
+      for (let i = 0; i < sortedCampaigns.length; i++) {
+        const campaign = sortedCampaigns[i];
         const campaignSentTime = campaign.schedule_time || campaign.created_at;
+        const nextCampaign = sortedCampaigns[i + 1];
+        const nextCampaignSentTime = nextCampaign ? (nextCampaign.schedule_time || nextCampaign.created_at) : null;
         const recipients = campaign.recipients || [];
         
         if (recipients.length === 0) {
@@ -117,16 +125,22 @@ export function useResponseReports(dateRange?: DateRange, page: number = 1, page
         // For each contact, find their first inbound message after campaign sent time
         if (contacts && contacts.length > 0) {
           for (const contact of contacts) {
-            const { data: firstReply, error: messageError } = await supabase
+            let query = supabase
               .from('messages')
               .select('content, sent_at, contact_id')
               .eq('contact_id', contact.id)
               .eq('sender', 'contact')
-              .gte('sent_at', campaignSentTime)
+              .gt('sent_at', campaignSentTime);
+
+            if (nextCampaignSentTime) {
+              query = query.lt('sent_at', nextCampaignSentTime);
+            }
+
+            const { data: firstReply, error: messageError } = await query
               .order('sent_at', { ascending: true })
               .limit(1)
               .maybeSingle();
-              console.log('---firstReply--',firstReply)
+
             if (messageError) {
               console.error('Error fetching messages for contact:', contact.id, messageError);
               continue;
