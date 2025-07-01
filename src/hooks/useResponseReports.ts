@@ -103,7 +103,7 @@ export function useResponseReports(dateRange?: DateRange, page: number = 1, page
               .from('messages')
               .select('content, sent_at, contact_id')
               .eq('contact_id', contact.id)
-              .eq('direction', 'inbound')
+              .eq('sender', 'contact')
               .gte('sent_at', campaignSentTime)
               .order('sent_at', { ascending: true })
               .limit(1)
@@ -140,7 +140,7 @@ export function useResponseReports(dateRange?: DateRange, page: number = 1, page
             contact_id,
             contacts!inner(first_name, last_name, phone)
           `)
-          .eq('direction', 'inbound')
+          .eq('sender', 'contact')
           .gte('sent_at', campaignSentTime)
           .in('contacts.phone', recipients);
 
