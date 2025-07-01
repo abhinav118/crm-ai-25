@@ -1,5 +1,6 @@
 
 import React, { useState, createContext, useContext } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -37,7 +38,8 @@ export const useDateRange = () => {
 
 const ReportingPage = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [activeTab, setActiveTab] = useState("messages");
+  const navigate = useNavigate();
+  const location = useLocation();
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: subDays(new Date(), 7),
     to: new Date(),
@@ -47,6 +49,27 @@ const ReportingPage = () => {
   // Fetch data for export functionality
   const { data: deliveryMetrics } = useDeliveryReportMetrics(dateRange);
   const { data: contactsMetrics } = useContactsMetrics(dateRange);
+
+  // Determine active tab from URL
+  const getActiveTabFromPath = () => {
+    const path = location.pathname;
+    if (path.includes('/delivery-reports')) return 'delivery';
+    if (path.includes('/contacts-overview')) return 'contacts';
+    if (path.includes('/conversations')) return 'conversations';
+    return 'messages'; // default to messages-overview
+  };
+
+  const activeTab = getActiveTabFromPath();
+
+  const handleTabChange = (value: string) => {
+    const routes = {
+      messages: '/reporting/messages-overview',
+      delivery: '/reporting/delivery-reports',
+      contacts: '/reporting/contacts-overview',
+      conversations: '/reporting/conversations',
+    };
+    navigate(routes[value as keyof typeof routes] || '/reporting/messages-overview');
+  };
 
   const handleSidebarToggle = () => {
     setSidebarCollapsed(!sidebarCollapsed);
@@ -134,7 +157,7 @@ const ReportingPage = () => {
         return "Detailed delivery status and success rates for your campaigns";
       case "contacts":
         return "Monitor contact growth, segmentation, and engagement trends";
-      case "responses":
+      case "conversations":
         return "Track campaign responses and engagement rates from contacts";
       default:
         return "";
@@ -149,8 +172,8 @@ const ReportingPage = () => {
         return "Delivery Reports";
       case "contacts":
         return "Contacts Overview";
-      case "responses":
-        return "Response Reports";
+      case "conversations":
+        return "Conversation Reports";
       default:
         return "";
     }
@@ -165,14 +188,14 @@ const ReportingPage = () => {
           <TopToolbar pageTitle="Reporting" />
           <div className="space-y-6 p-2 xs:p-3 sm:p-6">
             <div className="flex flex-col gap-2">
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                   <div className="w-full overflow-x-auto">
-                    <TabsList className="flex gap-2 min-w-[360px] xs:min-w-[400px] w-fit sm:w-auto px-1">
+                    <TabsList className="flex justify-start gap-2 min-w-[360px] xs:min-w-[400px] w-fit sm:w-auto px-1">
                       <TabsTrigger value="messages" className="text-xs xs:text-sm md:text-base px-3 py-2 whitespace-nowrap">Messages Overview</TabsTrigger>
                       <TabsTrigger value="delivery" className="text-xs xs:text-sm md:text-base px-3 py-2 whitespace-nowrap">Delivery Reports</TabsTrigger>
                       <TabsTrigger value="contacts" className="text-xs xs:text-sm md:text-base px-3 py-2 whitespace-nowrap">Contacts Overview</TabsTrigger>
-                      <TabsTrigger value="responses" className="text-xs xs:text-sm md:text-base px-3 py-2 whitespace-nowrap">Response Reports</TabsTrigger>
+                      <TabsTrigger value="conversations" className="text-xs xs:text-sm md:text-base px-3 py-2 whitespace-nowrap">Conversation Reports</TabsTrigger>
                     </TabsList>
                   </div>
                   <div className="flex flex-col gap-2 xs:flex-row xs:items-center xs:gap-3 w-full xs:w-auto">
@@ -261,10 +284,10 @@ const ReportingPage = () => {
                   </div>
                   <ContactsOverview />
                 </TabsContent>
-                <TabsContent value="responses" className="space-y-6">
+                <TabsContent value="conversations" className="space-y-6">
                   <div className="mb-6">
-                    <h2 className="text-2xl font-bold text-gray-900">{getTabTitle("responses")}</h2>
-                    <p className="text-gray-600 mt-1">{getTabDescription("responses")}</p>
+                    <h2 className="text-2xl font-bold text-gray-900">{getTabTitle("conversations")}</h2>
+                    <p className="text-gray-600 mt-1">{getTabDescription("conversations")}</p>
                   </div>
                   <ResponseReports />
                 </TabsContent>
