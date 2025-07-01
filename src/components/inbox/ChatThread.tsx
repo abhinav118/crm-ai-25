@@ -57,7 +57,7 @@ export const ChatThread: React.FC<ChatThreadProps> = ({ contactId }) => {
       const payload = {
         contactId: contact.id,
         content: messageText.trim(),
-        channel: 'sms',
+        channel: 'sms' as const,
         contactPhone: contact.phone || undefined,
         ...(attachedImageUrl && { media_url: attachedImageUrl })
       };
