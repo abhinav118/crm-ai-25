@@ -1,4 +1,3 @@
-
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { DateRange } from "react-day-picker";
@@ -25,6 +24,24 @@ export interface ResponseReportsResult {
   responses: ResponseReportData[];
   chartData: ResponseRateChartData[];
   totalCount: number;
+}
+
+function formatPhoneNumber(phone: string): string {
+  // Remove all non-digit characters
+  let cleaned = ('' + phone).replace(/\D/g, '');
+
+  // Remove leading '1' if it's a US country code and the number is 11 digits
+  if (cleaned.length === 11 && cleaned.startsWith('1')) {
+    cleaned = cleaned.slice(1);
+  }
+
+  // Format as (xxx) xxx-xxxx if 10 digits remain
+  if (cleaned.length === 10) {
+    return `(${cleaned.slice(0,3)}) ${cleaned.slice(3,6)}-${cleaned.slice(6)}`;
+  }
+
+  // Return original if not a valid US number
+  return phone;
 }
 
 export function useResponseReports(dateRange?: DateRange, page: number = 1, pageSize: number = 25) {
@@ -82,11 +99,12 @@ export function useResponseReports(dateRange?: DateRange, page: number = 1, page
 
         console.log(`Processing campaign: ${campaign.campaign_name} with ${recipients.length} recipients`);
 
-        // Get all contacts for this campaign's recipients
+        const formattedRecipients = recipients.map(formatPhoneNumber);
+
         const { data: contacts, error: contactsError } = await supabase
           .from('contacts')
           .select('id, first_name, last_name, phone')
-          .in('phone', recipients);
+          .in('phone', formattedRecipients);
 
         if (contactsError) {
           console.error('Error fetching contacts:', contactsError);
