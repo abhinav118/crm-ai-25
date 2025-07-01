@@ -16,7 +16,32 @@ const chartConfig = {
 };
 
 export const ResponseRateChart: React.FC<ResponseRateChartProps> = ({ data }) => {
-  if (!data || data.length === 0) {
+  // Validate and sanitize data before rendering
+  const validData = React.useMemo(() => {
+    if (!data || data.length === 0) return [];
+    
+    return data
+      .filter(item => {
+        // Filter out invalid data points
+        return (
+          item &&
+          typeof item.response_rate === 'number' &&
+          !isNaN(item.response_rate) &&
+          isFinite(item.response_rate) &&
+          item.campaign_name &&
+          typeof item.total_recipients === 'number' &&
+          typeof item.unique_respondents === 'number'
+        );
+      })
+      .map(item => ({
+        ...item,
+        // Ensure response_rate is within valid range
+        response_rate: Math.max(0, Math.min(100, item.response_rate))
+      }))
+      .sort((a, b) => b.response_rate - a.response_rate);
+  }, [data]);
+
+  if (!validData || validData.length === 0) {
     return (
       <div className="h-[400px] flex items-center justify-center text-gray-500 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
         <div className="text-center">
@@ -28,14 +53,11 @@ export const ResponseRateChart: React.FC<ResponseRateChartProps> = ({ data }) =>
     );
   }
 
-  // Sort data by response rate for better visualization
-  const sortedData = [...data].sort((a, b) => b.response_rate - a.response_rate);
-
   return (
     <ChartContainer config={chartConfig} className="h-[400px] w-full">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart 
-          data={sortedData} 
+          data={validData} 
           layout="horizontal"
           margin={{ top: 20, right: 60, left: 120, bottom: 20 }}
         >

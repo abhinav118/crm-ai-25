@@ -105,6 +105,9 @@ const getCampaignResponses = (dateRange: DateRange | undefined, page: number, pa
 
       // For each campaign, find first replies
       for (const campaign of campaigns || []) {
+        const campaignTime = campaign.schedule_time || campaign.created_at;
+        if (!campaignTime) continue;
+
         const { data: messages, error: messagesError } = await supabase
           .from('messages')
           .select(`
@@ -116,7 +119,7 @@ const getCampaignResponses = (dateRange: DateRange | undefined, page: number, pa
             )
           `)
           .eq('direction', 'inbound')
-          .gte('sent_at', campaign.schedule_time)
+          .gte('sent_at', campaignTime)
           .order('sent_at', { ascending: true });
 
         if (messagesError) continue;
@@ -130,7 +133,7 @@ const getCampaignResponses = (dateRange: DateRange | undefined, page: number, pa
               campaign_name: campaign.campaign_name,
               contact_name: `${msg.contacts.first_name} ${msg.contacts.last_name || ''}`.trim(),
               phone: msg.contacts.phone || '',
-              sent_time: campaign.schedule_time,
+              sent_time: campaignTime,
               first_reply_time: msg.sent_at,
               message: msg.content,
             });
@@ -178,20 +181,37 @@ const getResponseRateChart = (dateRange: DateRange | undefined) => {
       for (const campaign of campaigns || []) {
         const totalRecipients = campaign.total_count || 0;
         
+        // Skip campaigns with no recipients
+        if (totalRecipients === 0) continue;
+        
+        // Use schedule_time or created_at as fallback
+        const campaignTime = campaign.schedule_time || campaign.created_at;
+        if (!campaignTime) continue;
+        
         // Count unique respondents after campaign
         const { data: responses, error: responsesError } = await supabase
           .from('messages')
           .select('contact_id')
           .eq('direction', 'inbound')
-          .gte('sent_at', campaign.schedule_time);
+          .gte('sent_at', campaignTime);
 
         if (responsesError) continue;
 
         const uniqueRespondents = new Set(responses?.map(r => r.contact_id) || []).size;
-        const responseRate = totalRecipients > 0 ? (uniqueRespondents / totalRecipients) * 100 : 0;
+        
+        // Calculate response rate with proper validation
+        let responseRate = 0;
+        if (totalRecipients > 0 && !isNaN(uniqueRespondents)) {
+          responseRate = (uniqueRespondents / totalRecipients) * 100;
+        }
+        
+        // Ensure response rate is a valid number
+        if (isNaN(responseRate) || !isFinite(responseRate)) {
+          responseRate = 0;
+        }
 
         chartData.push({
-          campaign_name: campaign.campaign_name,
+          campaign_name: campaign.campaign_name || 'Unnamed Campaign',
           total_recipients: totalRecipients,
           unique_respondents: uniqueRespondents,
           response_rate: Math.round(responseRate * 100) / 100, // Round to 2 decimal places
