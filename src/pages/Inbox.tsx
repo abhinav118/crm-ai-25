@@ -4,6 +4,7 @@ import Sidebar from '@/components/dashboard/Sidebar';
 import TopToolbar from '@/components/TopToolbar';
 import { ConversationsList } from '@/components/inbox/ConversationsList';
 import { ChatThread } from '@/components/inbox/ChatThread';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export interface Contact {
   id: string;
@@ -86,9 +87,17 @@ const Inbox = () => {
                 />
               </div>
               
-              {/* Conversations count and New button */}
+              {/* Sort and New button */}
               <div className="flex items-center justify-between mt-4">
-                <span className="text-sm text-gray-600">4 conversations</span>
+                <Select value={sortOrder} onValueChange={(value: 'newest' | 'oldest') => setSortOrder(value)}>
+                  <SelectTrigger className="w-32">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="newest">Newest First</SelectItem>
+                    <SelectItem value="oldest">Oldest First</SelectItem>
+                  </SelectContent>
+                </Select>
                 <button className="flex items-center gap-1 px-3 py-1 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
