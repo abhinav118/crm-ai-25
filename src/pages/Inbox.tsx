@@ -87,12 +87,6 @@ const Inbox = () => {
                     <SelectItem value="oldest">Oldest First</SelectItem>
                   </SelectContent>
                 </Select>
-                <button className="flex items-center gap-1 px-3 py-1 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  New
-                </button>
               </div>
             </div>
             
