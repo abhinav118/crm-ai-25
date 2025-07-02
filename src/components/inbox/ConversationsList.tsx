@@ -71,49 +71,21 @@ export const ConversationsList: React.FC<ConversationsListProps> = ({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="p-4 border-b border-gray-200">
-        <h2 className="text-lg font-semibold mb-4">Conversations</h2>
-        
-        {/* Filters */}
-        {/* <div className="flex gap-2 mb-4">
-          <Button
-            variant={filterStatus === 'open' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => onFilterChange('open')}
-          >
-            OPEN
-          </Button>
-          <Button
-            variant={filterStatus === 'closed' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => onFilterChange('closed')}
-          >
-            CLOSED
-          </Button>
-        </div> */}
-
-        {/* Sort */}
-        <Select value={sortOrder} onValueChange={(value: 'newest' | 'oldest') => onSortChange(value)}>
-          <SelectTrigger className="w-full">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="newest">Newest First</SelectItem>
-            <SelectItem value="oldest">Oldest First</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
       {/* Conversations List */}
       <div className="flex-1 overflow-y-auto">
         {isLoading ? (
-          <div className="p-4 space-y-4">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="space-y-2">
-                <Skeleton className="h-4 w-3/4" />
-                <Skeleton className="h-3 w-1/2" />
-                <Skeleton className="h-3 w-full" />
+          <div className="space-y-0">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="p-4 border-b border-gray-100">
+                <div className="flex items-start gap-3">
+                  <Skeleton className="h-10 w-10 rounded-full" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-3 w-1/2" />
+                    <Skeleton className="h-3 w-full" />
+                  </div>
+                  <Skeleton className="h-3 w-12" />
+                </div>
               </div>
             ))}
           </div>
@@ -128,76 +100,66 @@ export const ConversationsList: React.FC<ConversationsListProps> = ({
             </div>
           </div>
         ) : (
-          <>
-            <div className="p-2 text-xs text-gray-500 border-b">
-              {conversations.length} conversation{conversations.length !== 1 ? 's' : ''}
-            </div>
-            {conversations.map((conversation) => (
-              <div
-                key={conversation.contact.id}
-                className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
-                  selectedContactId === conversation.contact.id ? 'bg-blue-50 border-blue-200' : ''
-                }`}
-                onClick={() => handleSelectContact(conversation.contact.id)}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-medium text-sm truncate">
-                        {getFullName(conversation.contact)}
-                      </h3>
-                      {conversation.unreadCount > 0 && (
-                        <Badge variant="destructive" className="text-xs">
-                          {conversation.unreadCount}
-                        </Badge>
+          conversations.map((conversation) => (
+            <div
+              key={conversation.contact.id}
+              className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
+                selectedContactId === conversation.contact.id ? 'bg-blue-50' : ''
+              }`}
+              onClick={() => handleSelectContact(conversation.contact.id)}
+            >
+              <div className="flex items-start gap-3">
+                {/* Avatar */}
+                <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center text-white font-medium text-sm flex-shrink-0">
+                  {getFullName(conversation.contact).split(' ').map(n => n[0]).join('').toUpperCase()}
+                </div>
+                
+                {/* Content */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-semibold text-gray-900 truncate">
+                          {getFullName(conversation.contact)}
+                        </h3>
+                        {conversation.unreadCount > 0 && (
+                          <span className="inline-flex items-center justify-center w-5 h-5 text-xs font-medium text-white bg-blue-500 rounded-full">
+                            {conversation.unreadCount}
+                          </span>
+                        )}
+                      </div>
+                      
+                      <p className="text-sm text-gray-600 mb-1">
+                        {conversation.contact.phone}
+                      </p>
+                      
+                      {conversation.lastMessage ? (
+                        <p className="text-sm text-gray-600 truncate">
+                          <span className="text-gray-500">
+                            {conversation.lastMessage.sender === 'user' ? 'You: ' : ''}
+                          </span>
+                          {conversation.lastMessage.content}
+                        </p>
+                      ) : (
+                        <p className="text-sm text-gray-400 italic truncate">
+                          No messages yet
+                        </p>
                       )}
                     </div>
                     
-                    <p className="text-xs text-gray-600 mb-1">
-                      {conversation.contact.phone}
-                    </p>
-                    
-                    {conversation.lastMessage ? (
-                      <p className="text-sm text-gray-700 truncate mb-2">
-                        <span className="text-xs text-gray-500 mr-1">
-                          {conversation.lastMessage.sender === 'user' ? 'You:' : ''}
-                        </span>
-                        {conversation.lastMessage.content}
-                      </p>
-                    ) : (
-                      <p className="text-sm text-gray-400 italic truncate mb-2">
-                        No messages yet
-                      </p>
-                    )}
-                    
-                    <div className="flex items-center justify-between">
-                      {/* <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-500">
-                          {conversation.assignedTo || 'Unassigned'}
-                        </span>
-                        {!conversation.assignedTo && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-6 px-2 text-xs"
-                            onClick={(e) => handleTakeConversation(conversation.contact.id, e)}
-                          >
-                            TAKE
-                          </Button>
-                        )}
-                      </div> */}
-                      
+                    {/* Timestamp */}
+                    <div className="text-right ml-2 flex-shrink-0">
                       {conversation.lastMessage && (
                         <span className="text-xs text-gray-400">
-                          {format(new Date(conversation.lastMessage.sent_at), 'MMM d, h:mm a')}
+                          {format(new Date(conversation.lastMessage.sent_at), 'h:mm a')}
                         </span>
                       )}
                     </div>
                   </div>
                 </div>
               </div>
-            ))}
-          </>
+            </div>
+          ))
         )}
       </div>
     </div>

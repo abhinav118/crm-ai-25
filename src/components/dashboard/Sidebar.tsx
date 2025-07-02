@@ -97,13 +97,12 @@ const Sidebar: React.FC<SidebarProps> = ({
     <aside className="h-screen fixed top-0 left-0 z-30 flex flex-col w-[234px] bg-[#0F172A] text-white justify-between">
       {/* Logo */}
       <div>
-        <div className="p-4 flex items-center gap-3 text-white font-semibold text-lg">
+        <div className="p-4 flex items-center justify-center">
           <img 
             src="/lovable-uploads/9cf20fca-a0fb-4424-9cbe-76647a5a5e70.png" 
             alt="Angel Flight Marketing Services"
-            className="h-8 w-auto flex-shrink-0"
+            className="h-8 w-auto"
           />
-          <span className="truncate">Angel Flight Marketing Services</span>
         </div>
 
         {/* Main Nav */}

@@ -20,7 +20,7 @@ export const ChatThread: React.FC<ChatThreadProps> = ({ contactId }) => {
   const [messageText, setMessageText] = React.useState('');
   const [attachedImageUrl, setAttachedImageUrl] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   
   const { data: messages = [], isLoading: messagesLoading } = useMessages(contactId);
   const sendMessage = useSendMessage();
@@ -79,17 +79,17 @@ export const ChatThread: React.FC<ChatThreadProps> = ({ contactId }) => {
   };
 
   const handleEmojiSelect = (emoji: string) => {
-    if (textareaRef.current) {
-      const textarea = textareaRef.current;
-      const start = textarea.selectionStart;
-      const end = textarea.selectionEnd;
+    if (inputRef.current) {
+      const input = inputRef.current;
+      const start = input.selectionStart || 0;
+      const end = input.selectionEnd || 0;
       const newText = messageText.slice(0, start) + emoji + messageText.slice(end);
       setMessageText(newText);
       
       // Set cursor position after emoji
       setTimeout(() => {
-        textarea.selectionStart = textarea.selectionEnd = start + emoji.length;
-        textarea.focus();
+        input.selectionStart = input.selectionEnd = start + emoji.length;
+        input.focus();
       }, 0);
     }
   };
@@ -99,17 +99,17 @@ export const ChatThread: React.FC<ChatThreadProps> = ({ contactId }) => {
   };
 
   const handleLinkInsert = (linkText: string) => {
-    if (textareaRef.current) {
-      const textarea = textareaRef.current;
-      const start = textarea.selectionStart;
-      const end = textarea.selectionEnd;
+    if (inputRef.current) {
+      const input = inputRef.current;
+      const start = input.selectionStart || 0;
+      const end = input.selectionEnd || 0;
       const newText = messageText.slice(0, start) + linkText + messageText.slice(end);
       setMessageText(newText);
       
       // Set cursor position after link
       setTimeout(() => {
-        textarea.selectionStart = textarea.selectionEnd = start + linkText.length;
-        textarea.focus();
+        input.selectionStart = input.selectionEnd = start + linkText.length;
+        input.focus();
       }, 0);
     }
   };
@@ -127,19 +127,34 @@ export const ChatThread: React.FC<ChatThreadProps> = ({ contactId }) => {
   return (
     <div className="flex flex-col h-full bg-white">
       {/* Header */}
-      <div className="p-4 border-b border-gray-200 bg-gray-50">
-        <div className="flex items-center justify-between">
+      <div className="p-4 border-b border-gray-200 bg-white flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center text-white font-medium text-sm">
+            {getFullName(contact).split(' ').map(n => n[0]).join('').toUpperCase()}
+          </div>
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">
+            <h2 className="font-semibold text-gray-900">
               {getFullName(contact)}
             </h2>
             <p className="text-sm text-gray-500">{contact.phone}</p>
           </div>
         </div>
+        <div className="flex items-center gap-2">
+          <button className="p-2 hover:bg-gray-100 rounded-full">
+            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+            </svg>
+          </button>
+          <button className="p-2 hover:bg-gray-100 rounded-full">
+            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
         {messagesLoading ? (
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
@@ -157,7 +172,7 @@ export const ChatThread: React.FC<ChatThreadProps> = ({ contactId }) => {
             </div>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-2">
             {messages.map((message) => (
               <MessageBubble key={message.id} message={message} />
             ))}
@@ -167,80 +182,57 @@ export const ChatThread: React.FC<ChatThreadProps> = ({ contactId }) => {
       </div>
 
       {/* Message Input */}
-      <div className="p-4 border-t border-gray-200">
-        {/* Show attached image preview */}
-        {attachedImageUrl && (
-          <div className="mb-3 p-2 bg-gray-50 rounded-lg">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <img 
-                  src={attachedImageUrl} 
-                  alt="Attached" 
-                  className="w-12 h-12 object-cover rounded"
-                />
-                <span className="text-sm text-gray-600">Image attached</span>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setAttachedImageUrl(null)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                Remove
-              </Button>
-            </div>
-          </div>
-        )}
-
-        <form onSubmit={handleSendMessage} className="space-y-3">
-          {/* Message helpers */}
-          <MessageHelpers
-            onEmojiSelect={handleEmojiSelect}
-            onImageUpload={handleImageUpload}
-            onLinkInsert={handleLinkInsert}
-          />
+      <div className="p-4 border-t border-gray-200 bg-white">
+        <form onSubmit={handleSendMessage} className="flex items-center gap-3">
+          <button 
+            type="button"
+            className="p-2 hover:bg-gray-100 rounded-full flex-shrink-0"
+          >
+            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+            </svg>
+          </button>
           
-          {/* Input area */}
-          <div className="flex items-end space-x-2">
-            <div className="flex-1">
-              <Textarea
-                ref={textareaRef}
-                value={messageText}
-                onChange={(e) => setMessageText(e.target.value)}
-                onKeyDown={handleKeyPress}
-                placeholder="Type your SMS message..."
-                className="min-h-[60px] resize-none"
-                disabled={sendMessage.isPending}
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                type="button"
-                onClick={() => {
-                  setMessageText('');
-                  setAttachedImageUrl(null);
-                }}
-                disabled={(!messageText.trim() && !attachedImageUrl) || sendMessage.isPending}
-                className="px-3"
-              >
-                Clear
-              </Button>
-              <Button
-                type="submit"
-                size="sm"
-                disabled={(!messageText.trim() && !attachedImageUrl) || sendMessage.isPending}
-                className="px-3"
-              >
-                {sendMessage.isPending ? (
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <Send className="h-4 w-4" />
-                )}
-              </Button>
-            </div>
+          <div className="flex-1 relative">
+            <input
+              ref={inputRef}
+              value={messageText}
+              onChange={(e) => setMessageText(e.target.value)}
+              onKeyDown={handleKeyPress}
+              placeholder="Type your SMS message..."
+              className="w-full px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              disabled={sendMessage.isPending}
+            />
+            <span className="absolute right-4 bottom-1 text-xs text-gray-400">
+              0/160 characters
+            </span>
           </div>
+
+          <button 
+            type="button"
+            className="p-2 hover:bg-gray-100 rounded-full flex-shrink-0"
+          >
+            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1.5a2.5 2.5 0 100-5H9v5zm0 0v6m1.5 0H9" />
+            </svg>
+          </button>
+
+          <button className="text-sm text-blue-600 hover:bg-blue-50 px-3 py-1 rounded">
+            Clear
+          </button>
+
+          <Button
+            type="submit"
+            size="sm"
+            disabled={!messageText.trim() || sendMessage.isPending}
+            className="bg-blue-600 hover:bg-blue-700 rounded-full px-6"
+          >
+            {sendMessage.isPending ? (
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
+          </Button>
         </form>
       </div>
     </div>
