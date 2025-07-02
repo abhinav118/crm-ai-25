@@ -65,7 +65,7 @@ const Inbox = () => {
             {/* Header */}
             <div className="p-4 border-b border-gray-100">
               <div className="flex items-center justify-between mb-4">
-                <h1 className="text-lg font-semibold text-gray-900">Conversations</h1>
+                {/* <h1 className="text-lg font-semibold text-gray-900">Conversations</h1> */}
                 <div className="flex items-center gap-2">
                 </div>
               </div>
