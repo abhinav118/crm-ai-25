@@ -2,16 +2,19 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { Conversation } from '@/pages/Inbox';
+import { useDebounce } from '@/hooks/use-debounce';
 
-export const useConversations = (filterStatus: 'open' | 'closed', sortOrder: 'newest' | 'oldest') => {
+export const useConversations = (filterStatus: 'open' | 'closed', sortOrder: 'newest' | 'oldest', searchTerm?: string) => {
+  const debouncedSearchTerm = useDebounce(searchTerm || '', 300);
+  
   return useQuery({
-    queryKey: ['conversations', filterStatus, sortOrder],
+    queryKey: ['conversations', filterStatus, sortOrder, debouncedSearchTerm],
     queryFn: async (): Promise<Conversation[]> => {
       console.log('Fetching conversations...');
       
       try {
-        // Get contacts with their messages using a single query
-        const { data: contactsWithMessages, error } = await supabase
+        // Build the query
+        let query = supabase
           .from('contacts')
           .select(`
             id,
@@ -31,7 +34,14 @@ export const useConversations = (filterStatus: 'open' | 'closed', sortOrder: 'ne
               is_read,
               direction
             )
-          `)
+          `);
+
+        // Add search filters if search term exists
+        if (debouncedSearchTerm && debouncedSearchTerm.length > 0) {
+          query = query.or(`first_name.ilike.%${debouncedSearchTerm}%,last_name.ilike.%${debouncedSearchTerm}%,phone.ilike.%${debouncedSearchTerm}%,messages.content.ilike.%${debouncedSearchTerm}%`);
+        }
+
+        const { data: contactsWithMessages, error } = await query
           .order('updated_at', { ascending: false })
           .limit(100);
 

@@ -16,6 +16,7 @@ interface ConversationsListProps {
   onFilterChange: (status: 'open' | 'closed') => void;
   sortOrder: 'newest' | 'oldest';
   onSortChange: (order: 'newest' | 'oldest') => void;
+  searchTerm: string;
 }
 
 export const ConversationsList: React.FC<ConversationsListProps> = ({
@@ -25,8 +26,9 @@ export const ConversationsList: React.FC<ConversationsListProps> = ({
   onFilterChange,
   sortOrder,
   onSortChange,
+  searchTerm,
 }) => {
-  const { data: conversations = [], isLoading, error, isError } = useConversations(filterStatus, sortOrder);
+  const { data: conversations = [], isLoading, error, isError } = useConversations(filterStatus, sortOrder, searchTerm);
   const markMessagesRead = useMarkMessagesRead();
 
   const handleTakeConversation = (contactId: string, e: React.MouseEvent) => {

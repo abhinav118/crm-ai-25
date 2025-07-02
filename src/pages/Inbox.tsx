@@ -37,6 +37,7 @@ const Inbox = () => {
   const [filterStatus, setFilterStatus] = useState<'open' | 'closed'>('open');
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const handleToggleSidebar = () => {
     setSidebarCollapsed(!sidebarCollapsed);
@@ -71,6 +72,8 @@ const Inbox = () => {
                 </svg>
                 <input 
                   type="text" 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="Search conversations..."
                   className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
@@ -99,6 +102,7 @@ const Inbox = () => {
                 onFilterChange={setFilterStatus}
                 sortOrder={sortOrder}
                 onSortChange={setSortOrder}
+                searchTerm={searchTerm}
               />
             </div>
           </div>
