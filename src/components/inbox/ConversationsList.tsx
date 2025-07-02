@@ -93,13 +93,23 @@ export const ConversationsList: React.FC<ConversationsListProps> = ({
           </div>
         ) : conversations.length === 0 ? (
           <div className="p-4 text-center text-gray-500">
-            <div className="space-y-3">
-              <div className="text-4xl">💬</div>
-              <p className="font-medium">No conversations yet</p>
-              <p className="text-sm">
-                Start messaging your contacts to see conversations here.
-              </p>
-            </div>
+            {searchTerm ? (
+              <div className="space-y-3">
+                <div className="text-4xl">🔍</div>
+                <p className="font-medium">No conversations found</p>
+                <p className="text-sm">
+                  No conversations match "{searchTerm}". Try a different search term.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="text-4xl">💬</div>
+                <p className="font-medium">No conversations yet</p>
+                <p className="text-sm">
+                  Start messaging your contacts to see conversations here.
+                </p>
+              </div>
+            )}
           </div>
         ) : (
           conversations.map((conversation) => (
