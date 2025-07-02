@@ -38,7 +38,7 @@ export const useConversations = (filterStatus: 'open' | 'closed', sortOrder: 'ne
 
         // Add search filters if search term exists
         if (debouncedSearchTerm && debouncedSearchTerm.length > 0) {
-          query = query.or(`first_name.ilike.%${debouncedSearchTerm}%,last_name.ilike.%${debouncedSearchTerm}%,phone.ilike.%${debouncedSearchTerm}%,messages.content.ilike.%${debouncedSearchTerm}%`);
+          query = query.or(`first_name.ilike.%${debouncedSearchTerm}%,last_name.ilike.%${debouncedSearchTerm}%,phone.ilike.%${debouncedSearchTerm}%`);
         }
 
         const { data: contactsWithMessages, error } = await query
