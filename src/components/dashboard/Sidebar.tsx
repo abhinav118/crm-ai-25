@@ -30,8 +30,8 @@ const Sidebar: React.FC<SidebarProps> = ({
     return (
       <aside className="h-screen fixed top-0 left-0 z-30 flex flex-col w-[63px] bg-[#0F172A] text-white">
         <div className="flex items-center justify-center h-16 px-3">
-          <div className="bg-purple-600 text-white h-8 w-8 rounded-full flex items-center justify-center font-bold text-lg">
-            T
+          <div className="bg-blue-600 text-white h-8 w-8 rounded-full flex items-center justify-center font-bold text-lg">
+            AF
           </div>
         </div>
         
@@ -96,10 +96,10 @@ const Sidebar: React.FC<SidebarProps> = ({
       {/* Logo */}
       <div>
         <div className="p-4 flex items-center gap-3 text-white font-semibold text-lg">
-          <div className="bg-purple-600 text-white h-8 w-8 rounded-full flex items-center justify-center font-bold">
-            T
+          <div className="bg-blue-600 text-white h-8 w-8 rounded-full flex items-center justify-center font-bold">
+            AF
           </div>
-          <span>TextFlow</span>
+          <span>Angel Flight</span>
         </div>
 
         {/* Main Nav */}
