@@ -33,7 +33,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           <img 
             src="/lovable-uploads/9cf20fca-a0fb-4424-9cbe-76647a5a5e70.png" 
             alt="Angel Flight Marketing Services"
-            className="h-8 w-auto"
+            className="h-11 w-auto"
           />
         </div>
         
@@ -101,7 +101,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           <img 
             src="/lovable-uploads/9cf20fca-a0fb-4424-9cbe-76647a5a5e70.png" 
             alt="Angel Flight Marketing Services"
-            className="h-8 w-auto"
+            className="h-11 w-auto"
           />
         </div>
 
