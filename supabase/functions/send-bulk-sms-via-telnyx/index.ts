@@ -10,7 +10,7 @@ const corsHeaders = {
 // Personalization function
 function personalizeMessage(template: string, contact: any) {
   return template
-    .replace(/{{first_name}}/gi, contact.first_name || 'there')
+    .replace(/{{first_name}}/gi, contact.first_name || '')
     .replace(/{{last_name}}/gi, contact.last_name || '')
     .replace(/{{company}}/gi, contact.company || '');
 }
@@ -162,7 +162,12 @@ serve(async (req) => {
           try {
             // Personalize the message for this specific contact
             const personalizedText = personalizeMessage(text, contact);
-            
+            if(!contact.first_name){
+              contact.first_name = contact.name?contact.name.split(' ')[0]:'there';
+            }
+            if(!contact.last_name){
+              contact.last_name = contact.name?contact.name.split(' ')[1]:'there';
+            }
             console.log(`Sending personalized SMS to ${contact.formattedPhone} (${contact.first_name || 'N/A'})`);
             
             const telnyxPayload = {
