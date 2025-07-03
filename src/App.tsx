@@ -15,6 +15,7 @@ import AiCrm from "./pages/AiCrm";
 import ReportingPage from "./pages/ReportingPage";
 import Settings from "./pages/Settings";
 import Inbox from "./pages/Inbox";
+import Footer from "./components/layout/Footer";
 
 // Configure QueryClient with better error handling
 const queryClient = new QueryClient({
@@ -52,23 +53,26 @@ const App = () => {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <BrowserRouter>
-          <div className="min-h-screen w-full">
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/contacts" element={<Index />} />
-              <Route path="/conversations" element={<Index />} />
-              <Route path="/inbox" element={<Inbox />} />
-              <Route path="/campaigns" element={<CampaignsPage />} />
-              <Route path="/campaigns/create" element={<CreateCampaignPage />} />
-              <Route path="/reporting" element={<ReportingPage />} />
-              <Route path="/reporting/messages-overview" element={<ReportingPage />} />
-              <Route path="/reporting/delivery-reports" element={<ReportingPage />} />
-              <Route path="/reporting/contacts-overview" element={<ReportingPage />} />
-              <Route path="/reporting/conversations" element={<ReportingPage />} />
-              <Route path="/settings/*" element={<Settings />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+          <div className="min-h-screen w-full flex flex-col">
+            <div className="flex-1">
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/contacts" element={<Index />} />
+                <Route path="/conversations" element={<Index />} />
+                <Route path="/inbox" element={<Inbox />} />
+                <Route path="/campaigns" element={<CampaignsPage />} />
+                <Route path="/campaigns/create" element={<CreateCampaignPage />} />
+                <Route path="/reporting" element={<ReportingPage />} />
+                <Route path="/reporting/messages-overview" element={<ReportingPage />} />
+                <Route path="/reporting/delivery-reports" element={<ReportingPage />} />
+                <Route path="/reporting/contacts-overview" element={<ReportingPage />} />
+                <Route path="/reporting/conversations" element={<ReportingPage />} />
+                <Route path="/settings/*" element={<Settings />} />
+                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </div>
+            <Footer />
           </div>
           <Toaster />
           <Sonner />
