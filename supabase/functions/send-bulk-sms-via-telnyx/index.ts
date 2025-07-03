@@ -161,13 +161,14 @@ serve(async (req) => {
         for (const contact of batch) {
           try {
             // Personalize the message for this specific contact
-            const personalizedText = personalizeMessage(text, contact);
+            
             if(!contact.first_name){
               contact.first_name = contact.name?contact.name.split(' ')[0]:'there';
             }
             if(!contact.last_name){
               contact.last_name = contact.name?contact.name.split(' ')[1]:'there';
             }
+            const personalizedText = personalizeMessage(text, contact);
             console.log(`Sending personalized SMS to ${contact.formattedPhone} (${contact.first_name || 'N/A'})`);
             
             const telnyxPayload = {
