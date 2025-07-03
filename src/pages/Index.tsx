@@ -416,16 +416,6 @@ const Index = () => {
                 <Menu size={16} />
               </Button>
               <h1 className="text-2xl font-bold text-gray-900">Contacts</h1>
-              <div className="flex items-center space-x-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setIsCompactMode(!isCompactMode)}
-                  className="text-gray-500"
-                >
-                  <Settings size={16} />
-                </Button>
-              </div>
             </div>
             
             <div className="flex items-center space-x-4">
