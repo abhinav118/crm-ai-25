@@ -15,7 +15,7 @@ const CampaignsPage: React.FC = () => {
     <div className="flex min-h-screen">
       <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
       <div className={`flex-1 transition-all duration-300 ${sidebarCollapsed ? 'ml-[70px]' : 'ml-[240px]'}`}>
-        <TopToolbar pageTitle="Campaigns" onSidebarToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
+        <TopToolbar pageTitle="Campaigns" />
         <div className="p-8">
           <Tabs defaultValue="sent" className="w-full">
             <TabsList className="mb-6">
