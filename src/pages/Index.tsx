@@ -413,7 +413,7 @@ const Index = () => {
                 onClick={toggleSidebar}
                 className="text-gray-500"
               >
-                <Menu size={16} />
+                <Settings size={16} />
               </Button>
               <h1 className="text-2xl font-bold text-gray-900">Contacts</h1>
               <div className="flex items-center space-x-2">

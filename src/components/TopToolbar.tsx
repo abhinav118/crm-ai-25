@@ -1,5 +1,6 @@
 
-import { Bell, User, ChevronDown } from "lucide-react";
+import { Bell, User, ChevronDown, Settings } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -12,9 +13,10 @@ import { useNavigate } from "react-router-dom";
 
 type TopToolbarProps = {
   pageTitle?: string;
+  onSidebarToggle?: () => void;
 };
 
-const TopToolbar: React.FC<TopToolbarProps> = ({ pageTitle = "Dashboard" }) => {
+const TopToolbar: React.FC<TopToolbarProps> = ({ pageTitle = "Dashboard", onSidebarToggle }) => {
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -24,7 +26,17 @@ const TopToolbar: React.FC<TopToolbarProps> = ({ pageTitle = "Dashboard" }) => {
 
   return (
     <div className="flex items-center justify-between w-full px-6 py-3 border-b bg-white shadow-sm sticky top-0 z-50">
-      <div className="flex items-center">
+      <div className="flex items-center space-x-4">
+        {onSidebarToggle && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onSidebarToggle}
+            className="text-gray-500"
+          >
+            <Settings size={16} />
+          </Button>
+        )}
         <h1 className="text-xl font-semibold text-gray-900">{pageTitle}</h1>
       </div>
       <div className="flex items-center gap-6">

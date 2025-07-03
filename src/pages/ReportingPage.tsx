@@ -185,7 +185,7 @@ const ReportingPage = () => {
         <Sidebar collapsed={sidebarCollapsed} onToggle={handleSidebarToggle} />
 
         <div className="flex-1 ml-0 sm:ml-[234px] min-w-0">
-          <TopToolbar pageTitle="Reporting" />
+          <TopToolbar pageTitle="Reporting" onSidebarToggle={handleSidebarToggle} />
           <div className="space-y-6 p-2 xs:p-3 sm:p-6">
             <div className="flex flex-col gap-2">
               <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
