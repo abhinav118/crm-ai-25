@@ -14,6 +14,7 @@ import { Upload, Plus, Minus } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface ManageSegmentMembershipProps {
+  selectedContacts?: any[];
   onActionComplete: () => void;
   segmentFilter?: string;
   availableSegments?: string[];
@@ -21,6 +22,7 @@ interface ManageSegmentMembershipProps {
 }
 
 const ManageSegmentMembership: React.FC<ManageSegmentMembershipProps> = ({
+  selectedContacts = [],
   onActionComplete,
   availableSegments = [],
 }) => {
@@ -34,6 +36,9 @@ const ManageSegmentMembership: React.FC<ManageSegmentMembershipProps> = ({
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   
   const queryClient = useQueryClient();
+
+  // Determine if we should use input method
+  const shouldUseInputMethod = selectedContacts.length === 0;
 
   // Enhanced phone number validation function
   const validatePhoneNumber = (phone: string): boolean => {
@@ -99,57 +104,74 @@ const ManageSegmentMembership: React.FC<ManageSegmentMembershipProps> = ({
     setValidationErrors([]);
     
     try {
-      // Get phone numbers from input
-      const inputPhones = await getPhoneNumbers();
-      
-      if (inputPhones.length === 0) {
-        toast({
-          title: 'No Input',
-          description: 'Please provide phone numbers',
-          variant: 'destructive'
-        });
-        return;
-      }
+      let contactsToUpdate: any[] = [];
 
-      // Validate phone numbers with better error messages
-      const errors: string[] = [];
-      const validPhones: string[] = [];
-      
-      inputPhones.forEach((phone, index) => {
-        if (!validatePhoneNumber(phone)) {
-          errors.push(`Line ${index + 1}: Invalid phone format "${phone}" - Use (xxx) xxx-xxxx, +1xxxxxxxxxx, or xxxxxxxxxx`);
-        } else {
-          validPhones.push(phone);
+      if (shouldUseInputMethod) {
+        // Use input method to get contacts
+        const inputPhones = await getPhoneNumbers();
+        
+        if (inputPhones.length === 0) {
+          toast({
+            title: 'No Input',
+            description: 'Please select contacts or provide contact numbers to continue.',
+            variant: 'destructive'
+          });
+          return;
         }
-      });
 
-      if (errors.length > 0) {
-        setValidationErrors(errors);
-        toast({
-          title: 'Phone Number Validation Errors',
-          description: `${errors.length} phone number(s) have invalid format. Accepted formats: (xxx) xxx-xxxx, +1xxxxxxxxxx, xxxxxxxxxx`,
-          variant: 'destructive'
+        // Validate phone numbers with better error messages
+        const errors: string[] = [];
+        const validPhones: string[] = [];
+        
+        inputPhones.forEach((phone, index) => {
+          if (!validatePhoneNumber(phone)) {
+            errors.push(`Line ${index + 1}: Invalid phone format "${phone}" - Use (xxx) xxx-xxxx, +1xxxxxxxxxx, or xxxxxxxxxx`);
+          } else {
+            validPhones.push(phone);
+          }
         });
-        return;
-      }
 
-      // Find matching contacts
-      const matchingContacts = await findContactsByPhone(validPhones);
-      
-      if (matchingContacts.length === 0) {
-        toast({
-          title: 'No Matches Found',
-          description: 'No contacts found matching the provided phone numbers. Please double check the input formatting.',
-          variant: 'destructive'
-        });
-        return;
+        if (errors.length > 0) {
+          setValidationErrors(errors);
+          toast({
+            title: 'Phone Number Validation Errors',
+            description: `${errors.length} phone number(s) have invalid format. Accepted formats: (xxx) xxx-xxxx, +1xxxxxxxxxx, xxxxxxxxxx`,
+            variant: 'destructive'
+          });
+          return;
+        }
+
+        // Find matching contacts
+        const matchingContacts = await findContactsByPhone(validPhones);
+        
+        if (matchingContacts.length === 0) {
+          toast({
+            title: 'No Matches Found',
+            description: 'No contacts found matching the provided phone numbers. Please double check the input formatting.',
+            variant: 'destructive'
+          });
+          return;
+        }
+
+        contactsToUpdate = matchingContacts;
+      } else {
+        // Use selected contacts
+        if (selectedContacts.length === 0) {
+          toast({
+            title: 'No Contacts Selected',
+            description: 'Please select contacts or provide contact numbers to continue.',
+            variant: 'destructive'
+          });
+          return;
+        }
+        contactsToUpdate = selectedContacts;
       }
 
       // Determine the segment to use
       const segmentToUse = newSegmentName.trim() || targetSegment;
       
       // Update contacts using individual update operations
-      const updatePromises = matchingContacts.map(contact => {
+      const updatePromises = contactsToUpdate.map(contact => {
         let updatedSegmentName: string | null = contact.segment_name;
         
         if (operationType === 'add') {
@@ -290,60 +312,74 @@ const ManageSegmentMembership: React.FC<ManageSegmentMembershipProps> = ({
             </div>
           )}
 
-          {/* Contact Input Method */}
-          <div className="space-y-2">
-            <Label className="text-sm font-medium">Contact Input Method</Label>
-            <Tabs value={inputMethod} onValueChange={(value: 'manual' | 'csv') => setInputMethod(value)}>
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="manual">Manual Input</TabsTrigger>
-                <TabsTrigger value="csv">CSV Upload</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="manual" className="space-y-2">
-                <Label className="text-sm font-medium">Phone Numbers</Label>
-                <Textarea
-                  value={phoneNumbers}
-                  onChange={(e) => setPhoneNumbers(e.target.value)}
-                  placeholder="Enter phone numbers (one per line)&#10;Examples:&#10;(555) 123-4567&#10;+15551234567&#10;5551234567"
-                  rows={8}
-                  className="w-full"
-                />
-                <p className="text-xs text-gray-500">
-                  Supported formats: (xxx) xxx-xxxx, +1xxxxxxxxxx, xxxxxxxxxx
+          {/* Selected Contacts Summary */}
+          {!shouldUseInputMethod && (
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Selected Contacts</Label>
+              <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+                <p className="text-sm text-blue-800">
+                  {selectedContacts.length} contact{selectedContacts.length > 1 ? 's' : ''} selected for segment operation
                 </p>
-              </TabsContent>
-              
-              <TabsContent value="csv" className="space-y-2">
-                <Label className="text-sm font-medium">Upload CSV File</Label>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                  <Upload className="mx-auto h-12 w-12 text-gray-400" />
-                  <div className="mt-2">
-                    <input
-                      type="file"
-                      accept=".csv"
-                      onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
-                      className="hidden"
-                      id="csv-upload"
-                    />
-                    <label
-                      htmlFor="csv-upload"
-                      className="cursor-pointer text-blue-600 hover:text-blue-500"
-                    >
-                      Choose CSV file
-                    </label>
-                  </div>
-                  <p className="mt-1 text-xs text-gray-500">
-                    CSV should have phone numbers in the first column
+              </div>
+            </div>
+          )}
+
+          {/* Contact Input Method - Only shown when no contacts are selected */}
+          {shouldUseInputMethod && (
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Contact Input Method</Label>
+              <Tabs value={inputMethod} onValueChange={(value: 'manual' | 'csv') => setInputMethod(value)}>
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="manual">Manual Input</TabsTrigger>
+                  <TabsTrigger value="csv">CSV Upload</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="manual" className="space-y-2">
+                  <Label className="text-sm font-medium">Phone Numbers</Label>
+                  <Textarea
+                    value={phoneNumbers}
+                    onChange={(e) => setPhoneNumbers(e.target.value)}
+                    placeholder="Enter phone numbers (one per line)&#10;Examples:&#10;(555) 123-4567&#10;+15551234567&#10;5551234567"
+                    rows={8}
+                    className="w-full"
+                  />
+                  <p className="text-xs text-gray-500">
+                    Supported formats: (xxx) xxx-xxxx, +1xxxxxxxxxx, xxxxxxxxxx
                   </p>
-                  {csvFile && (
-                    <p className="mt-2 text-sm text-green-600">
-                      Selected: {csvFile.name}
+                </TabsContent>
+                
+                <TabsContent value="csv" className="space-y-2">
+                  <Label className="text-sm font-medium">Upload CSV File</Label>
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                    <Upload className="mx-auto h-12 w-12 text-gray-400" />
+                    <div className="mt-2">
+                      <input
+                        type="file"
+                        accept=".csv"
+                        onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
+                        className="hidden"
+                        id="csv-upload"
+                      />
+                      <label
+                        htmlFor="csv-upload"
+                        className="cursor-pointer text-blue-600 hover:text-blue-500"
+                      >
+                        Choose CSV file
+                      </label>
+                    </div>
+                    <p className="mt-1 text-xs text-gray-500">
+                      CSV should have phone numbers in the first column
                     </p>
-                  )}
-                </div>
-              </TabsContent>
-            </Tabs>
-          </div>
+                    {csvFile && (
+                      <p className="mt-2 text-sm text-green-600">
+                        Selected: {csvFile.name}
+                      </p>
+                    )}
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </div>
+          )}
 
           {/* Validation Errors */}
           {validationErrors.length > 0 && (

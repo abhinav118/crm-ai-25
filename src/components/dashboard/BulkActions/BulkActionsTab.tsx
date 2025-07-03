@@ -68,6 +68,7 @@ const BulkActionsTab: React.FC<BulkActionsTabProps> = ({
 
         <TabsContent value="segment-membership" className="mt-6">
           <ManageSegmentMembership 
+            selectedContacts={selectedContacts}
             onActionComplete={onActionComplete}
             segmentFilter={segmentFilter}
             availableSegments={availableSegments}
