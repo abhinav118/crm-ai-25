@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from '@/hooks/use-toast';
 import { ContactFormValues, PhoneEntry, ContactData } from './types';
+import { formatPhoneNumber } from '@/utils/phoneFormatter';
 
 interface UseContactFormProps {
   onSubmit: (data: ContactData) => Promise<void>;
@@ -75,7 +76,7 @@ export const useContactForm = ({ onSubmit, onClose, initialData }: UseContactFor
         first_name: values.firstName.trim(),
         last_name: values.lastName.trim(),
         email: emails[0] && emails[0].trim() !== '' ? emails[0] : null,
-        phone: phones[0]?.number && phones[0].number.trim() !== '' ? phones[0].number : null,
+        phone: phones[0]?.number && phones[0].number.trim() !== '' ? formatPhoneNumber(phones[0].number.trim()) : null,
         company: values.company || null,
         status: initialData?.status || 'active',
         tags: values.tags || [],

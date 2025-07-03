@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { X } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { formatPhoneNumber } from '@/utils/phoneFormatter';
 
 interface ContactFormData {
   id?: string;
@@ -89,7 +90,12 @@ const ContactForm: React.FC<ContactFormProps> = ({
 
     setIsSubmitting(true);
     try {
-      await onSubmit(formData);
+      // Format phone number before submission
+      const submissionData = {
+        ...formData,
+        phone: formData.phone ? formatPhoneNumber(formData.phone) : null
+      };
+      await onSubmit(submissionData);
     } catch (error) {
       console.error('Error submitting form:', error);
       toast({

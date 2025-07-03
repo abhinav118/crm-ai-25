@@ -19,6 +19,7 @@ import { getFullName } from '@/utils/contactHelpers';
 import { ContactData } from '@/components/dashboard/ContactForm/types';
 import { syncContactToSegment } from '@/utils/segmentSync';
 import AddContactForm from '@/components/dashboard/AddContactForm';
+import { formatPhoneNumber } from '@/utils/phoneFormatter';
 
 const Index = () => {
   const [selectedContacts, setSelectedContacts] = useState<Contact[]>([]);
@@ -259,7 +260,7 @@ const Index = () => {
             first_name: data.first_name,
             last_name: data.last_name,
             email: data.email,
-            phone: data.phone,
+            phone: data.phone ? formatPhoneNumber(data.phone) : null,
             company: data.company,
             status: data.status,
             tags: data.tags,
@@ -284,7 +285,7 @@ const Index = () => {
           first_name: data.first_name,
           last_name: data.last_name,
           email: data.email,
-          phone: data.phone,
+          phone: data.phone ? formatPhoneNumber(data.phone) : null,
           company: data.company,
           status: data.status,
           tags: data.tags,

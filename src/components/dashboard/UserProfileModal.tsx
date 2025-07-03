@@ -12,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { logContactAction } from '@/utils/contactLogger';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { getFullName } from '@/utils/contactHelpers';
+import { formatPhoneNumber } from '@/utils/phoneFormatter';
 
 interface UserProfileModalProps {
   contact: Contact;
@@ -71,7 +72,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ contact, onSave }) 
         first_name: formData.first_name,
         last_name: formData.last_name || null,
         email: formData.email || null,
-        phone: formData.phone || null,
+        phone: formData.phone ? formatPhoneNumber(formData.phone) : null,
         company: formData.company || null,
         status: formData.status,
         tags: formData.tags || [],

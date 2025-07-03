@@ -20,6 +20,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { getFullName } from '@/utils/contactHelpers';
+import { formatPhoneNumber } from '@/utils/phoneFormatter';
 
 interface Contact {
   id: string;
@@ -91,7 +92,7 @@ const CustomerProfilePanel: React.FC<CustomerProfilePanelProps> = ({ contactId, 
           first_name: editForm.first_name,
           last_name: editForm.last_name,
           email: editForm.email,
-          phone: editForm.phone,
+          phone: editForm.phone ? formatPhoneNumber(editForm.phone) : null,
           company: editForm.company,
           status: editForm.status,
           notes: editForm.notes,

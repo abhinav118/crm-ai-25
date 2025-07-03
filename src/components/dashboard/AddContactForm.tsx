@@ -12,6 +12,7 @@ import { logContactAction } from '@/utils/contactLogger';
 import { syncContactToSegment } from '@/utils/segmentSync';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { formatPhoneNumber } from '@/utils/phoneFormatter';
 
 interface ContactFormData {
   first_name: string;
@@ -86,7 +87,7 @@ const AddContactForm: React.FC<AddContactFormProps> = ({ open, onOpenChange, onS
         first_name: data.first_name.trim(),
         last_name: data.last_name?.trim() || null,
         email: data.email?.trim() || null,
-        phone: data.phone?.trim() || null,
+        phone: data.phone?.trim() ? formatPhoneNumber(data.phone.trim()) : null,
         company: data.company?.trim() || null,
         status: 'active' as const,
         segment_name: selectedSegment,
