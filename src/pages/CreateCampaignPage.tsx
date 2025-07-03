@@ -618,7 +618,7 @@ const CreateCampaignPage: React.FC = () => {
       } else {
         toast({
           title: "Bulk campaign sent successfully",
-          description: `${bulkResponse.sent_count} ${messageType} messages sent to ${selectedSegment} segment`,
+          description: `${bulkResponse.total_recipients} ${messageType} messages sent to ${selectedSegment} segment`,
         });
       }
 
