@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { logContactAction } from '@/utils/contactLogger';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { getFullName } from '@/utils/contactHelpers';
+import { formatPhoneNumber } from '@/utils/phoneFormatter';
 
 interface UserProfileProps {
   contact: Contact;
@@ -133,6 +134,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
         id: contact.id,
         first_name: contact.first_name,
         last_name: contact.last_name,
+        name: contact.first_name + ' '+ contact.last_name,
         email: contact.email,
         phone: contact.phone,
         company: contact.company,
@@ -203,6 +205,13 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
     
     try {
       const currentTime = new Date().toISOString();
+
+      if(formData.phone){
+        console.log("update phone format", formData.phone)
+        formData.phone = formatPhoneNumber(formData.phone);
+        console.log("---updated phone format", formData.phone)
+
+      }
       const updateData = {
         first_name: formData.first_name,
         last_name: formData.last_name || null,
