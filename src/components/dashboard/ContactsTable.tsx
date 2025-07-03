@@ -75,7 +75,8 @@ const ContactsTable: React.FC<DataTableProps> = ({ initialContacts }) => {
       try {
         const { data, error } = await supabase
           .from('contacts_segments')
-          .select('segment_name')
+          .select('segment_name,contacts_membership')
+          .gt('contacts_membership', '[]')
           .order('updated_at', { ascending: false });
 
         if (error) {
