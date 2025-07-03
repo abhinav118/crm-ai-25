@@ -399,7 +399,10 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex w-full">
-      <div className={`flex-1 flex flex-col ${showContactDetails ? 'mr-80' : ''}`}>
+      {/* Sidebar */}
+      <Sidebar collapsed={sidebarCollapsed} onToggle={toggleSidebar} />
+      
+      <div className={`flex-1 flex flex-col transition-all duration-300 ${sidebarCollapsed ? 'ml-[63px]' : 'ml-[234px]'} ${showContactDetails ? 'mr-80' : ''}`}>
         {/* Header */}
         <header className="bg-white shadow-sm border-b px-6 py-4">
           <div className="flex items-center justify-between">
