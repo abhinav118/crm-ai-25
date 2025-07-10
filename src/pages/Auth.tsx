@@ -52,6 +52,47 @@ const Auth = () => {
     return Object.keys(newErrors).length === 0;
   };
 
+  const createUserIfNeeded = async () => {
+    try {
+      console.log("Creating user in Supabase Auth...");
+      
+      // Create user with Supabase Auth
+      const { data, error } = await supabase.auth.admin.createUser({
+        email: VALID_EMAIL,
+        password: VALID_PASSWORD,
+        email_confirm: true, // Skip email confirmation
+        user_metadata: {
+          first_name: "Abhik",
+          last_name: "Admin"
+        }
+      });
+
+      console.log("Admin create user result:", { data, error });
+      
+      if (error && !error.message.includes("already been registered")) {
+        throw error;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error("Error creating user:", error);
+      // Try regular signup as fallback
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email: VALID_EMAIL,
+        password: VALID_PASSWORD,
+        options: {
+          data: {
+            first_name: "Abhik",
+            last_name: "Admin"
+          }
+        }
+      });
+      
+      console.log("Fallback signup result:", { data, error: signUpError });
+      return !signUpError;
+    }
+  };
+
   const handleSignIn = async () => {
     // First validate hardcoded credentials
     console.log("Starting sign in with:", { email, password });
@@ -66,9 +107,9 @@ const Auth = () => {
     setLoading(true);
     
     try {
-      // Check if user exists, if not create them first
+      // First attempt to sign in
       console.log("Attempting to sign in with Supabase...");
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email: VALID_EMAIL,
         password: VALID_PASSWORD,
       });
@@ -76,61 +117,47 @@ const Auth = () => {
       if (signInError) {
         console.log("Sign in error:", signInError);
         
-        if (signInError.message.includes("Invalid login credentials")) {
-          console.log("User doesn't exist, creating user...");
+        if (signInError.message.includes("Invalid login credentials") || 
+            signInError.message.includes("Email not confirmed")) {
+          console.log("User doesn't exist or not confirmed, creating user...");
           
-          // User doesn't exist, create them first
-          const { data, error: signUpError } = await supabase.auth.signUp({
+          // Create the user first
+          await createUserIfNeeded();
+          
+          // Wait a moment for the user to be created
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          // Try signing in again
+          console.log("Attempting sign in after user creation...");
+          const { data: retryData, error: retryError } = await supabase.auth.signInWithPassword({
             email: VALID_EMAIL,
             password: VALID_PASSWORD,
-            options: {
-              data: {
-                first_name: "Abhik",
-                last_name: "Admin"
-              }
-            }
           });
 
-          console.log("Sign up result:", { data, error: signUpError });
-
-          if (signUpError) {
-            throw signUpError;
+          if (retryError) {
+            console.log("Retry sign in error:", retryError);
+            throw new Error(`Authentication failed: ${retryError.message}`);
           }
-
-          // If user was created successfully, try signing in immediately
-          if (data.user) {
-            console.log("User created, attempting immediate sign in...");
-            const { error: retrySignInError } = await supabase.auth.signInWithPassword({
-              email: VALID_EMAIL,
-              password: VALID_PASSWORD,
-            });
-
-            if (retrySignInError) {
-              console.log("Retry sign in error:", retrySignInError);
-              // If immediate sign in fails, it might be due to email confirmation
-              toast({
-                title: "Account Created",
-                description: "Please check your email to confirm your account, then try signing in again.",
-              });
-              return;
-            }
-          }
+          
+          console.log("Retry sign in successful:", retryData);
         } else {
           throw signInError;
         }
+      } else {
+        console.log("Initial sign in successful:", signInData);
       }
 
-      console.log("Sign in successful!");
       toast({
         title: "Welcome to TextFlow CRM",
         description: "You have been signed in successfully.",
       });
       navigate("/contacts");
+      
     } catch (error: any) {
       console.error("Authentication error:", error);
       toast({
         title: "Sign In Failed",
-        description: error.message || "Authentication failed. Please try again.",
+        description: error.message || "Authentication failed. Please check your credentials.",
         variant: "destructive",
       });
     } finally {
