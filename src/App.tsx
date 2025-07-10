@@ -1,13 +1,13 @@
 
-import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
-import Auth from "./pages/Auth";
 import Analytics from "./pages/Analytics";
 import CampaignsPage from "./pages/CampaignsPage";
 import CreateCampaignPage from "./pages/CreateCampaignPage";
@@ -16,8 +16,6 @@ import ReportingPage from "./pages/ReportingPage";
 import Settings from "./pages/Settings";
 import Inbox from "./pages/Inbox";
 import Footer from "./components/layout/Footer";
-import { CustomAuthProvider } from "./components/auth/CustomAuthProvider";
-import CustomProtectedRoute from "./components/auth/CustomProtectedRoute";
 
 // Configure QueryClient with better error handling
 const queryClient = new QueryClient({
@@ -35,84 +33,49 @@ const queryClient = new QueryClient({
 });
 
 const App = () => {
+  const [session, setSession] = useState(null);
+  
+  useEffect(() => {
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <BrowserRouter>
-          <CustomAuthProvider>
-            <div className="min-h-screen w-full flex flex-col">
-              <div className="flex-1">
-                <Routes>
-                  <Route path="/auth" element={<Auth />} />
-                  <Route path="/" element={
-                    <CustomProtectedRoute>
-                      <Index />
-                    </CustomProtectedRoute>
-                  } />
-                  <Route path="/contacts" element={
-                    <CustomProtectedRoute>
-                      <Index />
-                    </CustomProtectedRoute>
-                  } />
-                  <Route path="/conversations" element={
-                    <CustomProtectedRoute>
-                      <Index />
-                    </CustomProtectedRoute>
-                  } />
-                  <Route path="/inbox" element={
-                    <CustomProtectedRoute>
-                      <Inbox />
-                    </CustomProtectedRoute>
-                  } />
-                  <Route path="/campaigns" element={
-                    <CustomProtectedRoute>
-                      <CampaignsPage />
-                    </CustomProtectedRoute>
-                  } />
-                  <Route path="/campaigns/create" element={
-                    <CustomProtectedRoute>
-                      <CreateCampaignPage />
-                    </CustomProtectedRoute>
-                  } />
-                  <Route path="/reporting" element={
-                    <CustomProtectedRoute>
-                      <ReportingPage />
-                    </CustomProtectedRoute>
-                  } />
-                  <Route path="/reporting/messages-overview" element={
-                    <CustomProtectedRoute>
-                      <ReportingPage />
-                    </CustomProtectedRoute>
-                  } />
-                  <Route path="/reporting/delivery-reports" element={
-                    <CustomProtectedRoute>
-                      <ReportingPage />
-                    </CustomProtectedRoute>
-                  } />
-                  <Route path="/reporting/contacts-overview" element={
-                    <CustomProtectedRoute>
-                      <ReportingPage />
-                    </CustomProtectedRoute>
-                  } />
-                  <Route path="/reporting/conversations" element={
-                    <CustomProtectedRoute>
-                      <ReportingPage />
-                    </CustomProtectedRoute>
-                  } />
-                  <Route path="/settings/*" element={
-                    <CustomProtectedRoute>
-                      <Settings />
-                    </CustomProtectedRoute>
-                  } />
-                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </div>
-              <Footer />
+          <div className="min-h-screen w-full flex flex-col">
+            <div className="flex-1">
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/contacts" element={<Index />} />
+                <Route path="/conversations" element={<Index />} />
+                <Route path="/inbox" element={<Inbox />} />
+                <Route path="/campaigns" element={<CampaignsPage />} />
+                <Route path="/campaigns/create" element={<CreateCampaignPage />} />
+                <Route path="/reporting" element={<ReportingPage />} />
+                <Route path="/reporting/messages-overview" element={<ReportingPage />} />
+                <Route path="/reporting/delivery-reports" element={<ReportingPage />} />
+                <Route path="/reporting/contacts-overview" element={<ReportingPage />} />
+                <Route path="/reporting/conversations" element={<ReportingPage />} />
+                <Route path="/settings/*" element={<Settings />} />
+                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
             </div>
-            <Toaster />
-            <Sonner />
-          </CustomAuthProvider>
+            <Footer />
+          </div>
+          <Toaster />
+          <Sonner />
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>

@@ -1,130 +1,198 @@
-
 import React from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { cn } from '@/lib/utils';
+import { Link, useLocation } from 'react-router-dom';
 import { 
-  Users, 
-  MessageSquare, 
-  BarChart3, 
-  Settings, 
-  Inbox,
-  ChevronLeft,
-  ChevronRight,
-  LogOut,
-  Send
+  Grid, 
+  User, 
+  MessageSquare,
+  Archive, 
+  List, 
+  Settings,
+  ChevronDown
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { useCustomAuth } from '@/hooks/useCustomAuth';
-import { useToast } from '@/hooks/use-toast';
 
-interface SidebarProps {
-  collapsed: boolean;
-  onToggle: () => void;
-}
+type SidebarProps = {
+  collapsed?: boolean;
+  onToggle?: () => void;
+};
 
-const Sidebar = ({ collapsed, onToggle }: SidebarProps) => {
+const Sidebar: React.FC<SidebarProps> = ({ 
+  collapsed = false, 
+  onToggle 
+}) => {
   const location = useLocation();
-  const navigate = useNavigate();
-  const { user, signOut } = useCustomAuth();
-  const { toast } = useToast();
 
-  const handleSignOut = () => {
-    signOut();
-    toast({
-      title: "Signed out",
-      description: "You have been signed out successfully.",
-    });
-    navigate('/auth');
+  const isActive = (path: string) => {
+    return location.pathname === path;
   };
 
-  const menuItems = [
-    { path: '/contacts', icon: Users, label: 'Contacts' },
-    { path: '/inbox', icon: Inbox, label: 'Inbox' },
-    { path: '/campaigns', icon: Send, label: 'Campaigns' },
-    { path: '/reporting', icon: BarChart3, label: 'Reporting' },
-    { path: '/settings', icon: Settings, label: 'Settings' },
-  ];
-
-  return (
-    <div className={`fixed left-0 top-0 h-full bg-white border-r border-gray-200 transition-all duration-300 z-50 ${collapsed ? 'w-16' : 'w-64'}`}>
-      <div className="flex flex-col h-full">
-        {/* Header */}
-        <div className="p-4 border-b border-gray-200">
-          <div className="flex items-center justify-between">
-            {!collapsed && (
-              <div className="flex items-center space-x-2">
-                <MessageSquare className="h-8 w-8 text-primary" />
-                <h1 className="text-xl font-bold text-gray-900">TextFlow</h1>
-              </div>
-            )}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onToggle}
-              className="ml-auto"
-            >
-              {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
-            </Button>
-          </div>
+  if (collapsed) {
+    return (
+      <aside className="h-screen fixed top-0 left-0 z-30 flex flex-col w-[63px] bg-[#0F172A] text-white">
+        <div className="flex items-center justify-center h-16 px-3">
+          <img 
+            src="/lovable-uploads/9cf20fca-a0fb-4424-9cbe-76647a5a5e70.png" 
+            alt="Angel Flight Marketing Services"
+            className="h-14 w-auto"
+          />
         </div>
-
-        {/* User Info */}
-        {!collapsed && user && (
-          <div className="p-4 border-b border-gray-200">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
-                <span className="text-primary-foreground font-medium">
-                  {user.first_name[0]}{user.last_name[0]}
-                </span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">
-                  {user.first_name} {user.last_name}
-                </p>
-                <p className="text-xs text-gray-500 truncate">
-                  {user.login_email}
-                </p>
-              </div>
+        
+        <nav className="flex-1 px-3 space-y-2">
+          {/* <SidebarLink 
+            icon={<Grid size={20} />} 
+            label="Dashboard" 
+            to="/" 
+            collapsed={true}
+            active={isActive('/')}
+          /> */}
+          <SidebarLink 
+            icon={<User size={20} />} 
+            label="Contacts" 
+            to="/contacts" 
+            collapsed={true}
+            active={isActive('/contacts')}
+          />
+          <SidebarLink 
+            icon={<MessageSquare size={20} />} 
+            label="Conversations" 
+            to="/inbox" 
+            collapsed={true}
+            active={isActive('/inbox')}
+          />
+          <SidebarLink 
+            icon={<Archive size={20} />} 
+            label="Campaigns" 
+            to="/campaigns" 
+            collapsed={true}
+            active={isActive('/campaigns')}
+          />
+          <SidebarLink 
+            icon={<List size={20} />} 
+            label="Reporting" 
+            to="/reporting" 
+            collapsed={true}
+            active={isActive('/reporting')}
+          />
+        </nav>
+        
+        <div className="px-3 py-4 border-t border-slate-700">
+          <SidebarLink 
+            icon={<Settings size={20} />} 
+            label="Settings" 
+            to="/settings" 
+            collapsed={true}
+            active={isActive('/settings')}
+          />
+          <div className="flex items-center justify-center mt-4">
+            <div className="bg-purple-600 h-8 w-8 rounded-full flex items-center justify-center text-white font-medium text-sm">
+              JD
             </div>
           </div>
-        )}
+        </div>
+      </aside>
+    );
+  }
 
-        {/* Navigation */}
-        <nav className="flex-1 px-4 py-6 space-y-2">
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = location.pathname.startsWith(item.path);
-            
-            return (
-              <button
-                key={item.path}
-                onClick={() => navigate(item.path)}
-                className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                  isActive
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-gray-700 hover:bg-gray-100'
-                }`}
-              >
-                <Icon size={20} className="flex-shrink-0" />
-                {!collapsed && <span className="ml-3">{item.label}</span>}
-              </button>
-            );
-          })}
+  return (
+    <aside className="h-screen fixed top-0 left-0 z-30 flex flex-col w-[234px] bg-[#0F172A] text-white justify-between">
+      {/* Logo */}
+      <div>
+        <div className="p-4 flex items-center justify-center">
+          <img 
+            src="/lovable-uploads/9cf20fca-a0fb-4424-9cbe-76647a5a5e70.png" 
+            alt="Angel Flight Marketing Services"
+            className="h-14 w-auto"
+          />
+        </div>
+
+        {/* Main Nav */}
+        <nav className="px-3 space-y-2 text-sm">
+          {/* <SidebarLink 
+            icon={<Grid size={20} />} 
+            label="Dashboard" 
+            to="/" 
+            active={isActive('/')}
+          /> */}
+          <SidebarLink 
+            icon={<User size={20} />} 
+            label="Contacts" 
+            to="/contacts" 
+            active={isActive('/contacts')}
+          />
+          <SidebarLink 
+            icon={<MessageSquare size={20} />} 
+            label="Conversations" 
+            to="/inbox" 
+            active={isActive('/inbox')}
+          />
+          <SidebarLink 
+            icon={<Archive size={20} />} 
+            label="Campaigns" 
+            to="/campaigns" 
+            active={isActive('/campaigns')}
+          />
+          <SidebarLink 
+            icon={<List size={20} />} 
+            label="Reporting" 
+            to="/reporting" 
+            active={isActive('/reporting')}
+          />
         </nav>
+      </div>
 
-        {/* Sign Out */}
-        <div className="p-4 border-t border-gray-200">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleSignOut}
-            className="w-full justify-start"
-          >
-            <LogOut size={16} />
-            {!collapsed && <span className="ml-3">Sign Out</span>}
-          </Button>
+      {/* Bottom Nav */}
+      <div className="px-3 py-4 space-y-4 border-t border-slate-700">
+        <SidebarLink 
+          icon={<Settings size={20} />} 
+          label="Settings" 
+          to="/settings" 
+          active={isActive('/settings')}
+        />
+        <div className="flex items-center gap-3 px-2 py-2 text-sm cursor-pointer hover:bg-slate-800 rounded-md transition-colors">
+          <div className="bg-purple-600 h-8 w-8 rounded-full flex items-center justify-center text-white font-medium">
+            JD
+          </div>
+          <div className="flex flex-col text-white flex-1">
+            <span className="font-medium">John Doe</span>
+            <span className="text-xs text-slate-400">Admin</span>
+          </div>
+          <ChevronDown className="h-4 w-4 text-slate-400" />
         </div>
       </div>
-    </div>
+    </aside>
+  );
+};
+
+type SidebarItemProps = {
+  icon: React.ReactNode;
+  label: string;
+  to: string;
+  active?: boolean;
+  collapsed?: boolean;
+};
+
+const SidebarLink: React.FC<SidebarItemProps> = ({ 
+  icon, 
+  label, 
+  to, 
+  active = false,
+  collapsed = false
+}) => {
+  return (
+    <Link 
+      to={to} 
+      className={cn(
+        "flex items-center px-3 py-2.5 rounded-md transition-colors text-sm font-medium",
+        collapsed ? "justify-center" : "gap-3",
+        active 
+          ? "bg-indigo-600 text-white" 
+          : "text-slate-300 hover:bg-slate-800 hover:text-white"
+      )}
+      title={collapsed ? label : undefined}
+    >
+      <span className="flex-shrink-0">{icon}</span>
+      {!collapsed && <span>{label}</span>}
+    </Link>
   );
 };
 
