@@ -16,8 +16,8 @@ import ReportingPage from "./pages/ReportingPage";
 import Settings from "./pages/Settings";
 import Inbox from "./pages/Inbox";
 import Footer from "./components/layout/Footer";
-import { AuthProvider } from "./components/auth/AuthProvider";
-import ProtectedRoute from "./components/auth/ProtectedRoute";
+import { CustomAuthProvider } from "./components/auth/CustomAuthProvider";
+import CustomProtectedRoute from "./components/auth/CustomProtectedRoute";
 
 // Configure QueryClient with better error handling
 const queryClient = new QueryClient({
@@ -39,70 +39,70 @@ const App = () => {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <BrowserRouter>
-          <AuthProvider>
+          <CustomAuthProvider>
             <div className="min-h-screen w-full flex flex-col">
               <div className="flex-1">
                 <Routes>
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/" element={
-                    <ProtectedRoute>
+                    <CustomProtectedRoute>
                       <Index />
-                    </ProtectedRoute>
+                    </CustomProtectedRoute>
                   } />
                   <Route path="/contacts" element={
-                    <ProtectedRoute>
+                    <CustomProtectedRoute>
                       <Index />
-                    </ProtectedRoute>
+                    </CustomProtectedRoute>
                   } />
                   <Route path="/conversations" element={
-                    <ProtectedRoute>
+                    <CustomProtectedRoute>
                       <Index />
-                    </ProtectedRoute>
+                    </CustomProtectedRoute>
                   } />
                   <Route path="/inbox" element={
-                    <ProtectedRoute>
+                    <CustomProtectedRoute>
                       <Inbox />
-                    </ProtectedRoute>
+                    </CustomProtectedRoute>
                   } />
                   <Route path="/campaigns" element={
-                    <ProtectedRoute>
+                    <CustomProtectedRoute>
                       <CampaignsPage />
-                    </ProtectedRoute>
+                    </CustomProtectedRoute>
                   } />
                   <Route path="/campaigns/create" element={
-                    <ProtectedRoute>
+                    <CustomProtectedRoute>
                       <CreateCampaignPage />
-                    </ProtectedRoute>
+                    </CustomProtectedRoute>
                   } />
                   <Route path="/reporting" element={
-                    <ProtectedRoute>
+                    <CustomProtectedRoute>
                       <ReportingPage />
-                    </ProtectedRoute>
+                    </CustomProtectedRoute>
                   } />
                   <Route path="/reporting/messages-overview" element={
-                    <ProtectedRoute>
+                    <CustomProtectedRoute>
                       <ReportingPage />
-                    </ProtectedRoute>
+                    </CustomProtectedRoute>
                   } />
                   <Route path="/reporting/delivery-reports" element={
-                    <ProtectedRoute>
+                    <CustomProtectedRoute>
                       <ReportingPage />
-                    </ProtectedRoute>
+                    </CustomProtectedRoute>
                   } />
                   <Route path="/reporting/contacts-overview" element={
-                    <ProtectedRoute>
+                    <CustomProtectedRoute>
                       <ReportingPage />
-                    </ProtectedRoute>
+                    </CustomProtectedRoute>
                   } />
                   <Route path="/reporting/conversations" element={
-                    <ProtectedRoute>
+                    <CustomProtectedRoute>
                       <ReportingPage />
-                    </ProtectedRoute>
+                    </CustomProtectedRoute>
                   } />
                   <Route path="/settings/*" element={
-                    <ProtectedRoute>
+                    <CustomProtectedRoute>
                       <Settings />
-                    </ProtectedRoute>
+                    </CustomProtectedRoute>
                   } />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
@@ -112,7 +112,7 @@ const App = () => {
             </div>
             <Toaster />
             <Sonner />
-          </AuthProvider>
+          </CustomAuthProvider>
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>

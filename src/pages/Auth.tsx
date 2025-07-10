@@ -1,16 +1,13 @@
+
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { useCustomAuth } from "@/hooks/useCustomAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, MessageSquare, Users, BarChart3 } from "lucide-react";
-
-// Hardcoded credentials for single user system
-const VALID_EMAIL = "abhik.voice@gmail.com";
-const VALID_PASSWORD = "11111111";
 
 const Auth = () => {
   const [email, setEmail] = useState("");
@@ -20,32 +17,26 @@ const Auth = () => {
   
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user, signIn } = useCustomAuth();
 
   // Check if user is already authenticated
   useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        navigate("/contacts");
-      }
-    };
-    checkAuth();
-  }, [navigate]);
+    if (user) {
+      navigate("/contacts");
+    }
+  }, [user, navigate]);
 
-  const validateCredentials = () => {
+  const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
-    // Hardcoded validation - only allow specific email and password
     if (!email) {
       newErrors.email = "Email is required";
-    } else if (email !== VALID_EMAIL) {
-      newErrors.email = "Invalid email address. Access restricted.";
+    } else if (!/\S+@\S+\.\S+/.test(email)) {
+      newErrors.email = "Please enter a valid email address";
     }
 
     if (!password) {
       newErrors.password = "Password is required";
-    } else if (password !== VALID_PASSWORD) {
-      newErrors.password = "Invalid password. Access denied.";
     }
 
     setErrors(newErrors);
@@ -53,84 +44,33 @@ const Auth = () => {
   };
 
   const handleSignIn = async () => {
-    // First validate hardcoded credentials
-    console.log("Starting sign in with:", { email, password });
-    console.log("Valid credentials:", { VALID_EMAIL, VALID_PASSWORD });
-    
-    if (!validateCredentials()) {
-      console.log("Hardcoded validation failed");
+    if (!validateForm()) {
       return;
     }
 
-    console.log("Hardcoded validation passed");
     setLoading(true);
     
     try {
-      // Check if user exists, if not create them first
-      console.log("Attempting to sign in with Supabase...");
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: VALID_EMAIL,
-        password: VALID_PASSWORD,
-      });
+      const { error } = await signIn(email, password);
 
-      if (signInError) {
-        console.log("Sign in error:", signInError);
-        
-        if (signInError.message.includes("Invalid login credentials")) {
-          console.log("User doesn't exist, creating user...");
-          
-          // User doesn't exist, create them first
-          const { data, error: signUpError } = await supabase.auth.signUp({
-            email: VALID_EMAIL,
-            password: VALID_PASSWORD,
-            options: {
-              data: {
-                first_name: "Abhik",
-                last_name: "Admin"
-              }
-            }
-          });
-
-          console.log("Sign up result:", { data, error: signUpError });
-
-          if (signUpError) {
-            throw signUpError;
-          }
-
-          // If user was created successfully, try signing in immediately
-          if (data.user) {
-            console.log("User created, attempting immediate sign in...");
-            const { error: retrySignInError } = await supabase.auth.signInWithPassword({
-              email: VALID_EMAIL,
-              password: VALID_PASSWORD,
-            });
-
-            if (retrySignInError) {
-              console.log("Retry sign in error:", retrySignInError);
-              // If immediate sign in fails, it might be due to email confirmation
-              toast({
-                title: "Account Created",
-                description: "Please check your email to confirm your account, then try signing in again.",
-              });
-              return;
-            }
-          }
-        } else {
-          throw signInError;
-        }
+      if (error) {
+        toast({
+          title: "Sign In Failed",
+          description: error,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Welcome to TextFlow CRM",
+          description: "You have been signed in successfully.",
+        });
+        navigate("/contacts");
       }
-
-      console.log("Sign in successful!");
-      toast({
-        title: "Welcome to TextFlow CRM",
-        description: "You have been signed in successfully.",
-      });
-      navigate("/contacts");
-    } catch (error: any) {
+    } catch (error) {
       console.error("Authentication error:", error);
       toast({
         title: "Sign In Failed",
-        description: error.message || "Authentication failed. Please try again.",
+        description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -202,9 +142,9 @@ const Auth = () => {
 
           <Card>
             <CardHeader className="space-y-1">
-              <CardTitle className="text-2xl">Welcome to TextFlow CRM</CardTitle>
+              <CardTitle className="text-2xl">Welcome Back</CardTitle>
               <CardDescription>
-                Sign in to access your customer communication platform
+                Sign in to access your CRM dashboard
               </CardDescription>
             </CardHeader>
             
@@ -246,11 +186,14 @@ const Auth = () => {
                 </Button>
               </form>
 
-              {/* Info Box */}
+              {/* Demo Credentials */}
               <div className="mt-6 p-4 bg-muted rounded-lg">
-                <h4 className="font-medium text-sm mb-2">System Access</h4>
+                <h4 className="font-medium text-sm mb-2">Demo Credentials</h4>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Email: abhik.voice@gmail.com
+                </p>
                 <p className="text-xs text-muted-foreground">
-                  This is a restricted access system. Please use your authorized credentials to sign in.
+                  Password: 11111111
                 </p>
               </div>
             </CardContent>
@@ -258,7 +201,7 @@ const Auth = () => {
 
           {/* Footer */}
           <div className="text-center mt-8 text-xs text-muted-foreground">
-            <p>© 2025 TextFlow CRM - Secure Access Portal</p>
+            <p>© 2025 TextFlow CRM - Professional Customer Management</p>
           </div>
         </div>
       </div>
