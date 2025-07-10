@@ -1,155 +1,55 @@
+
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { useAuthContext } from "@/contexts/CustomAuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, MessageSquare, Users, BarChart3 } from "lucide-react";
 
-// Hardcoded credentials for single user system
-const VALID_EMAIL = "abhik.voice@gmail.com";
-const VALID_PASSWORD = "11111111";
-
 const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const { signIn, loading, isAuthenticated } = useAuthContext();
 
   // Check if user is already authenticated
   useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        navigate("/contacts");
-      }
-    };
-    checkAuth();
-  }, [navigate]);
+    if (isAuthenticated) {
+      navigate("/contacts");
+    }
+  }, [isAuthenticated, navigate]);
 
-  const validateCredentials = () => {
+  const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
-    // Hardcoded validation - only allow specific email and password
     if (!email) {
       newErrors.email = "Email is required";
-    } else if (email !== VALID_EMAIL) {
-      newErrors.email = "Invalid email address. Access restricted.";
+    } else if (!/\S+@\S+\.\S+/.test(email)) {
+      newErrors.email = "Email address is invalid";
     }
 
     if (!password) {
       newErrors.password = "Password is required";
-    } else if (password !== VALID_PASSWORD) {
-      newErrors.password = "Invalid password. Access denied.";
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const createUserIfNeeded = async () => {
-    try {
-      console.log("Creating user via edge function...");
-      
-      // Call our edge function to create the user with admin privileges
-      const { data, error } = await supabase.functions.invoke('create-hardcoded-user', {
-        body: {
-          email: VALID_EMAIL,
-          password: VALID_PASSWORD
-        }
-      });
-
-      console.log("Edge function result:", { data, error });
-      
-      if (error) {
-        throw error;
-      }
-      
-      return data.success;
-    } catch (error) {
-      console.error("Error calling edge function:", error);
-      return false;
-    }
-  };
-
   const handleSignIn = async () => {
-    // First validate hardcoded credentials
-    console.log("Starting sign in with:", { email, password });
-    console.log("Valid credentials:", { VALID_EMAIL, VALID_PASSWORD });
-    
-    if (!validateCredentials()) {
-      console.log("Hardcoded validation failed");
+    if (!validateForm()) {
       return;
     }
 
-    console.log("Hardcoded validation passed");
-    setLoading(true);
-    
     try {
-      // First attempt to sign in
-      console.log("Attempting to sign in with Supabase...");
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-        email: VALID_EMAIL,
-        password: VALID_PASSWORD,
-      });
-
-      if (signInError) {
-        console.log("Sign in error:", signInError);
-        
-        if (signInError.message.includes("Invalid login credentials") || 
-            signInError.message.includes("Email not confirmed")) {
-          console.log("User doesn't exist or not confirmed, creating user...");
-          
-          // Create the user using our edge function
-          const userCreated = await createUserIfNeeded();
-          
-          if (!userCreated) {
-            throw new Error("Failed to create user account");
-          }
-          
-          // Wait a moment for the user to be fully created
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          
-          // Try signing in again
-          console.log("Attempting sign in after user creation...");
-          const { data: retryData, error: retryError } = await supabase.auth.signInWithPassword({
-            email: VALID_EMAIL,
-            password: VALID_PASSWORD,
-          });
-
-          if (retryError) {
-            console.log("Retry sign in error:", retryError);
-            throw new Error(`Authentication failed: ${retryError.message}`);
-          }
-          
-          console.log("Retry sign in successful:", retryData);
-        } else {
-          throw signInError;
-        }
-      } else {
-        console.log("Initial sign in successful:", signInData);
-      }
-
-      toast({
-        title: "Welcome to TextFlow CRM",
-        description: "You have been signed in successfully.",
-      });
+      await signIn(email, password);
       navigate("/contacts");
-      
-    } catch (error: any) {
-      console.error("Authentication error:", error);
-      toast({
-        title: "Sign In Failed",
-        description: error.message || "Authentication failed. Please check your credentials.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
+    } catch (error) {
+      // Error handling is done in the signIn function
     }
   };
 
@@ -263,10 +163,14 @@ const Auth = () => {
 
               {/* Info Box */}
               <div className="mt-6 p-4 bg-muted rounded-lg">
-                <h4 className="font-medium text-sm mb-2">System Access</h4>
-                <p className="text-xs text-muted-foreground">
-                  This is a restricted access system. Please use your authorized credentials to sign in.
+                <h4 className="font-medium text-sm mb-2">Demo Access</h4>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Use the following credentials to access the system:
                 </p>
+                <div className="text-xs text-muted-foreground font-mono">
+                  <div>Email: abhik.voice@gmail.com</div>
+                  <div>Password: 11111111</div>
+                </div>
               </div>
             </CardContent>
           </Card>
