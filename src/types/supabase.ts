@@ -1,3 +1,6 @@
+// This file is now deprecated - all types are in src/integrations/supabase/types.ts
+// Keeping for backward compatibility but will be removed in future versions
+
 export type ContactSegment = {
   segment_name: string;
   contacts_membership: Array<{
@@ -22,7 +25,6 @@ export type Database = {
         Insert: Omit<ContactSegment, 'updated_at'>;
         Update: Partial<ContactSegment>;
       };
-      // ... other tables ...
     };
   };
-}; 
+};

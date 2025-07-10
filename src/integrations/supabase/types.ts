@@ -14,7 +14,248 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      campaigns: {
+        Row: {
+          created_at: string
+          id: string
+          message_content: string | null
+          name: string
+          recipients: Json | null
+          scheduled_at: string | null
+          sent_at: string | null
+          status: string | null
+          type: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message_content?: string | null
+          name: string
+          recipients?: Json | null
+          scheduled_at?: string | null
+          sent_at?: string | null
+          status?: string | null
+          type?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message_content?: string | null
+          name?: string
+          recipients?: Json | null
+          scheduled_at?: string | null
+          sent_at?: string | null
+          status?: string | null
+          type?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      contact_logs: {
+        Row: {
+          action: string
+          batch_id: string | null
+          batch_name: string | null
+          contact_info: Json | null
+          created_at: string
+          id: string
+        }
+        Insert: {
+          action: string
+          batch_id?: string | null
+          batch_name?: string | null
+          contact_info?: Json | null
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          action?: string
+          batch_id?: string | null
+          batch_name?: string | null
+          contact_info?: Json | null
+          created_at?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      contacts: {
+        Row: {
+          company: string | null
+          created_at: string
+          email: string | null
+          first_name: string
+          id: string
+          last_activity: string | null
+          last_name: string | null
+          notes: string | null
+          phone: string | null
+          segment_name: string | null
+          status: string | null
+          tags: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          company?: string | null
+          created_at?: string
+          email?: string | null
+          first_name: string
+          id?: string
+          last_activity?: string | null
+          last_name?: string | null
+          notes?: string | null
+          phone?: string | null
+          segment_name?: string | null
+          status?: string | null
+          tags?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          company?: string | null
+          created_at?: string
+          email?: string | null
+          first_name?: string
+          id?: string
+          last_activity?: string | null
+          last_name?: string | null
+          notes?: string | null
+          phone?: string | null
+          segment_name?: string | null
+          status?: string | null
+          tags?: string[] | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      messages: {
+        Row: {
+          channel: string | null
+          contact_id: string
+          content: string
+          created_at: string
+          direction: string | null
+          id: string
+          is_read: boolean | null
+          media_url: string | null
+          sender: string
+          sent_at: string
+        }
+        Insert: {
+          channel?: string | null
+          contact_id: string
+          content: string
+          created_at?: string
+          direction?: string | null
+          id?: string
+          is_read?: boolean | null
+          media_url?: string | null
+          sender: string
+          sent_at?: string
+        }
+        Update: {
+          channel?: string | null
+          contact_id?: string
+          content?: string
+          created_at?: string
+          direction?: string | null
+          id?: string
+          is_read?: boolean | null
+          media_url?: string | null
+          sender?: string
+          sent_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sms_analytics: {
+        Row: {
+          campaign_id: string | null
+          clicks: number | null
+          contact_id: string | null
+          created_at: string
+          id: string
+          last_clicked: string | null
+          updated_at: string
+        }
+        Insert: {
+          campaign_id?: string | null
+          clicks?: number | null
+          contact_id?: string | null
+          created_at?: string
+          id?: string
+          last_clicked?: string | null
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string | null
+          clicks?: number | null
+          contact_id?: string | null
+          created_at?: string
+          id?: string
+          last_clicked?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sms_analytics_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sms_analytics_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      telnyx_campaigns: {
+        Row: {
+          created_at: string
+          id: string
+          message_content: string | null
+          name: string
+          recipients: Json | null
+          scheduled_at: string | null
+          sent_at: string | null
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message_content?: string | null
+          name: string
+          recipients?: Json | null
+          scheduled_at?: string | null
+          sent_at?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message_content?: string | null
+          name?: string
+          recipients?: Json | null
+          scheduled_at?: string | null
+          sent_at?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
