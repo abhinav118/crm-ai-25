@@ -1,39 +1,51 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuthContext } from "@/contexts/CustomAuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, MessageSquare, Users, BarChart3 } from "lucide-react";
 
+// Hardcoded credentials for single user system
+const VALID_EMAIL = "abhik.voice@gmail.com";
+const VALID_PASSWORD = "11111111";
+
 const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   
   const navigate = useNavigate();
-  const { signIn, loading, isAuthenticated } = useAuthContext();
+  const { toast } = useToast();
 
   // Check if user is already authenticated
   useEffect(() => {
-    if (isAuthenticated) {
-      navigate("/contacts");
-    }
-  }, [isAuthenticated, navigate]);
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        navigate("/contacts");
+      }
+    };
+    checkAuth();
+  }, [navigate]);
 
-  const validateForm = () => {
+  const validateCredentials = () => {
     const newErrors: Record<string, string> = {};
 
+    // Hardcoded validation - only allow specific email and password
     if (!email) {
       newErrors.email = "Email is required";
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
-      newErrors.email = "Email address is invalid";
+    } else if (email !== VALID_EMAIL) {
+      newErrors.email = "Invalid email address. Access restricted.";
     }
 
     if (!password) {
       newErrors.password = "Password is required";
+    } else if (password !== VALID_PASSWORD) {
+      newErrors.password = "Invalid password. Access denied.";
     }
 
     setErrors(newErrors);
@@ -41,15 +53,88 @@ const Auth = () => {
   };
 
   const handleSignIn = async () => {
-    if (!validateForm()) {
+    // First validate hardcoded credentials
+    console.log("Starting sign in with:", { email, password });
+    console.log("Valid credentials:", { VALID_EMAIL, VALID_PASSWORD });
+    
+    if (!validateCredentials()) {
+      console.log("Hardcoded validation failed");
       return;
     }
 
+    console.log("Hardcoded validation passed");
+    setLoading(true);
+    
     try {
-      await signIn(email, password);
+      // Check if user exists, if not create them first
+      console.log("Attempting to sign in with Supabase...");
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: VALID_EMAIL,
+        password: VALID_PASSWORD,
+      });
+
+      if (signInError) {
+        console.log("Sign in error:", signInError);
+        
+        if (signInError.message.includes("Invalid login credentials")) {
+          console.log("User doesn't exist, creating user...");
+          
+          // User doesn't exist, create them first
+          const { data, error: signUpError } = await supabase.auth.signUp({
+            email: VALID_EMAIL,
+            password: VALID_PASSWORD,
+            options: {
+              data: {
+                first_name: "Abhik",
+                last_name: "Admin"
+              }
+            }
+          });
+
+          console.log("Sign up result:", { data, error: signUpError });
+
+          if (signUpError) {
+            throw signUpError;
+          }
+
+          // If user was created successfully, try signing in immediately
+          if (data.user) {
+            console.log("User created, attempting immediate sign in...");
+            const { error: retrySignInError } = await supabase.auth.signInWithPassword({
+              email: VALID_EMAIL,
+              password: VALID_PASSWORD,
+            });
+
+            if (retrySignInError) {
+              console.log("Retry sign in error:", retrySignInError);
+              // If immediate sign in fails, it might be due to email confirmation
+              toast({
+                title: "Account Created",
+                description: "Please check your email to confirm your account, then try signing in again.",
+              });
+              return;
+            }
+          }
+        } else {
+          throw signInError;
+        }
+      }
+
+      console.log("Sign in successful!");
+      toast({
+        title: "Welcome to TextFlow CRM",
+        description: "You have been signed in successfully.",
+      });
       navigate("/contacts");
-    } catch (error) {
-      // Error handling is done in the signIn function
+    } catch (error: any) {
+      console.error("Authentication error:", error);
+      toast({
+        title: "Sign In Failed",
+        description: error.message || "Authentication failed. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -163,14 +248,10 @@ const Auth = () => {
 
               {/* Info Box */}
               <div className="mt-6 p-4 bg-muted rounded-lg">
-                <h4 className="font-medium text-sm mb-2">Demo Access</h4>
-                <p className="text-xs text-muted-foreground mb-2">
-                  Use the following credentials to access the system:
+                <h4 className="font-medium text-sm mb-2">System Access</h4>
+                <p className="text-xs text-muted-foreground">
+                  This is a restricted access system. Please use your authorized credentials to sign in.
                 </p>
-                <div className="text-xs text-muted-foreground font-mono">
-                  <div>Email: abhik.voice@gmail.com</div>
-                  <div>Password: 11111111</div>
-                </div>
               </div>
             </CardContent>
           </Card>

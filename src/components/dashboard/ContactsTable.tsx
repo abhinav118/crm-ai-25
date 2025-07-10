@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Eye, Edit2, Trash2, Phone, Mail, Building } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import ContactProfile from './ContactProfile';
+import UserProfile from './UserProfile';
 import UserProfileModal from './UserProfileModal';
 import ChatInterface from './ChatInterface';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -545,7 +545,7 @@ const ContactsTable: React.FC<DataTableProps> = ({ initialContacts }) => {
             <div className="w-1/3 border-r border-gray-200 overflow-y-auto">
               {selectedContact && (
                 <div className="p-4">
-                  <ContactProfile
+                  <UserProfile
                     contact={selectedContact}
                     onSave={handleUpdateContact}
                   />
