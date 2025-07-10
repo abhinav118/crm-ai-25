@@ -10,7 +10,7 @@ import ContactsTable, { Contact } from '@/components/dashboard/ContactsTable';
 import Sidebar from '@/components/dashboard/Sidebar';
 import ContactForm from '@/components/dashboard/ContactForm';
 import ActionButtons from '@/components/dashboard/ActionButtons';
-import UserProfile from '@/components/dashboard/UserProfile';
+import ContactProfile from '@/components/dashboard/ContactProfile';
 import ChatInterface from '@/components/dashboard/ChatInterface';
 import Conversations from '@/components/dashboard/Conversations';
 import { supabase } from '@/integrations/supabase/client';
@@ -455,7 +455,7 @@ const Index = () => {
               <X size={16} />
             </Button>
           </div>
-          <UserProfile contact={selectedContact} onSave={handleSaveProfile} />
+          <ContactProfile contact={selectedContact} onSave={handleSaveProfile} />
         </div>
       )}
 
