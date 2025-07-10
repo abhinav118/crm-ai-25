@@ -4,10 +4,9 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
+import Auth from "./pages/Auth";
 import Analytics from "./pages/Analytics";
 import CampaignsPage from "./pages/CampaignsPage";
 import CreateCampaignPage from "./pages/CreateCampaignPage";
@@ -16,6 +15,8 @@ import ReportingPage from "./pages/ReportingPage";
 import Settings from "./pages/Settings";
 import Inbox from "./pages/Inbox";
 import Footer from "./components/layout/Footer";
+import { AuthProvider } from "./components/auth/AuthProvider";
+import ProtectedRoute from "./components/auth/ProtectedRoute";
 
 // Configure QueryClient with better error handling
 const queryClient = new QueryClient({
@@ -33,49 +34,84 @@ const queryClient = new QueryClient({
 });
 
 const App = () => {
-  const [session, setSession] = useState(null);
-  
-  useEffect(() => {
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-    });
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <BrowserRouter>
-          <div className="min-h-screen w-full flex flex-col">
-            <div className="flex-1">
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/contacts" element={<Index />} />
-                <Route path="/conversations" element={<Index />} />
-                <Route path="/inbox" element={<Inbox />} />
-                <Route path="/campaigns" element={<CampaignsPage />} />
-                <Route path="/campaigns/create" element={<CreateCampaignPage />} />
-                <Route path="/reporting" element={<ReportingPage />} />
-                <Route path="/reporting/messages-overview" element={<ReportingPage />} />
-                <Route path="/reporting/delivery-reports" element={<ReportingPage />} />
-                <Route path="/reporting/contacts-overview" element={<ReportingPage />} />
-                <Route path="/reporting/conversations" element={<ReportingPage />} />
-                <Route path="/settings/*" element={<Settings />} />
-                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
+          <AuthProvider>
+            <div className="min-h-screen w-full flex flex-col">
+              <div className="flex-1">
+                <Routes>
+                  <Route path="/auth" element={<Auth />} />
+                  <Route path="/" element={
+                    <ProtectedRoute>
+                      <Index />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/contacts" element={
+                    <ProtectedRoute>
+                      <Index />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/conversations" element={
+                    <ProtectedRoute>
+                      <Index />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/inbox" element={
+                    <ProtectedRoute>
+                      <Inbox />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/campaigns" element={
+                    <ProtectedRoute>
+                      <CampaignsPage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/campaigns/create" element={
+                    <ProtectedRoute>
+                      <CreateCampaignPage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/reporting" element={
+                    <ProtectedRoute>
+                      <ReportingPage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/reporting/messages-overview" element={
+                    <ProtectedRoute>
+                      <ReportingPage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/reporting/delivery-reports" element={
+                    <ProtectedRoute>
+                      <ReportingPage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/reporting/contacts-overview" element={
+                    <ProtectedRoute>
+                      <ReportingPage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/reporting/conversations" element={
+                    <ProtectedRoute>
+                      <ReportingPage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/settings/*" element={
+                    <ProtectedRoute>
+                      <Settings />
+                    </ProtectedRoute>
+                  } />
+                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </div>
+              <Footer />
             </div>
-            <Footer />
-          </div>
-          <Toaster />
-          <Sonner />
+            <Toaster />
+            <Sonner />
+          </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>

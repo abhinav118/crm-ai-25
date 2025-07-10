@@ -10,6 +10,7 @@ import {
   Settings,
   ChevronDown
 } from 'lucide-react';
+import { useAuth } from '@/components/auth/AuthProvider';
 
 type SidebarProps = {
   collapsed?: boolean;
@@ -21,9 +22,14 @@ const Sidebar: React.FC<SidebarProps> = ({
   onToggle 
 }) => {
   const location = useLocation();
+  const { user } = useAuth();
 
   const isActive = (path: string) => {
     return location.pathname === path;
+  };
+
+  const getUserInitials = (email: string) => {
+    return email.substring(0, 2).toUpperCase();
   };
 
   if (collapsed) {
@@ -84,8 +90,8 @@ const Sidebar: React.FC<SidebarProps> = ({
             active={isActive('/settings')}
           />
           <div className="flex items-center justify-center mt-4">
-            <div className="bg-purple-600 h-8 w-8 rounded-full flex items-center justify-center text-white font-medium text-sm">
-              JD
+            <div className="bg-primary h-8 w-8 rounded-full flex items-center justify-center text-primary-foreground font-medium text-sm">
+              {user?.email ? getUserInitials(user.email) : 'U'}
             </div>
           </div>
         </div>
@@ -149,12 +155,12 @@ const Sidebar: React.FC<SidebarProps> = ({
           active={isActive('/settings')}
         />
         <div className="flex items-center gap-3 px-2 py-2 text-sm cursor-pointer hover:bg-slate-800 rounded-md transition-colors">
-          <div className="bg-purple-600 h-8 w-8 rounded-full flex items-center justify-center text-white font-medium">
-            JD
+          <div className="bg-primary h-8 w-8 rounded-full flex items-center justify-center text-primary-foreground font-medium">
+            {user?.email ? getUserInitials(user.email) : 'U'}
           </div>
           <div className="flex flex-col text-white flex-1">
-            <span className="font-medium">John Doe</span>
-            <span className="text-xs text-slate-400">Admin</span>
+            <span className="font-medium">{user?.email?.split('@')[0] || 'User'}</span>
+            <span className="text-xs text-slate-400">{user?.email}</span>
           </div>
           <ChevronDown className="h-4 w-4 text-slate-400" />
         </div>
