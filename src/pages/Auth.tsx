@@ -54,42 +54,26 @@ const Auth = () => {
 
   const createUserIfNeeded = async () => {
     try {
-      console.log("Creating user in Supabase Auth...");
+      console.log("Creating user via edge function...");
       
-      // Create user with Supabase Auth
-      const { data, error } = await supabase.auth.admin.createUser({
-        email: VALID_EMAIL,
-        password: VALID_PASSWORD,
-        email_confirm: true, // Skip email confirmation
-        user_metadata: {
-          first_name: "Abhik",
-          last_name: "Admin"
+      // Call our edge function to create the user with admin privileges
+      const { data, error } = await supabase.functions.invoke('create-hardcoded-user', {
+        body: {
+          email: VALID_EMAIL,
+          password: VALID_PASSWORD
         }
       });
 
-      console.log("Admin create user result:", { data, error });
+      console.log("Edge function result:", { data, error });
       
-      if (error && !error.message.includes("already been registered")) {
+      if (error) {
         throw error;
       }
       
-      return true;
+      return data.success;
     } catch (error) {
-      console.error("Error creating user:", error);
-      // Try regular signup as fallback
-      const { data, error: signUpError } = await supabase.auth.signUp({
-        email: VALID_EMAIL,
-        password: VALID_PASSWORD,
-        options: {
-          data: {
-            first_name: "Abhik",
-            last_name: "Admin"
-          }
-        }
-      });
-      
-      console.log("Fallback signup result:", { data, error: signUpError });
-      return !signUpError;
+      console.error("Error calling edge function:", error);
+      return false;
     }
   };
 
@@ -121,11 +105,15 @@ const Auth = () => {
             signInError.message.includes("Email not confirmed")) {
           console.log("User doesn't exist or not confirmed, creating user...");
           
-          // Create the user first
-          await createUserIfNeeded();
+          // Create the user using our edge function
+          const userCreated = await createUserIfNeeded();
           
-          // Wait a moment for the user to be created
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          if (!userCreated) {
+            throw new Error("Failed to create user account");
+          }
+          
+          // Wait a moment for the user to be fully created
+          await new Promise(resolve => setTimeout(resolve, 2000));
           
           // Try signing in again
           console.log("Attempting sign in after user creation...");
