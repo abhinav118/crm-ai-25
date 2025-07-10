@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -6,16 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { Loader2, MessageSquare, Users, BarChart3 } from "lucide-react";
 
-type AuthMode = "signin" | "signup" | "forgot";
+// Hardcoded credentials for single user system
+const VALID_EMAIL = "abhik.voice@gmail.com";
+const VALID_PASSWORD = "11111111";
 
 const Auth = () => {
-  const [mode, setMode] = useState<AuthMode>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   
@@ -27,35 +26,26 @@ const Auth = () => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        navigate("/");
+        navigate("/contacts");
       }
     };
     checkAuth();
   }, [navigate]);
 
-  const validateForm = () => {
+  const validateCredentials = () => {
     const newErrors: Record<string, string> = {};
 
+    // Hardcoded validation - only allow specific email and password
     if (!email) {
       newErrors.email = "Email is required";
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
-      newErrors.email = "Please enter a valid email address";
+    } else if (email !== VALID_EMAIL) {
+      newErrors.email = "Invalid email address. Access restricted.";
     }
 
-    if (mode !== "forgot") {
-      if (!password) {
-        newErrors.password = "Password is required";
-      } else if (password.length < 6) {
-        newErrors.password = "Password must be at least 6 characters";
-      }
-
-      if (mode === "signup") {
-        if (!confirmPassword) {
-          newErrors.confirmPassword = "Please confirm your password";
-        } else if (password !== confirmPassword) {
-          newErrors.confirmPassword = "Passwords do not match";
-        }
-      }
+    if (!password) {
+      newErrors.password = "Password is required";
+    } else if (password !== VALID_PASSWORD) {
+      newErrors.password = "Invalid password. Access denied.";
     }
 
     setErrors(newErrors);
@@ -63,113 +53,72 @@ const Auth = () => {
   };
 
   const handleSignIn = async () => {
-    if (!validateForm()) return;
-
-    setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      toast({
-        title: "Sign In Failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    } else {
-      toast({
-        title: "Welcome back!",
-        description: "You have been signed in successfully.",
-      });
-      navigate("/");
-    }
-    setLoading(false);
-  };
-
-  const handleSignUp = async () => {
-    if (!validateForm()) return;
-
-    setLoading(true);
-    const redirectUrl = `${window.location.origin}/`;
-    
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: redirectUrl
-      }
-    });
-
-    if (error) {
-      toast({
-        title: "Sign Up Failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    } else {
-      toast({
-        title: "Account Created!",
-        description: "Please check your email to confirm your account.",
-      });
-      setMode("signin");
-    }
-    setLoading(false);
-  };
-
-  const handleForgotPassword = async () => {
-    if (!email) {
-      setErrors({ email: "Email is required" });
+    // First validate hardcoded credentials
+    if (!validateCredentials()) {
       return;
     }
 
     setLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth?mode=reset`,
-    });
+    
+    try {
+      // Check if user exists, if not create them first
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: VALID_EMAIL,
+        password: VALID_PASSWORD,
+      });
 
-    if (error) {
+      if (signInError && signInError.message.includes("Invalid login credentials")) {
+        // User doesn't exist, create them first
+        const redirectUrl = `${window.location.origin}/contacts`;
+        
+        const { error: signUpError } = await supabase.auth.signUp({
+          email: VALID_EMAIL,
+          password: VALID_PASSWORD,
+          options: {
+            emailRedirectTo: redirectUrl,
+            data: {
+              first_name: "Abhik",
+              last_name: "Admin"
+            }
+          }
+        });
+
+        if (signUpError) {
+          throw signUpError;
+        }
+
+        // Try signing in again after creation
+        const { error: retrySignInError } = await supabase.auth.signInWithPassword({
+          email: VALID_EMAIL,
+          password: VALID_PASSWORD,
+        });
+
+        if (retrySignInError) {
+          throw retrySignInError;
+        }
+      } else if (signInError) {
+        throw signInError;
+      }
+
       toast({
-        title: "Reset Failed",
-        description: error.message,
+        title: "Welcome to TextFlow CRM",
+        description: "You have been signed in successfully.",
+      });
+      navigate("/contacts");
+    } catch (error: any) {
+      toast({
+        title: "Sign In Failed",
+        description: error.message || "Authentication failed. Please try again.",
         variant: "destructive",
       });
-    } else {
-      toast({
-        title: "Reset Email Sent",
-        description: "Please check your email for password reset instructions.",
-      });
-      setMode("signin");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    switch (mode) {
-      case "signin":
-        handleSignIn();
-        break;
-      case "signup":
-        handleSignUp();
-        break;
-      case "forgot":
-        handleForgotPassword();
-        break;
-    }
-  };
-
-  const resetForm = () => {
-    setEmail("");
-    setPassword("");
-    setConfirmPassword("");
-    setErrors({});
-  };
-
-  const switchMode = (newMode: AuthMode) => {
-    setMode(newMode);
-    resetForm();
+    handleSignIn();
   };
 
   return (
@@ -231,15 +180,9 @@ const Auth = () => {
 
           <Card>
             <CardHeader className="space-y-1">
-              <CardTitle className="text-2xl">
-                {mode === "signin" && "Welcome back"}
-                {mode === "signup" && "Create your account"}
-                {mode === "forgot" && "Reset your password"}
-              </CardTitle>
+              <CardTitle className="text-2xl">Welcome to TextFlow CRM</CardTitle>
               <CardDescription>
-                {mode === "signin" && "Sign in to your TextFlow CRM account"}
-                {mode === "signup" && "Start managing your customer communications"}
-                {mode === "forgot" && "Enter your email to receive reset instructions"}
+                Sign in to access your customer communication platform
               </CardDescription>
             </CardHeader>
             
@@ -260,111 +203,40 @@ const Auth = () => {
                   )}
                 </div>
 
-                {mode !== "forgot" && (
-                  <div className="space-y-2">
-                    <Label htmlFor="password">Password</Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      placeholder="Enter your password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className={errors.password ? "border-destructive" : ""}
-                    />
-                    {errors.password && (
-                      <p className="text-sm text-destructive">{errors.password}</p>
-                    )}
-                  </div>
-                )}
-
-                {mode === "signup" && (
-                  <div className="space-y-2">
-                    <Label htmlFor="confirmPassword">Confirm Password</Label>
-                    <Input
-                      id="confirmPassword"
-                      type="password"
-                      placeholder="Confirm your password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      className={errors.confirmPassword ? "border-destructive" : ""}
-                    />
-                    {errors.confirmPassword && (
-                      <p className="text-sm text-destructive">{errors.confirmPassword}</p>
-                    )}
-                  </div>
-                )}
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className={errors.password ? "border-destructive" : ""}
+                  />
+                  {errors.password && (
+                    <p className="text-sm text-destructive">{errors.password}</p>
+                  )}
+                </div>
 
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {mode === "signin" && "Sign In"}
-                  {mode === "signup" && "Create Account"}
-                  {mode === "forgot" && "Send Reset Email"}
+                  Sign In
                 </Button>
               </form>
 
-              <div className="mt-6">
-                {mode === "signin" && (
-                  <>
-                    <div className="text-center space-y-2">
-                      <button
-                        type="button"
-                        onClick={() => switchMode("forgot")}
-                        className="text-sm text-primary hover:underline"
-                      >
-                        Forgot your password?
-                      </button>
-                    </div>
-                    
-                    <Separator className="my-4" />
-                    
-                    <div className="text-center">
-                      <span className="text-sm text-muted-foreground">
-                        Don't have an account?{" "}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => switchMode("signup")}
-                        className="text-sm text-primary hover:underline font-medium"
-                      >
-                        Sign up
-                      </button>
-                    </div>
-                  </>
-                )}
-
-                {mode === "signup" && (
-                  <div className="text-center mt-4">
-                    <span className="text-sm text-muted-foreground">
-                      Already have an account?{" "}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => switchMode("signin")}
-                      className="text-sm text-primary hover:underline font-medium"
-                    >
-                      Sign in
-                    </button>
-                  </div>
-                )}
-
-                {mode === "forgot" && (
-                  <div className="text-center mt-4">
-                    <button
-                      type="button"
-                      onClick={() => switchMode("signin")}
-                      className="text-sm text-primary hover:underline"
-                    >
-                      Back to sign in
-                    </button>
-                  </div>
-                )}
+              {/* Info Box */}
+              <div className="mt-6 p-4 bg-muted rounded-lg">
+                <h4 className="font-medium text-sm mb-2">System Access</h4>
+                <p className="text-xs text-muted-foreground">
+                  This is a restricted access system. Please use your authorized credentials to sign in.
+                </p>
               </div>
             </CardContent>
           </Card>
 
           {/* Footer */}
           <div className="text-center mt-8 text-xs text-muted-foreground">
-            <p>By signing in, you agree to our Terms of Service and Privacy Policy</p>
+            <p>© 2025 TextFlow CRM - Secure Access Portal</p>
           </div>
         </div>
       </div>
