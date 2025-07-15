@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 
-// Sample data for textable numbers - updated to include the target number
+// Sample data for textable numbers
 const sampleNumbers = [
   {
     id: '1',
@@ -32,22 +32,23 @@ const sampleNumbers = [
   }
 ];
 
+const DEFAULT_NUMBER = "(773) 389-7839";
+
 const SettingsNumbers: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [filterValue, setFilterValue] = useState('all');
-  const [showAllNumbers, setShowAllNumbers] = useState(false);
+  const [showOnlyDefault, setShowOnlyDefault] = useState(true); // Default to showing only the target number
 
   console.log('SettingsNumbers - filterValue:', filterValue);
   console.log('SettingsNumbers - filterValue type:', typeof filterValue);
   console.log('SettingsNumbers - itemsPerPage:', itemsPerPage);
   console.log('SettingsNumbers - itemsPerPage type:', typeof itemsPerPage);
 
-  // Filter numbers to show only (773) 389-7839 unless showAllNumbers is true
-  const targetNumber = '(773) 389-7839';
-  const baseFilteredNumbers = showAllNumbers 
-    ? sampleNumbers 
-    : sampleNumbers.filter(number => number.number === targetNumber);
+  // Filter numbers - by default show only the target number
+  const baseFilteredNumbers = showOnlyDefault 
+    ? sampleNumbers.filter(number => number.number === DEFAULT_NUMBER)
+    : sampleNumbers;
 
   // Apply additional filters if any
   const filteredNumbers = baseFilteredNumbers.filter(number => {
@@ -100,20 +101,20 @@ const SettingsNumbers: React.FC = () => {
               </SelectContent>
             </Select>
 
-            {/* Toggle to show all numbers or just the filtered one */}
+            {/* Toggle to show all numbers or just the default one */}
             <Button
-              variant={showAllNumbers ? "default" : "outline"}
-              onClick={() => setShowAllNumbers(!showAllNumbers)}
+              variant={showOnlyDefault ? "outline" : "default"}
+              onClick={() => setShowOnlyDefault(!showOnlyDefault)}
               className="ml-auto"
             >
-              {showAllNumbers ? "Show Filtered View" : "Show All Numbers"}
+              {showOnlyDefault ? "Show All Numbers" : "Show Default Only"}
             </Button>
           </div>
           
-          {!showAllNumbers && (
+          {showOnlyDefault && (
             <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
               <p className="text-sm text-blue-700">
-                <strong>Filtered View:</strong> Showing only number {targetNumber}
+                <strong>Default View:</strong> Showing only default number {DEFAULT_NUMBER}
               </p>
             </div>
           )}

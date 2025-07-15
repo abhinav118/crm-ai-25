@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { RestaurantMarketingAgent } from '@/components/restaurant/RestaurantMarketingAgent';
+import RestaurantMarketingAgent from '@/components/restaurant/RestaurantMarketingAgent';
 import Sidebar from '@/components/dashboard/Sidebar';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
