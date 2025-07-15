@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Upload, Plus, Minus } from 'lucide-react';
+import { Upload, Plus, Minus, ArrowRight } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface ManageSegmentMembershipProps {
@@ -27,6 +27,7 @@ const ManageSegmentMembership: React.FC<ManageSegmentMembershipProps> = ({
   availableSegments = [],
 }) => {
   const [operationType, setOperationType] = useState<'add' | 'remove'>('add');
+  const [fromSegment, setFromSegment] = useState(''); // New state for "remove from" segment
   const [targetSegment, setTargetSegment] = useState('');
   const [newSegmentName, setNewSegmentName] = useState('');
   const [inputMethod, setInputMethod] = useState<'manual' | 'csv'>('manual');
@@ -89,12 +90,82 @@ const ManageSegmentMembership: React.FC<ManageSegmentMembershipProps> = ({
     return data || [];
   };
 
+  // Enhanced segment membership management
+  const updateSegmentMembership = async (segmentName: string, contactsToUpdate: any[], operation: 'add' | 'remove') => {
+    try {
+      // Get current segment data
+      const { data: segmentData, error: fetchError } = await supabase
+        .from('contacts_segments')
+        .select('contacts_membership')
+        .eq('segment_name', segmentName)
+        .single();
+
+      if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 is "not found"
+        throw fetchError;
+      }
+
+      let currentMembership = segmentData?.contacts_membership as any[] || [];
+
+      if (operation === 'add') {
+        // Add contacts to segment, avoiding duplicates
+        contactsToUpdate.forEach(contact => {
+          const contactExists = currentMembership.some((member: any) => member.id === contact.id);
+          if (!contactExists) {
+            const contactObject = {
+              id: contact.id,
+              name: contact.last_name ? `${contact.first_name} ${contact.last_name}` : contact.first_name,
+              first_name: contact.first_name,
+              last_name: contact.last_name,
+              email: contact.email,
+              phone: contact.phone,
+              company: contact.company,
+              status: contact.status,
+              tags: contact.tags || [],
+              created_at: contact.created_at,
+              updated_at: contact.updated_at
+            };
+            currentMembership.push(contactObject);
+          }
+        });
+      } else if (operation === 'remove') {
+        // Remove contacts from segment
+        const contactIds = contactsToUpdate.map(contact => contact.id);
+        currentMembership = currentMembership.filter((member: any) => !contactIds.includes(member.id));
+      }
+
+      // Upsert the updated membership
+      const { error: upsertError } = await supabase
+        .from('contacts_segments')
+        .upsert({
+          segment_name: segmentName,
+          contacts_membership: currentMembership,
+          updated_at: new Date().toISOString()
+        });
+
+      if (upsertError) throw upsertError;
+
+      return currentMembership.length;
+    } catch (error) {
+      console.error(`Error updating segment ${segmentName}:`, error);
+      throw error;
+    }
+  };
+
   // Handle form submission
   const handleSubmit = async () => {
-    if (!targetSegment && !newSegmentName) {
+    if (operationType === 'add' && !targetSegment && !newSegmentName) {
       toast({
         title: 'Missing Target',
         description: 'Please select a segment or create a new one',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (operationType === 'remove' && (!fromSegment || !targetSegment)) {
+      toast({
+        title: 'Missing Segments',
+        description: 'Please select both From Segment and Target Segment for removal operation',
         variant: 'destructive'
       });
       return;
@@ -170,58 +241,47 @@ const ManageSegmentMembership: React.FC<ManageSegmentMembershipProps> = ({
       // Determine the segment to use
       const segmentToUse = newSegmentName.trim() || targetSegment;
       
-      // Update contacts using individual update operations
+      if (operationType === 'add') {
+        // Simple add operation
+        await updateSegmentMembership(segmentToUse, contactsToUpdate, 'add');
+        
+        toast({
+          title: 'Success',
+          description: `${contactsToUpdate.length} contact${contactsToUpdate.length > 1 ? 's' : ''} added to segment "${segmentToUse}" successfully`,
+        });
+      } else if (operationType === 'remove') {
+        // Enhanced remove with re-subscription flow
+        
+        // Step 1: Remove from source segment
+        await updateSegmentMembership(fromSegment, contactsToUpdate, 'remove');
+        
+        // Step 2: Add to target segment
+        await updateSegmentMembership(segmentToUse, contactsToUpdate, 'add');
+        
+        toast({
+          title: 'Success',
+          description: `✅ Moved ${contactsToUpdate.length} contact${contactsToUpdate.length > 1 ? 's' : ''} from "${fromSegment}" to "${segmentToUse}"`,
+        });
+      }
+
+      // Update contacts table segment_name for consistency
       const updatePromises = contactsToUpdate.map(contact => {
-        let updatedSegmentName: string | null = contact.segment_name;
-        
-        if (operationType === 'add') {
-          updatedSegmentName = segmentToUse;
-        } else if (operationType === 'remove') {
-          // Only remove if the contact is currently in the target segment
-          if (contact.segment_name === segmentToUse) {
-            updatedSegmentName = null;
-          }
-        }
-        
-        console.log(`Updating contact ${contact.id}: ${contact.segment_name} -> ${updatedSegmentName}`);
-        
-        // Use update to modify existing contacts
         return supabase
           .from('contacts')
           .update({
-            segment_name: updatedSegmentName,
+            segment_name: segmentToUse,
             updated_at: new Date().toISOString()
           })
           .eq('id', contact.id);
       });
 
-      // Execute all updates
-      const results = await Promise.all(updatePromises);
-      
-      // Check for any errors
-      const errors_in_updates = results.filter(result => result.error);
-      if (errors_in_updates.length > 0) {
-        console.error('Update errors:', errors_in_updates);
-        errors_in_updates.forEach(result => {
-          console.error('Update error details:', result.error);
-        });
-        throw new Error(`Failed to update ${errors_in_updates.length} contact(s): ${errors_in_updates[0].error?.message}`);
-      }
-
-      // Count successful updates
-      const successfulUpdates = results.filter(result => !result.error);
-      
-      // Show success message
-      const actionText = operationType === 'add' ? 'added to' : 'removed from';
-      toast({
-        title: 'Success',
-        description: `${successfulUpdates.length} contacts ${actionText} segment "${segmentToUse}" successfully`,
-      });
+      await Promise.all(updatePromises);
 
       // Reset form
       setPhoneNumbers('');
       setCsvFile(null);
       setNewSegmentName('');
+      setFromSegment('');
       setValidationErrors([]);
       
       // Refresh data
@@ -258,7 +318,13 @@ const ManageSegmentMembership: React.FC<ManageSegmentMembershipProps> = ({
           {/* Operation Type */}
           <div className="space-y-2">
             <Label className="text-sm font-medium">Operation Type</Label>
-            <Select value={operationType} onValueChange={(value: 'add' | 'remove') => setOperationType(value)}>
+            <Select value={operationType} onValueChange={(value: 'add' | 'remove') => {
+              setOperationType(value);
+              // Reset selections when changing operation type
+              setFromSegment('');
+              setTargetSegment('');
+              setNewSegmentName('');
+            }}>
               <SelectTrigger className="w-full">
                 <SelectValue />
               </SelectTrigger>
@@ -279,12 +345,46 @@ const ManageSegmentMembership: React.FC<ManageSegmentMembershipProps> = ({
             </Select>
           </div>
 
+          {/* From Segment - Only shown for remove operation */}
+          {operationType === 'remove' && (
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">From Segment</Label>
+              <Select value={fromSegment} onValueChange={setFromSegment}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select segment to remove from..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableSegments.map((segment) => (
+                    <SelectItem key={segment} value={segment}>
+                      {segment}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-gray-500">
+                Select which segment to remove contacts from
+              </p>
+            </div>
+          )}
+
           {/* Target Segment */}
           <div className="space-y-2">
-            <Label className="text-sm font-medium">Target Segment</Label>
+            <Label className="text-sm font-medium">
+              {operationType === 'remove' ? (
+                <div className="flex items-center gap-2">
+                  Target Segment <ArrowRight className="h-4 w-4" />
+                </div>
+              ) : (
+                'Target Segment'
+              )}
+            </Label>
             <Select value={targetSegment} onValueChange={setTargetSegment}>
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select existing segment..." />
+                <SelectValue placeholder={
+                  operationType === 'remove' 
+                    ? "Select destination segment..." 
+                    : "Select existing segment..."
+                } />
               </SelectTrigger>
               <SelectContent>
                 {availableSegments.map((segment) => (
@@ -294,20 +394,43 @@ const ManageSegmentMembership: React.FC<ManageSegmentMembershipProps> = ({
                 ))}
               </SelectContent>
             </Select>
+            {operationType === 'remove' && (
+              <p className="text-xs text-gray-500">
+                Contacts will be moved to this segment after removal
+              </p>
+            )}
           </div>
 
-          {/* Create New Segment (only in Add mode) */}
-          {operationType === 'add' && (
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Or Create New Segment</Label>
-              <Input
-                value={newSegmentName}
-                onChange={(e) => setNewSegmentName(e.target.value)}
-                placeholder="Enter new segment name..."
-                className="w-full"
-              />
-              <p className="text-xs text-gray-500">
-                If filled, this will create a new segment. Leave empty to use selected segment above.
+          {/* Create New Segment */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">
+              {operationType === 'remove' ? 'Or Create New Target Segment' : 'Or Create New Segment'}
+            </Label>
+            <Input
+              value={newSegmentName}
+              onChange={(e) => setNewSegmentName(e.target.value)}
+              placeholder="Enter new segment name..."
+              className="w-full"
+            />
+            <p className="text-xs text-gray-500">
+              If filled, this will create a new segment. Leave empty to use selected segment above.
+            </p>
+          </div>
+
+          {/* Show operation flow for remove */}
+          {operationType === 'remove' && fromSegment && (targetSegment || newSegmentName) && (
+            <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+              <div className="flex items-center gap-2 text-sm text-blue-800">
+                <Badge variant="outline" className="bg-red-100 text-red-700">
+                  {fromSegment}
+                </Badge>
+                <ArrowRight className="h-4 w-4" />
+                <Badge variant="outline" className="bg-green-100 text-green-700">
+                  {newSegmentName || targetSegment}
+                </Badge>
+              </div>
+              <p className="text-xs text-blue-600 mt-2">
+                Contacts will be removed from "{fromSegment}" and added to "{newSegmentName || targetSegment}"
               </p>
             </div>
           )}
@@ -396,10 +519,17 @@ const ManageSegmentMembership: React.FC<ManageSegmentMembershipProps> = ({
           {/* Submit Button */}
           <Button 
             onClick={handleSubmit}
-            disabled={isLoading || (!targetSegment && !newSegmentName)}
+            disabled={isLoading || 
+              (operationType === 'add' && !targetSegment && !newSegmentName) ||
+              (operationType === 'remove' && (!fromSegment || (!targetSegment && !newSegmentName)))
+            }
             className="w-full"
           >
-            {isLoading ? 'Processing...' : `${operationType === 'add' ? 'Add to' : 'Remove from'} Segment`}
+            {isLoading ? 'Processing...' : 
+              operationType === 'add' 
+                ? `Add to ${newSegmentName || targetSegment || 'Segment'}` 
+                : `Move from ${fromSegment} to ${newSegmentName || targetSegment || 'Segment'}`
+            }
           </Button>
         </CardContent>
       </Card>

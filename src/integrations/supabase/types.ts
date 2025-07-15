@@ -14,51 +14,12 @@ export type Database = {
   }
   public: {
     Tables: {
-      campaigns: {
-        Row: {
-          created_at: string
-          id: string
-          message_content: string | null
-          name: string
-          recipients: Json | null
-          scheduled_at: string | null
-          sent_at: string | null
-          status: string | null
-          type: string | null
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          message_content?: string | null
-          name: string
-          recipients?: Json | null
-          scheduled_at?: string | null
-          sent_at?: string | null
-          status?: string | null
-          type?: string | null
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          message_content?: string | null
-          name?: string
-          recipients?: Json | null
-          scheduled_at?: string | null
-          sent_at?: string | null
-          status?: string | null
-          type?: string | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
       contact_logs: {
         Row: {
           action: string
           batch_id: string | null
           batch_name: string | null
-          contact_info: Json | null
+          contact_info: Json
           created_at: string
           id: string
         }
@@ -66,7 +27,7 @@ export type Database = {
           action: string
           batch_id?: string | null
           batch_name?: string | null
-          contact_info?: Json | null
+          contact_info: Json
           created_at?: string
           id?: string
         }
@@ -74,7 +35,7 @@ export type Database = {
           action?: string
           batch_id?: string | null
           batch_name?: string | null
-          contact_info?: Json | null
+          contact_info?: Json
           created_at?: string
           id?: string
         }
@@ -91,7 +52,7 @@ export type Database = {
           last_name: string | null
           notes: string | null
           phone: string | null
-          segment_name: string | null
+          segment_name: string
           status: string | null
           tags: string[] | null
           updated_at: string
@@ -106,7 +67,7 @@ export type Database = {
           last_name?: string | null
           notes?: string | null
           phone?: string | null
-          segment_name?: string | null
+          segment_name?: string
           status?: string | null
           tags?: string[] | null
           updated_at?: string
@@ -121,19 +82,80 @@ export type Database = {
           last_name?: string | null
           notes?: string | null
           phone?: string | null
-          segment_name?: string | null
+          segment_name?: string
           status?: string | null
           tags?: string[] | null
           updated_at?: string
         }
         Relationships: []
       }
+      contacts_segments: {
+        Row: {
+          contacts_membership: Json
+          segment_name: string
+          updated_at: string | null
+        }
+        Insert: {
+          contacts_membership?: Json
+          segment_name: string
+          updated_at?: string | null
+        }
+        Update: {
+          contacts_membership?: Json
+          segment_name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      conversations: {
+        Row: {
+          assigned_at: string | null
+          assigned_to: string | null
+          contact_id: string
+          created_at: string
+          id: string
+          last_message_at: string | null
+          notes: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_at?: string | null
+          assigned_to?: string | null
+          contact_id: string
+          created_at?: string
+          id?: string
+          last_message_at?: string | null
+          notes?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_at?: string | null
+          assigned_to?: string | null
+          contact_id?: string
+          created_at?: string
+          id?: string
+          last_message_at?: string | null
+          notes?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversations_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: true
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
-          channel: string | null
+          channel: string
           contact_id: string
           content: string
-          created_at: string
           direction: string | null
           id: string
           is_read: boolean | null
@@ -142,10 +164,9 @@ export type Database = {
           sent_at: string
         }
         Insert: {
-          channel?: string | null
+          channel?: string
           contact_id: string
           content: string
-          created_at?: string
           direction?: string | null
           id?: string
           is_read?: boolean | null
@@ -154,10 +175,9 @@ export type Database = {
           sent_at?: string
         }
         Update: {
-          channel?: string | null
+          channel?: string
           contact_id?: string
           content?: string
-          created_at?: string
           direction?: string | null
           id?: string
           is_read?: boolean | null
@@ -177,81 +197,126 @@ export type Database = {
       }
       sms_analytics: {
         Row: {
-          campaign_id: string | null
+          clicked_by: string[] | null
           clicks: number | null
-          contact_id: string | null
-          created_at: string
+          conversions: number | null
+          ctr: number | null
           id: string
           last_clicked: string | null
-          updated_at: string
+          link: string | null
         }
         Insert: {
-          campaign_id?: string | null
+          clicked_by?: string[] | null
           clicks?: number | null
-          contact_id?: string | null
-          created_at?: string
+          conversions?: number | null
+          ctr?: number | null
           id?: string
           last_clicked?: string | null
-          updated_at?: string
+          link?: string | null
         }
         Update: {
-          campaign_id?: string | null
+          clicked_by?: string[] | null
           clicks?: number | null
-          contact_id?: string | null
-          created_at?: string
+          conversions?: number | null
+          ctr?: number | null
           id?: string
           last_clicked?: string | null
-          updated_at?: string
+          link?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "sms_analytics_campaign_id_fkey"
-            columns: ["campaign_id"]
-            isOneToOne: false
-            referencedRelation: "campaigns"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "sms_analytics_contact_id_fkey"
-            columns: ["contact_id"]
-            isOneToOne: false
-            referencedRelation: "contacts"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       telnyx_campaigns: {
         Row: {
-          created_at: string
+          campaign_name: string
+          created_at: string | null
+          error_count: number | null
+          errors: Json | null
           id: string
-          message_content: string | null
-          name: string
-          recipients: Json | null
-          scheduled_at: string | null
-          sent_at: string | null
+          media_url: string | null
+          message: string
+          progress_percentage: number | null
+          recipients: string[]
+          repeat_days: string[] | null
+          repeat_frequency: string | null
+          schedule_time: string | null
+          schedule_type: string
+          segment_name: string | null
+          sent_count: number | null
           status: string | null
+          total_count: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          campaign_name: string
+          created_at?: string | null
+          error_count?: number | null
+          errors?: Json | null
+          id?: string
+          media_url?: string | null
+          message: string
+          progress_percentage?: number | null
+          recipients: string[]
+          repeat_days?: string[] | null
+          repeat_frequency?: string | null
+          schedule_time?: string | null
+          schedule_type: string
+          segment_name?: string | null
+          sent_count?: number | null
+          status?: string | null
+          total_count?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          campaign_name?: string
+          created_at?: string | null
+          error_count?: number | null
+          errors?: Json | null
+          id?: string
+          media_url?: string | null
+          message?: string
+          progress_percentage?: number | null
+          recipients?: string[]
+          repeat_days?: string[] | null
+          repeat_frequency?: string | null
+          schedule_time?: string | null
+          schedule_type?: string
+          segment_name?: string | null
+          sent_count?: number | null
+          status?: string | null
+          total_count?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      user_logins: {
+        Row: {
+          created_at: string
+          first_name: string
+          id: string
+          is_active: boolean
+          last_name: string
+          login_email: string
+          login_password: string
           updated_at: string
         }
         Insert: {
           created_at?: string
+          first_name: string
           id?: string
-          message_content?: string | null
-          name: string
-          recipients?: Json | null
-          scheduled_at?: string | null
-          sent_at?: string | null
-          status?: string | null
+          is_active?: boolean
+          last_name: string
+          login_email: string
+          login_password: string
           updated_at?: string
         }
         Update: {
           created_at?: string
+          first_name?: string
           id?: string
-          message_content?: string | null
-          name?: string
-          recipients?: Json | null
-          scheduled_at?: string | null
-          sent_at?: string | null
-          status?: string | null
+          is_active?: boolean
+          last_name?: string
+          login_email?: string
+          login_password?: string
           updated_at?: string
         }
         Relationships: []
@@ -261,10 +326,26 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      format_phone_e164: {
+        Args: { phone: string }
+        Returns: string
+      }
+      format_phone_number: {
+        Args: { phone: string }
+        Returns: string
+      }
+      update_contacts_segments: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_category:
+        | "inactive"
+        | "high_permission"
+        | "unknown_publisher"
+        | "trusted"
+      app_risk_level: "low" | "medium" | "high" | "critical"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -391,6 +472,14 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_category: [
+        "inactive",
+        "high_permission",
+        "unknown_publisher",
+        "trusted",
+      ],
+      app_risk_level: ["low", "medium", "high", "critical"],
+    },
   },
 } as const
