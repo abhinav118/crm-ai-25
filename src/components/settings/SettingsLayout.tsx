@@ -4,12 +4,10 @@ import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { 
   User, 
-  CreditCard, 
   Phone
 } from 'lucide-react';
 
 const settingsNavItems = [
-  { href: '/settings/plan-details', label: 'Plan Details', icon: CreditCard },
   { href: '/settings/profile', label: 'Profile', icon: User },
   { href: '/settings/numbers', label: 'Textable Numbers', icon: Phone },
 ];
