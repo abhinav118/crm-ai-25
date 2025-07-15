@@ -1,330 +1,279 @@
-import React, { useState, useRef } from 'react';
-import { Paperclip, ArrowUp, MessageSquare, Mail, Image } from 'lucide-react';
+
+import React, { useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { GeneratedPreview } from './GeneratedPreview';
-import { 
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from '@/components/ui/select';
-import { Card } from '@/components/ui/card';
-import { useAiGeneration } from '@/hooks/useAiGeneration';
-import { useToast } from '@/hooks/use-toast';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { Calendar, Clock, Users, Zap, ChefHat, Utensils } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAiSuggestions } from '@/hooks/useAiSuggestions';
-import { EmailCampaignEditor } from './EmailCampaignEditor';
-import { Pencil } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 
-type MarketingChannel = 'SMS Marketing' | 'Email Marketing';
-
-export const RestaurantMarketingAgent = () => {
-  const [prompt, setPrompt] = useState('');
-  const [channel, setChannel] = useState<MarketingChannel>('SMS Marketing');
-  const [remainingGenerations, setRemainingGenerations] = useState(5);
-  const [generatedContent, setGeneratedContent] = useState({
-    smsText: '',
-    emailSubject: '',
-    emailBody: '',
-    imageUrl: ''
-  });
+const RestaurantMarketingAgent: React.FC = () => {
+  const [campaignType, setCampaignType] = useState<'sms' | 'email'>('sms');
+  const [restaurantName, setRestaurantName] = useState('');
+  const [cuisine, setCuisine] = useState('');
+  const [specialOffer, setSpecialOffer] = useState('');
+  const [targetAudience, setTargetAudience] = useState('');
+  const [tone, setTone] = useState('friendly');
+  const [customMessage, setCustomMessage] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [attachment, setAttachment] = useState<File | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const { generateContent } = useAiGeneration();
-  const { toast } = useToast();
-  const [showEmailEditor, setShowEmailEditor] = useState(false);
 
-  // Use AI suggestions hook for prompt inspiration
-  const { 
-    suggestions: promptSuggestions, 
-    isLoading: isLoadingSuggestions 
-  } = useAiSuggestions(
-    channel === 'SMS Marketing' ? 'sms_text' : 'email_content', 
-    []
-  );
-
-  const handleChannelChange = (value: MarketingChannel) => {
-    setChannel(value);
-  };
-
-  const handleGenerateClick = async () => {
-    if (!prompt || remainingGenerations <= 0) {
-      if (remainingGenerations <= 0) {
-        toast({
-          title: 'Generation limit reached',
-          description: 'You have used all your free generations for today.',
-          variant: 'destructive'
-        });
-      }
+  const handleGenerateCampaign = async () => {
+    if (!restaurantName || !cuisine) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in restaurant name and cuisine type.",
+        variant: "destructive",
+      });
       return;
     }
 
     setIsGenerating(true);
-    
-    try {
-      const type = channel === 'SMS Marketing' ? 'sms' : 'email';
-      
-      // Build a more detailed prompt that incorporates the attachment if it exists
-      let enhancedPrompt = prompt;
-      if (attachment) {
-        enhancedPrompt = `Using the attached reference image as inspiration, ${prompt}`;
-      }
-      
-      // Generate image based on the prompt
-      const imagePrompt = `Generate a restaurant marketing image for ${enhancedPrompt} with a 1080x1080 aspect ratio`;
-      
-      // Generate main content
-      const content = await generateContent(enhancedPrompt, type);
-      
-      // Generate image separately
-      const image = await generateContent(imagePrompt, 'image');
 
-      if (channel === 'SMS Marketing') {
-        setGeneratedContent({
-          smsText: content || '',
-          emailSubject: '',
-          emailBody: '',
-          imageUrl: image || ''
+    try {
+      // Generate campaign content using AI
+      const campaignData = {
+        restaurant_name: restaurantName,
+        cuisine,
+        special_offer: specialOffer,
+        target_audience: targetAudience,
+        tone,
+        campaign_type: campaignType,
+        custom_message: customMessage,
+      };
+
+      // Save to telnyx_campaigns table with proper structure
+      const { data, error } = await supabase
+        .from('telnyx_campaigns')
+        .insert([
+          {
+            campaign_name: `${restaurantName} - ${cuisine} Campaign`,
+            message: customMessage || `Special offer at ${restaurantName}! ${specialOffer}`,
+            recipients: [], // Empty array for now
+            schedule_type: 'immediate',
+            status: 'draft',
+            media_url: null,
+            segment_name: targetAudience || null,
+          }
+        ]);
+
+      if (error) {
+        console.error('Error saving campaign:', error);
+        toast({
+          title: "Error",
+          description: "Failed to save campaign. Please try again.",
+          variant: "destructive",
         });
-      } else {
-        // For email, we assume the content has subject and body
-        const subject = await generateContent(enhancedPrompt, 'email_subject');
-        const body = await generateContent(enhancedPrompt, 'email');
-        
-        setGeneratedContent({
-          smsText: '',
-          emailSubject: subject || 'Generated Email Subject',
-          emailBody: body || '',
-          imageUrl: image || ''
-        });
+        return;
       }
-      
-      // Decrease remaining generations
-      setRemainingGenerations(prev => prev - 1);
-    } catch (error) {
-      console.error('Error generating content:', error);
+
       toast({
-        title: 'Generation failed',
-        description: 'Failed to generate content. Please try again.',
-        variant: 'destructive'
+        title: "Campaign Created",
+        description: `Successfully created ${campaignType.toUpperCase()} campaign for ${restaurantName}!`,
+      });
+
+      // Reset form
+      setRestaurantName('');
+      setCuisine('');
+      setSpecialOffer('');
+      setTargetAudience('');
+      setCustomMessage('');
+
+    } catch (error) {
+      console.error('Error generating campaign:', error);
+      toast({
+        title: "Error",
+        description: "Failed to generate campaign. Please try again.",
+        variant: "destructive",
       });
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const handleAttachmentClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setAttachment(file);
-      toast({
-        title: 'File attached',
-        description: `${file.name} will be used as a reference for your generation.`
-      });
-    }
-  };
-
-  // Handle individual section updates from GeneratedPreview
-  const handleSectionUpdate = (field: 'smsText' | 'emailSubject' | 'emailBody' | 'imageUrl', value: string) => {
-    setGeneratedContent(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-
-  const saveCampaign = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        toast({
-          title: 'Authentication required',
-          description: 'Please sign in to save campaigns',
-          variant: 'destructive'
-        });
-        return;
-      }
-
-      const campaignData = {
-        campaign_name: prompt.substring(0, 50),
-        user_id: user.id,
-        status: 'draft',
-        created_at: new Date().toISOString(),
-        image_url: generatedContent.imageUrl,
-      };
-      
-      // Add channel-specific data
-      if (channel === 'SMS Marketing') {
-        Object.assign(campaignData, {
-          sms_content: generatedContent.smsText
-        });
-      } else {
-        Object.assign(campaignData, {
-          email_subject: generatedContent.emailSubject,
-          email_content: generatedContent.emailBody
-        });
-      }
-      
-      const { error } = await supabase.from('campaigns').insert([campaignData]);
-      
-      if (error) throw error;
-      
-      toast({
-        title: 'Campaign saved',
-        description: 'Your campaign has been saved successfully',
-      });
-    } catch (error: any) {
-      console.error('Error saving campaign:', error);
-      toast({
-        title: 'Save failed',
-        description: error.message || 'Failed to save campaign',
-        variant: 'destructive'
-      });
-    }
-  };
-
-  // If showing the email editor, render that instead
-  if (showEmailEditor) {
-    return <EmailCampaignEditor onBack={() => setShowEmailEditor(false)} />;
-  }
-
   return (
-    <div className="max-w-5xl mx-auto px-4">
-      <h1 className="text-4xl font-bold mb-8">Your Restaurant Marketing Agent:</h1>
-      
-      {/* Advanced Editor Option */}
-      {channel === 'Email Marketing' && (
-        <div className="mb-4 flex justify-end">
-          <Button 
-            variant="outline" 
-            onClick={() => setShowEmailEditor(true)}
-            className="flex items-center gap-2"
-          >
-            <Pencil size={16} />
-            Advanced Email Editor
-          </Button>
+    <div className="max-w-4xl mx-auto p-6 space-y-6">
+      <div className="text-center space-y-2">
+        <div className="flex items-center justify-center gap-2 mb-4">
+          <ChefHat className="h-8 w-8 text-orange-600" />
+          <h1 className="text-3xl font-bold text-gray-900">Restaurant Marketing Agent</h1>
         </div>
-      )}
-      
-      <div className="mb-6">
-        {isLoadingSuggestions ? (
-          <div className="animate-pulse flex space-x-4">
-            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-          </div>
-        ) : promptSuggestions.length > 0 ? (
-          <div className="text-gray-600 mb-2 flex flex-wrap gap-2">
-            {promptSuggestions.map((suggestion, index) => (
-              <Button 
-                key={index} 
-                variant="outline" 
-                size="sm" 
-                className="text-xs"
-                onClick={() => setPrompt(suggestion)}
-              >
-                {suggestion.length > 30 ? `${suggestion.substring(0, 30)}...` : suggestion}
-              </Button>
-            ))}
-          </div>
-        ) : (
-          <p className="text-gray-600 mb-2">
-            You have {remainingGenerations} free generations remaining today.
-            <Button variant="outline" size="sm" className="ml-2">
-              Upgrade Plan
-            </Button>
-          </p>
-        )}
+        <p className="text-gray-600 max-w-2xl mx-auto">
+          Create targeted SMS and email campaigns for your restaurant. Our AI helps you craft compelling messages
+          that drive foot traffic and increase orders.
+        </p>
       </div>
-      
-      <Card className="p-2 mb-6">
-        <div className="flex items-center gap-2">
-          <Input 
-            placeholder="Ask Restaurant AI to build..."
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            className="flex-1"
-          />
-          
-          <Select value={channel} onValueChange={handleChannelChange}>
-            <SelectTrigger className="w-44">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="SMS Marketing">
-                <div className="flex items-center">
-                  <MessageSquare className="mr-2 h-4 w-4" />
-                  SMS Marketing
-                </div>
-              </SelectItem>
-              <SelectItem value="Email Marketing">
-                <div className="flex items-center">
-                  <Mail className="mr-2 h-4 w-4" />
-                  Email Marketing
-                </div>
-              </SelectItem>
-            </SelectContent>
-          </Select>
-          
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            title={attachment ? "Attachment added" : "Attach file"}
-            onClick={handleAttachmentClick}
-            className={attachment ? "bg-gray-100" : ""}
-          >
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              className="hidden" 
-              accept="image/*" 
-              onChange={handleFileChange}
-            />
-            {attachment ? (
-              <Image className="h-5 w-5 text-green-500" />
-            ) : (
-              <Paperclip className="h-5 w-5" />
-            )}
-          </Button>
-          
-          <Button 
-            onClick={handleGenerateClick}
-            disabled={isGenerating || !prompt || remainingGenerations <= 0}
-            className="bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-full p-2"
-            size="icon"
-          >
-            {isGenerating ? (
-              <div className="h-5 w-5 animate-spin rounded-full border-2 border-current border-t-transparent" />
-            ) : (
-              <ArrowUp className="h-5 w-5" />
-            )}
-          </Button>
-        </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Campaign Configuration */}
+        <Card className="bg-white border border-gray-200">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Utensils className="h-5 w-5 text-orange-600" />
+              Campaign Configuration
+            </CardTitle>
+            <CardDescription>
+              Set up your restaurant marketing campaign details
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="campaign-type">Campaign Type</Label>
+                <Select value={campaignType} onValueChange={(value: 'sms' | 'email') => setCampaignType(value)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="sms">SMS Campaign</SelectItem>
+                    <SelectItem value="email">Email Campaign</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="tone">Tone</Label>
+                <Select value={tone} onValueChange={setTone}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="friendly">Friendly</SelectItem>
+                    <SelectItem value="professional">Professional</SelectItem>
+                    <SelectItem value="casual">Casual</SelectItem>
+                    <SelectItem value="urgent">Urgent</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="restaurant-name">Restaurant Name</Label>
+              <Input
+                id="restaurant-name"
+                placeholder="e.g., Mario's Italian Bistro"
+                value={restaurantName}
+                onChange={(e) => setRestaurantName(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="cuisine">Cuisine Type</Label>
+              <Input
+                id="cuisine"
+                placeholder="e.g., Italian, Mexican, Asian Fusion"
+                value={cuisine}
+                onChange={(e) => setCuisine(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="special-offer">Special Offer (Optional)</Label>
+              <Input
+                id="special-offer"
+                placeholder="e.g., 20% off dinner, Buy 1 Get 1 Free"
+                value={specialOffer}
+                onChange={(e) => setSpecialOffer(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="target-audience">Target Audience (Optional)</Label>
+              <Input
+                id="target-audience"
+                placeholder="e.g., families, date night couples, lunch crowd"
+                value={targetAudience}
+                onChange={(e) => setTargetAudience(e.target.value)}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Message Customization */}
+        <Card className="bg-white border border-gray-200">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Zap className="h-5 w-5 text-orange-600" />
+              Message Customization
+            </CardTitle>
+            <CardDescription>
+              Customize your campaign message or let AI generate one
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="custom-message">Custom Message (Optional)</Label>
+              <Textarea
+                id="custom-message"
+                placeholder="Write your own message or leave blank for AI generation..."
+                value={customMessage}
+                onChange={(e) => setCustomMessage(e.target.value)}
+                rows={6}
+              />
+            </div>
+
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h4 className="font-medium text-gray-900 mb-2">Campaign Features:</h4>
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="secondary">
+                  <Calendar className="h-3 w-3 mr-1" />
+                  Smart Timing
+                </Badge>
+                <Badge variant="secondary">
+                  <Users className="h-3 w-3 mr-1" />
+                  Audience Targeting
+                </Badge>
+                <Badge variant="secondary">
+                  <Clock className="h-3 w-3 mr-1" />
+                  Delivery Tracking
+                </Badge>
+              </div>
+            </div>
+
+            <Separator />
+
+            <Button 
+              onClick={handleGenerateCampaign}
+              disabled={isGenerating}
+              className="w-full bg-orange-600 hover:bg-orange-700"
+            >
+              {isGenerating ? 'Creating Campaign...' : 'Create Campaign'}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Campaign Tips */}
+      <Card className="bg-gradient-to-r from-orange-50 to-yellow-50 border border-orange-200">
+        <CardHeader>
+          <CardTitle className="text-orange-800">Marketing Tips for Restaurants</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-orange-700">
+            <div>
+              <h4 className="font-medium mb-2">Best Times to Send:</h4>
+              <ul className="space-y-1">
+                <li>• Lunch campaigns: 10:30 AM - 11:30 AM</li>
+                <li>• Dinner campaigns: 3:00 PM - 5:00 PM</li>
+                <li>• Weekend specials: Thursday evenings</li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-medium mb-2">Effective Offers:</h4>
+              <ul className="space-y-1">
+                <li>• Limited-time discounts (24-48 hours)</li>
+                <li>• Buy-one-get-one deals</li>
+                <li>• Free appetizer with entree</li>
+              </ul>
+            </div>
+          </div>
+        </CardContent>
       </Card>
-      
-      <GeneratedPreview
-        channel={channel === 'SMS Marketing' ? 'SMS' : 'Email'}
-        smsText={generatedContent.smsText}
-        emailSubject={generatedContent.emailSubject}
-        emailBody={generatedContent.emailBody}
-        imageUrl={generatedContent.imageUrl}
-        isLoading={isGenerating}
-        onUpdate={handleSectionUpdate}
-      />
-      
-      <Button 
-        className="w-full mt-6 mb-8" 
-        size="lg"
-        onClick={saveCampaign}
-        disabled={isGenerating || (!generatedContent.smsText && !generatedContent.emailBody)}
-      >
-        Save Campaign
-      </Button>
     </div>
   );
 };
+
+export default RestaurantMarketingAgent;

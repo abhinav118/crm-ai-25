@@ -7,17 +7,24 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 
-// Sample data for textable numbers
+// Sample data for textable numbers - updated to include the target number
 const sampleNumbers = [
   {
     id: '1',
-    number: '(737) 237-6448',
+    number: '(773) 389-7839',
     type: 'Textable Number',
     voiceSettings: 'Inbound Call Reply',
     isDefault: true
   },
   {
     id: '2',
+    number: '(737) 237-6448',
+    type: 'Textable Number',
+    voiceSettings: 'Inbound Call Reply',
+    isDefault: false
+  },
+  {
+    id: '3',
     number: '(512) 555-0123',
     type: 'Textable Number',
     voiceSettings: 'Inbound Call Reply',
@@ -29,13 +36,21 @@ const SettingsNumbers: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [filterValue, setFilterValue] = useState('all');
+  const [showAllNumbers, setShowAllNumbers] = useState(false);
 
   console.log('SettingsNumbers - filterValue:', filterValue);
   console.log('SettingsNumbers - filterValue type:', typeof filterValue);
   console.log('SettingsNumbers - itemsPerPage:', itemsPerPage);
   console.log('SettingsNumbers - itemsPerPage type:', typeof itemsPerPage);
 
-  const filteredNumbers = sampleNumbers.filter(number => {
+  // Filter numbers to show only (773) 389-7839 unless showAllNumbers is true
+  const targetNumber = '(773) 389-7839';
+  const baseFilteredNumbers = showAllNumbers 
+    ? sampleNumbers 
+    : sampleNumbers.filter(number => number.number === targetNumber);
+
+  // Apply additional filters if any
+  const filteredNumbers = baseFilteredNumbers.filter(number => {
     if (filterValue === 'all') return true;
     return number.number.includes(filterValue);
   });
@@ -84,7 +99,24 @@ const SettingsNumbers: React.FC = () => {
                 <SelectItem value="50">50 per page</SelectItem>
               </SelectContent>
             </Select>
+
+            {/* Toggle to show all numbers or just the filtered one */}
+            <Button
+              variant={showAllNumbers ? "default" : "outline"}
+              onClick={() => setShowAllNumbers(!showAllNumbers)}
+              className="ml-auto"
+            >
+              {showAllNumbers ? "Show Filtered View" : "Show All Numbers"}
+            </Button>
           </div>
+          
+          {!showAllNumbers && (
+            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
+              <p className="text-sm text-blue-700">
+                <strong>Filtered View:</strong> Showing only number {targetNumber}
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
