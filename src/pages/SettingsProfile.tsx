@@ -5,36 +5,70 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
 import { Eye, EyeOff } from 'lucide-react';
+import { useProfile } from '@/hooks/useProfile';
 
 const SettingsProfile: React.FC = () => {
+  const { profileData, loading, updating, updateProfile } = useProfile();
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
-  const [formData, setFormData] = useState({
-    accountId: '458475591481171968',
-    email: 'abhik.voice@gmail.com',
-    firstName: 'A',
-    lastName: 'K',
-    company: '',
-    mobileNumber: '(718) 406-1667',
-    timeZone: 'America/New_York',
-    deliverTo: 'USA',
+  const [passwords, setPasswords] = useState({
     currentPassword: '',
     newPassword: ''
   });
+
+  // Local form state for profile data
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    company: '',
+    mobileNumber: '',
+    timeZone: 'America/New_York',
+  });
+
+  // Update form data when profile data loads
+  React.useEffect(() => {
+    if (profileData) {
+      setFormData({
+        firstName: profileData.firstName,
+        lastName: profileData.lastName,
+        company: profileData.company,
+        mobileNumber: profileData.mobileNumber,
+        timeZone: profileData.timeZone,
+      });
+    }
+  }, [profileData]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleUpdateDetails = () => {
-    console.log('Updating details:', formData);
+  const handlePasswordChange = (field: string, value: string) => {
+    setPasswords(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleUpdateDetails = async () => {
+    await updateProfile(formData);
   };
 
   const handleUpdatePassword = () => {
-    console.log('Updating password');
+    console.log('Updating password - this feature needs to be implemented');
+    // TODO: Implement password update functionality
   };
+
+  if (loading) {
+    return (
+      <div className="max-w-6xl mx-auto p-6">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-1/4 mb-6"></div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="h-96 bg-gray-200 rounded"></div>
+            <div className="h-64 bg-gray-200 rounded"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-8">
@@ -51,7 +85,7 @@ const SettingsProfile: React.FC = () => {
               </Label>
               <Input
                 id="accountId"
-                value={formData.accountId}
+                value={profileData?.id || ''}
                 disabled
                 className="bg-gray-100 text-gray-500"
               />
@@ -69,8 +103,8 @@ const SettingsProfile: React.FC = () => {
               <Input
                 id="email"
                 type="email"
-                value={formData.email}
-                onChange={(e) => handleInputChange('email', e.target.value)}
+                value={profileData?.email || ''}
+                disabled
                 className="bg-gray-100"
               />
               <p className="text-xs text-gray-500">Your email address will be validated</p>
@@ -116,8 +150,8 @@ const SettingsProfile: React.FC = () => {
               <Input
                 id="mobileNumber"
                 value={formData.mobileNumber}
-                disabled
-                className="bg-gray-100 text-gray-500"
+                onChange={(e) => handleInputChange('mobileNumber', e.target.value)}
+                placeholder="(555) 123-4567"
               />
             </div>
 
@@ -138,27 +172,12 @@ const SettingsProfile: React.FC = () => {
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="deliverTo" className="text-sm font-medium text-gray-700">
-                DELIVER MY MESSAGES TO
-              </Label>
-              <Select value={formData.deliverTo} onValueChange={(value) => handleInputChange('deliverTo', value)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="USA">USA</SelectItem>
-                  <SelectItem value="Canada">Canada</SelectItem>
-                  <SelectItem value="UK">UK</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
             <Button 
               onClick={handleUpdateDetails}
-              className="w-full bg-gray-400 hover:bg-gray-500 text-white"
+              disabled={updating}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
             >
-              UPDATE DETAILS
+              {updating ? 'UPDATING...' : 'UPDATE DETAILS'}
             </Button>
           </CardContent>
         </Card>
@@ -177,8 +196,8 @@ const SettingsProfile: React.FC = () => {
                 <Input
                   id="currentPassword"
                   type={showCurrentPassword ? "text" : "password"}
-                  value={formData.currentPassword}
-                  onChange={(e) => handleInputChange('currentPassword', e.target.value)}
+                  value={passwords.currentPassword}
+                  onChange={(e) => handlePasswordChange('currentPassword', e.target.value)}
                   className="pr-10"
                 />
                 <button
@@ -203,8 +222,8 @@ const SettingsProfile: React.FC = () => {
                 <Input
                   id="newPassword"
                   type={showNewPassword ? "text" : "password"}
-                  value={formData.newPassword}
-                  onChange={(e) => handleInputChange('newPassword', e.target.value)}
+                  value={passwords.newPassword}
+                  onChange={(e) => handlePasswordChange('newPassword', e.target.value)}
                   className="pr-10"
                 />
                 <button
@@ -227,6 +246,9 @@ const SettingsProfile: React.FC = () => {
             >
               UPDATE PASSWORD
             </Button>
+            <p className="text-xs text-gray-500 mt-2">
+              Password update functionality coming soon
+            </p>
           </CardContent>
         </Card>
       </div>

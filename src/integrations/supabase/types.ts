@@ -321,6 +321,50 @@ export type Database = {
         }
         Relationships: []
       }
+      user_profile: {
+        Row: {
+          company: string | null
+          created_at: string | null
+          email: string | null
+          first_name: string | null
+          id: string
+          last_name: string | null
+          mobile_number: string | null
+          time_zone: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          company?: string | null
+          created_at?: string | null
+          email?: string | null
+          first_name?: string | null
+          id: string
+          last_name?: string | null
+          mobile_number?: string | null
+          time_zone?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          company?: string | null
+          created_at?: string | null
+          email?: string | null
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          mobile_number?: string | null
+          time_zone?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_profile_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "user_logins"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
