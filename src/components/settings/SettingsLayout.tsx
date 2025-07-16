@@ -24,11 +24,12 @@ const SettingsLayout: React.FC<SettingsLayoutProps> = ({ children }) => {
       {/* Settings Sidebar */}
       <aside className="h-screen fixed top-0 left-0 z-30 flex flex-col w-[234px] bg-[#0F172A] text-white">
         {/* Logo */}
-        <div className="p-4 flex items-center gap-3 text-white font-semibold text-lg">
-          <div className="bg-purple-600 text-white h-8 w-8 rounded-full flex items-center justify-center font-bold">
-            T
-          </div>
-          <span>TextFlow</span>
+        <div className="p-4 flex items-center justify-center">
+          <img 
+            src="/lovable-uploads/9cf20fca-a0fb-4424-9cbe-76647a5a5e70.png" 
+            alt="Angel Flight Marketing Services"
+            className="h-14 w-auto"
+          />
         </div>
 
         {/* Settings Navigation */}
