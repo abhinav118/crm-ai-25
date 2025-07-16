@@ -202,7 +202,7 @@ export const useProfile = () => {
       console.log('Password Update Debug: Updating password in database...');
       const { data: updateData, error: updateError } = await supabase
         .from('user_logins')
-        .update({ login_password: newPassword })
+        .update({ 'login_password': newPassword })
         .eq('login_email', user.email)
         .select();
 
