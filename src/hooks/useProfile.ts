@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 export interface ProfileData {
   id: string;
@@ -19,6 +20,7 @@ export const useProfile = () => {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const { toast } = useToast();
+  const { user, isAuthenticated } = useAuth();
 
   const formatPhoneNumber = (phone: string): string => {
     if (!phone) return '';
@@ -33,28 +35,19 @@ export const useProfile = () => {
   };
 
   const fetchProfile = async () => {
+    if (!user || !isAuthenticated) {
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
-      
-      // For now, use the known user ID directly since we don't have auth implemented
-      const userId = '03aa1bcd-5cb3-47b3-b5af-138bc4802f2b';
-
-      // Get user login info (for email)
-      const { data: loginData, error: loginError } = await supabase
-        .from('user_logins')
-        .select('login_email')
-        .eq('id', userId)
-        .single();
-
-      if (loginError) {
-        console.error('Error fetching login data:', loginError);
-      }
 
       // Get user profile
       const { data: profile, error: profileError } = await supabase
         .from('user_profiles')
         .select('*')
-        .eq('id', userId)
+        .eq('id', user.id)
         .single();
 
       if (profileError && profileError.code !== 'PGRST116') {
@@ -62,12 +55,12 @@ export const useProfile = () => {
         console.error('Error fetching profile:', profileError);
       }
 
-      console.log('Profile data fetched:', { loginData, profile });
+      console.log('Profile data fetched:', { user, profile });
 
       // Set profile data
       setProfileData({
-        id: userId,
-        email: loginData?.login_email || '',
+        id: user.id,
+        email: user.email,
         firstName: profile?.first_name || '',
         lastName: profile?.last_name || '',
         company: profile?.company || '',
@@ -88,7 +81,7 @@ export const useProfile = () => {
   };
 
   const updateProfile = async (updates: Partial<Omit<ProfileData, 'id' | 'email'>>) => {
-    if (!profileData) return;
+    if (!profileData || !user) return;
 
     try {
       setUpdating(true);
@@ -147,8 +140,13 @@ export const useProfile = () => {
   };
 
   useEffect(() => {
-    fetchProfile();
-  }, []);
+    if (isAuthenticated && user) {
+      fetchProfile();
+    } else {
+      setLoading(false);
+      setProfileData(null);
+    }
+  }, [user, isAuthenticated]);
 
   return {
     profileData,
