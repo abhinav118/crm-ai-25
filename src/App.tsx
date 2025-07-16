@@ -36,6 +36,8 @@ const queryClient = new QueryClient({
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, loading } = useAuth();
 
+  console.log('ProtectedRoute: isAuthenticated:', isAuthenticated, 'loading:', loading);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -45,10 +47,33 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   }
 
   if (!isAuthenticated) {
-    return <LoginPage />;
+    console.log('ProtectedRoute: User not authenticated, redirecting to login');
+    return <Navigate to="/login" replace />;
   }
 
   return <>{children}</>;
+};
+
+// Login Route wrapper - redirects to dashboard if already authenticated
+const LoginRoute = () => {
+  const { isAuthenticated, loading } = useAuth();
+
+  console.log('LoginRoute: isAuthenticated:', isAuthenticated, 'loading:', loading);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (isAuthenticated) {
+    console.log('LoginRoute: User already authenticated, redirecting to dashboard');
+    return <Navigate to="/" replace />;
+  }
+
+  return <LoginPage />;
 };
 
 const App = () => {
@@ -59,7 +84,7 @@ const App = () => {
           <div className="min-h-screen w-full flex flex-col">
             <div className="flex-1">
               <Routes>
-                <Route path="/login" element={<LoginPage />} />
+                <Route path="/login" element={<LoginRoute />} />
                 <Route path="/" element={
                   <ProtectedRoute>
                     <Index />

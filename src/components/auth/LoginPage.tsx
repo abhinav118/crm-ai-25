@@ -1,5 +1,6 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,7 +11,17 @@ export const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
-  const { login, loading } = useAuth();
+  const { login, loading, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+
+  // Redirect to dashboard if already authenticated
+  useEffect(() => {
+    console.log('LoginPage: isAuthenticated changed to:', isAuthenticated);
+    if (isAuthenticated) {
+      console.log('LoginPage: Redirecting to dashboard');
+      navigate('/', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   const validateForm = () => {
     const newErrors: { email?: string; password?: string } = {};
@@ -36,8 +47,24 @@ export const LoginPage = () => {
       return;
     }
 
-    await login(email, password);
+    console.log('LoginPage: Attempting login for:', email);
+    const success = await login(email, password);
+    console.log('LoginPage: Login result:', success);
+    
+    if (success) {
+      console.log('LoginPage: Login successful, navigating to dashboard');
+      navigate('/', { replace: true });
+    }
   };
+
+  // If already authenticated, show loading while redirecting
+  if (isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-4">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-4">
@@ -94,7 +121,6 @@ export const LoginPage = () => {
               <Button 
                 type="submit" 
                 className="w-full" 
-                isLoading={loading}
                 disabled={loading}
               >
                 {loading ? 'Signing in...' : 'Sign In'}
