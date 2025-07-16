@@ -19,6 +19,7 @@ export const useProfile = () => {
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [updatingPassword, setUpdatingPassword] = useState(false);
   const { toast } = useToast();
   const { user, isAuthenticated } = useAuth();
 
@@ -139,6 +140,73 @@ export const useProfile = () => {
     }
   };
 
+  const updatePassword = async (currentPassword: string, newPassword: string) => {
+    if (!user) return false;
+
+    try {
+      setUpdatingPassword(true);
+
+      // First verify the current password
+      const { data: loginData, error: fetchError } = await supabase
+        .from('user_logins')
+        .select('login_password')
+        .eq('login_email', user.email)
+        .single();
+
+      if (fetchError || !loginData) {
+        console.error('Error fetching login data:', fetchError);
+        toast({
+          title: 'Error',
+          description: 'Failed to verify current password',
+          variant: 'destructive',
+        });
+        return false;
+      }
+
+      // Verify current password matches
+      if (loginData.login_password !== currentPassword) {
+        toast({
+          title: 'Error',
+          description: 'Current password is incorrect',
+          variant: 'destructive',
+        });
+        return false;
+      }
+
+      // Update password in user_logins table
+      const { error: updateError } = await supabase
+        .from('user_logins')
+        .update({ login_password: newPassword })
+        .eq('login_email', user.email);
+
+      if (updateError) {
+        console.error('Error updating password:', updateError);
+        toast({
+          title: 'Error',
+          description: 'Failed to update password',
+          variant: 'destructive',
+        });
+        return false;
+      }
+
+      toast({
+        title: 'Success',
+        description: 'Password updated successfully',
+      });
+      return true;
+    } catch (error) {
+      console.error('Error in updatePassword:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update password',
+        variant: 'destructive',
+      });
+      return false;
+    } finally {
+      setUpdatingPassword(false);
+    }
+  };
+
   useEffect(() => {
     if (isAuthenticated && user) {
       fetchProfile();
@@ -152,7 +220,9 @@ export const useProfile = () => {
     profileData,
     loading,
     updating,
+    updatingPassword,
     updateProfile,
+    updatePassword,
     refetch: fetchProfile,
   };
 };
