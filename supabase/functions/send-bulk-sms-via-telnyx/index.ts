@@ -40,11 +40,11 @@ serve(async (req) => {
     const { segment_name, text, from, media_urls, campaign_id, send_at } = payload;
 
     // Validate required fields
-    if (!segment_name || !text || !campaign_id) {
-      throw new Error('Missing required parameters: segment_name, text, and campaign_id');
+    if (!segment_name || !text || !campaign_id || !from) {
+      throw new Error('Missing required parameters: segment_name, text, campaign_id, and from');
     }
 
-    console.log(`Processing bulk SMS for segment: ${segment_name}, campaign: ${campaign_id}`);
+    console.log(`Processing bulk SMS for segment: ${segment_name}, campaign: ${campaign_id}, from: ${from}`);
     if (send_at) {
       console.log(`Scheduled for: ${send_at}`);
     }
@@ -146,13 +146,12 @@ serve(async (req) => {
 
     // Start background SMS sending process for all campaigns
     const backgroundSendProcess = async () => {
-      const fromNumber = from || '+17733897839';
       let sentCount = 0;
       let errorCount = 0;
       const errors: Array<{error_details: string, phone_number: string, contact_id: string}> = [];
       const batchSize = 10; // Process 10 messages at a time
       
-      console.log(`Starting background SMS sending for ${contactsWithPhones.length} recipients`);
+      console.log(`Starting background SMS sending for ${contactsWithPhones.length} recipients using from number: ${from}`);
 
       for (let i = 0; i < contactsWithPhones.length; i += batchSize) {
         const batch = contactsWithPhones.slice(i, i + batchSize);
@@ -169,11 +168,11 @@ serve(async (req) => {
               contact.last_name = contact.name?contact.name.split(' ')[1]:'there';
             }
             const personalizedText = personalizeMessage(text, contact);
-            console.log(`Sending personalized SMS to ${contact.formattedPhone} (${contact.first_name || 'N/A'})`);
+            console.log(`Sending personalized SMS to ${contact.formattedPhone} (${contact.first_name || 'N/A'}) from ${from}`);
             
             const telnyxPayload = {
               to: contact.formattedPhone,
-              from: fromNumber,
+              from: from,
               text: personalizedText,
               send_at: send_at ? send_at : undefined,
               ...(media_urls && media_urls.length > 0 && { media_urls })
@@ -297,6 +296,7 @@ serve(async (req) => {
         segment_name,
         total_recipients: contactsWithPhones.length,
         status: send_at ? 'scheduled' : 'sending',
+        from_number: from,
         ...(send_at && { scheduled_for: send_at })
       }),
       {

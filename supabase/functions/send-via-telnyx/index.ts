@@ -1,3 +1,4 @@
+
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -54,7 +55,12 @@ serve(async (req)=>{
         });
       }
     }
+    
+    // Use provided from number, fallback to environment variable
+    const fromNumber = from || TELNYX_FROM_NUMBER;
+    
     console.log(`Sending ${schedule_type === 'later' ? 'scheduled' : 'immediate'} ${media_url ? 'MMS' : 'SMS'} via Telnyx to ${Array.isArray(to) ? to.join(', ') : to}: ${text}`);
+    console.log(`From number: ${fromNumber}`);
     if (schedule_type === 'later') {
       console.log(`Scheduled for: ${schedule_time}`);
     }
@@ -63,7 +69,7 @@ serve(async (req)=>{
     }
     // Build Telnyx payload
     const telnyxPayload = {
-      from: from || TELNYX_FROM_NUMBER,
+      from: fromNumber,
       to: Array.isArray(formattedPhone) ? formattedPhone : [
         formattedPhone
       ],
@@ -106,7 +112,8 @@ serve(async (req)=>{
       schedule_type: schedule_type,
       recipients: Array.isArray(to) ? to : [
         to
-      ]
+      ],
+      from_number: fromNumber
     }), {
       headers: {
         ...corsHeaders,

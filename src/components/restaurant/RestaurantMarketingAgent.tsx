@@ -8,11 +8,16 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Calendar, Clock, Users, Zap, ChefHat, Utensils } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Calendar, Clock, Users, Zap, ChefHat, Utensils, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { useProfile } from '@/hooks/useProfile';
+import { useNavigate } from 'react-router-dom';
 
 const RestaurantMarketingAgent: React.FC = () => {
+  const navigate = useNavigate();
+  const { profileData, loading: profileLoading } = useProfile();
   const [campaignType, setCampaignType] = useState<'sms' | 'email'>('sms');
   const [restaurantName, setRestaurantName] = useState('');
   const [cuisine, setCuisine] = useState('');
@@ -22,11 +27,23 @@ const RestaurantMarketingAgent: React.FC = () => {
   const [customMessage, setCustomMessage] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
 
+  // Check if user has configured a textable number
+  const hasTextableNumber = profileData?.textableNumber && profileData.textableNumber.trim() !== '';
+
   const handleGenerateCampaign = async () => {
     if (!restaurantName || !cuisine) {
       toast({
         title: "Missing Information",
         description: "Please fill in restaurant name and cuisine type.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (campaignType === 'sms' && !hasTextableNumber) {
+      toast({
+        title: "No Textable Number Configured",
+        description: "Please configure a textable number in Settings before creating SMS campaigns",
         variant: "destructive",
       });
       return;
@@ -95,6 +112,14 @@ const RestaurantMarketingAgent: React.FC = () => {
     }
   };
 
+  if (profileLoading) {
+    return (
+      <div className="max-w-4xl mx-auto p-6">
+        <div className="text-center">Loading...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
       <div className="text-center space-y-2">
@@ -107,6 +132,22 @@ const RestaurantMarketingAgent: React.FC = () => {
           that drive foot traffic and increase orders.
         </p>
       </div>
+
+      {campaignType === 'sms' && !hasTextableNumber && (
+        <Alert className="border-orange-200 bg-orange-50">
+          <AlertCircle className="h-4 w-4 text-orange-600" />
+          <AlertDescription className="text-orange-800">
+            You need to configure a textable number before creating SMS campaigns.{' '}
+            <Button
+              variant="link"
+              className="h-auto p-0 text-orange-600 underline"
+              onClick={() => navigate('/settings/numbers')}
+            >
+              Go to Textable Numbers settings
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Campaign Configuration */}
@@ -189,6 +230,15 @@ const RestaurantMarketingAgent: React.FC = () => {
                 onChange={(e) => setTargetAudience(e.target.value)}
               />
             </div>
+            
+            {campaignType === 'sms' && (
+              <div className="space-y-2">
+                <Label>From Number</Label>
+                <div className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
+                  {hasTextableNumber ? profileData.textableNumber : 'Not configured - please set up in Settings'}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -237,7 +287,7 @@ const RestaurantMarketingAgent: React.FC = () => {
 
             <Button 
               onClick={handleGenerateCampaign}
-              disabled={isGenerating}
+              disabled={isGenerating || (campaignType === 'sms' && !hasTextableNumber)}
               className="w-full bg-orange-600 hover:bg-orange-700"
             >
               {isGenerating ? 'Creating Campaign...' : 'Create Campaign'}
