@@ -35,18 +35,14 @@ export const useProfile = () => {
     try {
       setLoading(true);
       
-      // Get current user
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) {
-        console.error('Error getting user:', userError);
-        return;
-      }
+      // For now, use the known user ID directly since we don't have auth implemented
+      const userId = '03aa1bcd-5cb3-47b3-b5af-138bc4802f2b';
 
       // Get user login info (for email)
       const { data: loginData, error: loginError } = await supabase
         .from('user_logins')
         .select('login_email')
-        .eq('id', user.id)
+        .eq('id', userId)
         .single();
 
       if (loginError) {
@@ -57,7 +53,7 @@ export const useProfile = () => {
       const { data: profile, error: profileError } = await supabase
         .from('user_profiles')
         .select('*')
-        .eq('id', user.id)
+        .eq('id', userId)
         .single();
 
       if (profileError && profileError.code !== 'PGRST116') {
@@ -65,9 +61,11 @@ export const useProfile = () => {
         console.error('Error fetching profile:', profileError);
       }
 
+      console.log('Profile data fetched:', { loginData, profile });
+
       // Set profile data
       setProfileData({
-        id: user.id,
+        id: userId,
         email: loginData?.login_email || '',
         firstName: profile?.first_name || '',
         lastName: profile?.last_name || '',
@@ -100,6 +98,8 @@ export const useProfile = () => {
           mobileNumber: formatPhoneNumber(updates.mobileNumber)
         })
       };
+
+      console.log('Updating profile with:', formattedUpdates);
 
       // Update user_profiles table
       const { error } = await supabase
