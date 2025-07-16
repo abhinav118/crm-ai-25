@@ -330,6 +330,7 @@ export type Database = {
           id: string
           last_name: string | null
           mobile_number: string | null
+          textable_number: string | null
           time_zone: string | null
           updated_at: string | null
         }
@@ -341,6 +342,7 @@ export type Database = {
           id: string
           last_name?: string | null
           mobile_number?: string | null
+          textable_number?: string | null
           time_zone?: string | null
           updated_at?: string | null
         }
@@ -352,6 +354,7 @@ export type Database = {
           id?: string
           last_name?: string | null
           mobile_number?: string | null
+          textable_number?: string | null
           time_zone?: string | null
           updated_at?: string | null
         }

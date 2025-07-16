@@ -11,6 +11,7 @@ export interface ProfileData {
   company: string;
   mobileNumber: string;
   timeZone: string;
+  textableNumber: string;
 }
 
 export const useProfile = () => {
@@ -72,6 +73,7 @@ export const useProfile = () => {
         company: profile?.company || '',
         mobileNumber: profile?.mobile_number || '',
         timeZone: profile?.time_zone || 'America/New_York',
+        textableNumber: profile?.textable_number || '',
       });
     } catch (error) {
       console.error('Error in fetchProfile:', error);
@@ -111,6 +113,7 @@ export const useProfile = () => {
           company: formattedUpdates.company ?? profileData.company,
           mobile_number: formattedUpdates.mobileNumber ?? profileData.mobileNumber,
           time_zone: formattedUpdates.timeZone ?? profileData.timeZone,
+          textable_number: formattedUpdates.textableNumber ?? profileData.textableNumber,
           email: profileData.email,
         });
 

@@ -6,8 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
+import { Toggle } from '@/components/ui/toggle';
 import { useTelnyxMessagingProfiles, TelnyxNumberData } from '@/hooks/useTelnyxMessagingProfiles';
+import { useProfile } from '@/hooks/useProfile';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from '@/hooks/use-toast';
 
 const SettingsNumbers: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
@@ -15,10 +18,13 @@ const SettingsNumbers: React.FC = () => {
   const [filterValue, setFilterValue] = useState('all');
 
   const { data: telnyxData, isLoading, error, refetch } = useTelnyxMessagingProfiles();
+  const { profileData, updateProfile, updating } = useProfile();
+  const { toast } = useToast();
 
   console.log('SettingsNumbers - telnyxData:', telnyxData);
   console.log('SettingsNumbers - isLoading:', isLoading);
   console.log('SettingsNumbers - error:', error);
+  console.log('SettingsNumbers - profileData:', profileData);
 
   // Filter numbers based on search criteria
   const filteredNumbers = useMemo(() => {
@@ -52,6 +58,48 @@ const SettingsNumbers: React.FC = () => {
     }
     
     return phoneNumber; // Return original if not standard format
+  };
+
+  // Handle toggle change
+  const handleToggleChange = async (phoneNumber: string, isPressed: boolean) => {
+    if (!profileData) {
+      toast({
+        title: 'Error',
+        description: 'Profile data not loaded',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      if (isPressed) {
+        // Set this number as the textable number
+        await updateProfile({ textableNumber: phoneNumber });
+        toast({
+          title: 'Success',
+          description: `${formatPhoneNumber(phoneNumber)} is now your textable number`,
+        });
+      } else {
+        // Clear the textable number
+        await updateProfile({ textableNumber: '' });
+        toast({
+          title: 'Success',
+          description: 'Textable number cleared',
+        });
+      }
+    } catch (error) {
+      console.error('Error updating textable number:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update textable number',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Check if a number is currently the textable number
+  const isTextableNumber = (phoneNumber: string) => {
+    return profileData?.textableNumber === phoneNumber;
   };
 
   const LoadingSkeleton = () => (
@@ -92,7 +140,7 @@ const SettingsNumbers: React.FC = () => {
       <div>
         <h1 className="text-2xl font-bold text-gray-900 mb-3">Textable Numbers</h1>
         <p className="text-gray-600 max-w-4xl">
-          These are your dedicated numbers to send and receive text messages. Numbers are organized by messaging profiles from your Telnyx account.
+          These are your dedicated numbers to send and receive text messages. Numbers are organized by messaging profiles from your Telnyx account. Toggle one number to set it as your primary textable number.
         </p>
       </div>
 
@@ -124,6 +172,11 @@ const SettingsNumbers: React.FC = () => {
 
             <div className="ml-auto text-sm text-gray-500">
               {filteredNumbers.length} total numbers
+              {profileData?.textableNumber && (
+                <span className="ml-2 text-blue-600">
+                  • Active: {formatPhoneNumber(profileData.textableNumber)}
+                </span>
+              )}
             </div>
           </div>
         </CardContent>
@@ -154,7 +207,7 @@ const SettingsNumbers: React.FC = () => {
                   <TableHead className="font-medium text-gray-700">Phone Number</TableHead>
                   <TableHead className="font-medium text-gray-700">Messaging Profile</TableHead>
                   <TableHead className="font-medium text-gray-700">Type</TableHead>
-                  <TableHead className="font-medium text-gray-700">Actions</TableHead>
+                  <TableHead className="font-medium text-gray-700">Primary Number</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -165,6 +218,11 @@ const SettingsNumbers: React.FC = () => {
                         <span className="font-bold text-gray-900">
                           {formatPhoneNumber(number.phone_number)}
                         </span>
+                        {isTextableNumber(number.phone_number) && (
+                          <Badge variant="default" className="text-xs">
+                            Active
+                          </Badge>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell className="text-gray-600">
@@ -172,9 +230,15 @@ const SettingsNumbers: React.FC = () => {
                     </TableCell>
                     <TableCell className="text-gray-600">{number.type}</TableCell>
                     <TableCell>
-                      <Button variant="link" className="p-0 h-auto text-blue-600 hover:text-blue-700">
-                        View Settings
-                      </Button>
+                      <Toggle
+                        pressed={isTextableNumber(number.phone_number)}
+                        onPressedChange={(pressed) => handleToggleChange(number.phone_number, pressed)}
+                        disabled={updating}
+                        aria-label={`Set ${formatPhoneNumber(number.phone_number)} as primary textable number`}
+                        className="data-[state=on]:bg-blue-600 data-[state=on]:text-white"
+                      >
+                        {isTextableNumber(number.phone_number) ? 'Active' : 'Set Primary'}
+                      </Toggle>
                     </TableCell>
                   </TableRow>
                 ))}
