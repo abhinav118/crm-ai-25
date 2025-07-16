@@ -55,7 +55,7 @@ export const useProfile = () => {
 
       // Get user profile
       const { data: profile, error: profileError } = await supabase
-        .from('user_profile')
+        .from('user_profiles')
         .select('*')
         .eq('id', user.id)
         .single();
@@ -101,9 +101,9 @@ export const useProfile = () => {
         })
       };
 
-      // Update user_profile table
+      // Update user_profiles table
       const { error } = await supabase
-        .from('user_profile')
+        .from('user_profiles')
         .upsert({
           id: profileData.id,
           first_name: formattedUpdates.firstName ?? profileData.firstName,

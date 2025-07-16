@@ -321,7 +321,7 @@ export type Database = {
         }
         Relationships: []
       }
-      user_profile: {
+      user_profiles: {
         Row: {
           company: string | null
           created_at: string | null
