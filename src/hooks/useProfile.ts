@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -141,30 +140,56 @@ export const useProfile = () => {
   };
 
   const updatePassword = async (currentPassword: string, newPassword: string) => {
-    if (!user) return false;
+    if (!user) {
+      console.error('Password Update Debug: No user found');
+      return false;
+    }
 
     try {
       setUpdatingPassword(true);
+      console.log('Password Update Debug: Starting password update for user:', user.email);
 
       // First verify the current password
+      console.log('Password Update Debug: Fetching current login data...');
       const { data: loginData, error: fetchError } = await supabase
         .from('user_logins')
-        .select('login_password')
+        .select('login_password, id, login_email')
         .eq('login_email', user.email)
         .single();
 
-      if (fetchError || !loginData) {
-        console.error('Error fetching login data:', fetchError);
+      console.log('Password Update Debug: Fetch response:', { 
+        data: loginData, 
+        error: fetchError,
+        userEmail: user.email 
+      });
+
+      if (fetchError) {
+        console.error('Password Update Debug: Error fetching login data:', fetchError);
         toast({
           title: 'Error',
-          description: 'Failed to verify current password',
+          description: `Failed to verify current password: ${fetchError.message}`,
+          variant: 'destructive',
+        });
+        return false;
+      }
+
+      if (!loginData) {
+        console.error('Password Update Debug: No login data found for user:', user.email);
+        toast({
+          title: 'Error',
+          description: 'User login record not found',
           variant: 'destructive',
         });
         return false;
       }
 
       // Verify current password matches
+      console.log('Password Update Debug: Verifying current password...');
+      console.log('Password Update Debug: Stored password:', loginData.login_password);
+      console.log('Password Update Debug: Provided password:', currentPassword);
+      
       if (loginData.login_password !== currentPassword) {
+        console.error('Password Update Debug: Current password mismatch');
         toast({
           title: 'Error',
           description: 'Current password is incorrect',
@@ -174,31 +199,51 @@ export const useProfile = () => {
       }
 
       // Update password in user_logins table
-      const { error: updateError } = await supabase
+      console.log('Password Update Debug: Updating password in database...');
+      const { data: updateData, error: updateError } = await supabase
         .from('user_logins')
         .update({ login_password: newPassword })
-        .eq('login_email', user.email);
+        .eq('login_email', user.email)
+        .select();
+
+      console.log('Password Update Debug: Update response:', { 
+        data: updateData, 
+        error: updateError,
+        userEmail: user.email,
+        newPassword: newPassword
+      });
 
       if (updateError) {
-        console.error('Error updating password:', updateError);
+        console.error('Password Update Debug: Error updating password:', updateError);
         toast({
           title: 'Error',
-          description: 'Failed to update password',
+          description: `Failed to update password: ${updateError.message}`,
           variant: 'destructive',
         });
         return false;
       }
 
+      if (!updateData || updateData.length === 0) {
+        console.error('Password Update Debug: No rows were updated');
+        toast({
+          title: 'Error',
+          description: 'Password update failed - no records updated',
+          variant: 'destructive',
+        });
+        return false;
+      }
+
+      console.log('Password Update Debug: Password updated successfully');
       toast({
         title: 'Success',
         description: 'Password updated successfully',
       });
       return true;
     } catch (error) {
-      console.error('Error in updatePassword:', error);
+      console.error('Password Update Debug: Unexpected error in updatePassword:', error);
       toast({
         title: 'Error',
-        description: 'Failed to update password',
+        description: `Failed to update password: ${error.message || 'Unknown error'}`,
         variant: 'destructive',
       });
       return false;
