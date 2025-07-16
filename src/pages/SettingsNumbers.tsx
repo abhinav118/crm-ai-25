@@ -1,61 +1,38 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
-
-// Sample data for textable numbers
-const sampleNumbers = [
-  {
-    id: '1',
-    number: '(773) 389-7839',
-    type: 'Textable Number',
-    voiceSettings: 'Inbound Call Reply',
-    isDefault: true
-  },
-  {
-    id: '2',
-    number: '(737) 237-6448',
-    type: 'Textable Number',
-    voiceSettings: 'Inbound Call Reply',
-    isDefault: false
-  },
-  {
-    id: '3',
-    number: '(512) 555-0123',
-    type: 'Textable Number',
-    voiceSettings: 'Inbound Call Reply',
-    isDefault: false
-  }
-];
-
-const DEFAULT_NUMBER = "(773) 389-7839";
+import { useTelnyxMessagingProfiles, TelnyxNumberData } from '@/hooks/useTelnyxMessagingProfiles';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const SettingsNumbers: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [filterValue, setFilterValue] = useState('all');
-  const [showOnlyDefault, setShowOnlyDefault] = useState(true); // Default to showing only the target number
 
-  console.log('SettingsNumbers - filterValue:', filterValue);
-  console.log('SettingsNumbers - filterValue type:', typeof filterValue);
-  console.log('SettingsNumbers - itemsPerPage:', itemsPerPage);
-  console.log('SettingsNumbers - itemsPerPage type:', typeof itemsPerPage);
+  const { data: telnyxData, isLoading, error, refetch } = useTelnyxMessagingProfiles();
 
-  // Filter numbers - by default show only the target number
-  const baseFilteredNumbers = showOnlyDefault 
-    ? sampleNumbers.filter(number => number.number === DEFAULT_NUMBER)
-    : sampleNumbers;
+  console.log('SettingsNumbers - telnyxData:', telnyxData);
+  console.log('SettingsNumbers - isLoading:', isLoading);
+  console.log('SettingsNumbers - error:', error);
 
-  // Apply additional filters if any
-  const filteredNumbers = baseFilteredNumbers.filter(number => {
-    if (filterValue === 'all') return true;
-    return number.number.includes(filterValue);
-  });
+  // Filter numbers based on search criteria
+  const filteredNumbers = useMemo(() => {
+    if (!telnyxData?.data) return [];
+    
+    return telnyxData.data.filter(number => {
+      if (filterValue === 'all') return true;
+      // Add more filter logic here if needed
+      return number.phone_number.includes(filterValue) || 
+             number.messaging_profile_name.toLowerCase().includes(filterValue.toLowerCase());
+    });
+  }, [telnyxData?.data, filterValue]);
 
+  // Pagination logic
   const totalPages = Math.ceil(filteredNumbers.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedNumbers = filteredNumbers.slice(startIndex, startIndex + itemsPerPage);
@@ -65,12 +42,57 @@ const SettingsNumbers: React.FC = () => {
   // Ensure itemsPerPage is a valid number string
   const safeItemsPerPage = itemsPerPage && itemsPerPage > 0 ? itemsPerPage.toString() : '10';
 
+  // Format phone number for display
+  const formatPhoneNumber = (phoneNumber: string) => {
+    // Remove + and country code if present
+    const cleaned = phoneNumber.replace(/^\+?1?/, '');
+    
+    if (cleaned.length === 10) {
+      return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
+    }
+    
+    return phoneNumber; // Return original if not standard format
+  };
+
+  const LoadingSkeleton = () => (
+    <div className="space-y-4">
+      <Skeleton className="h-8 w-full" />
+      <Skeleton className="h-8 w-full" />
+      <Skeleton className="h-8 w-full" />
+    </div>
+  );
+
+  const ErrorDisplay = () => (
+    <Card className="bg-white border border-red-200">
+      <CardContent className="p-6 text-center">
+        <p className="text-red-600 mb-4">Failed to load messaging profiles and phone numbers.</p>
+        <p className="text-sm text-gray-500 mb-4">
+          {error?.message || 'Please check your Telnyx API configuration.'}
+        </p>
+        <Button onClick={() => refetch()} variant="outline">
+          Try Again
+        </Button>
+      </CardContent>
+    </Card>
+  );
+
+  const EmptyState = () => (
+    <Card className="bg-white border border-gray-200">
+      <CardContent className="p-6 text-center">
+        <p className="text-gray-600 mb-2">No textable numbers found.</p>
+        <p className="text-sm text-gray-500">
+          Configure messaging profiles and phone numbers in your Telnyx account.
+        </p>
+      </CardContent>
+    </Card>
+  );
+
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900 mb-3">Textable Numbers</h1>
         <p className="text-gray-600 max-w-4xl">
-          These are your dedicated numbers to send and receive text messages. By default, if someone attempts to call your numbers, we'll play an automated message instructing them to text your number (not available for short codes or business numbers).
+          These are your dedicated numbers to send and receive text messages. Numbers are organized by messaging profiles from your Telnyx account.
         </p>
       </div>
 
@@ -80,13 +102,12 @@ const SettingsNumbers: React.FC = () => {
           <div className="flex items-center gap-4">
             <Select value={safeFilterValue} onValueChange={setFilterValue}>
               <SelectTrigger className="w-48">
-                <SelectValue placeholder="Number 0–9" />
+                <SelectValue placeholder="Filter numbers" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Numbers</SelectItem>
-                <SelectItem value="zero">Number 0–9</SelectItem>
-                <SelectItem value="one">Number 1–9</SelectItem>
-                <SelectItem value="two">Number 2–9</SelectItem>
+                <SelectItem value="773">Numbers with 773</SelectItem>
+                <SelectItem value="737">Numbers with 737</SelectItem>
               </SelectContent>
             </Select>
             
@@ -101,67 +122,70 @@ const SettingsNumbers: React.FC = () => {
               </SelectContent>
             </Select>
 
-            {/* Toggle to show all numbers or just the default one */}
-            <Button
-              variant={showOnlyDefault ? "outline" : "default"}
-              onClick={() => setShowOnlyDefault(!showOnlyDefault)}
-              className="ml-auto"
-            >
-              {showOnlyDefault ? "Show All Numbers" : "Show Default Only"}
-            </Button>
-          </div>
-          
-          {showOnlyDefault && (
-            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
-              <p className="text-sm text-blue-700">
-                <strong>Default View:</strong> Showing only default number {DEFAULT_NUMBER}
-              </p>
+            <div className="ml-auto text-sm text-gray-500">
+              {filteredNumbers.length} total numbers
             </div>
-          )}
+          </div>
         </CardContent>
       </Card>
+
+      {/* Loading State */}
+      {isLoading && (
+        <Card className="bg-white border border-gray-200">
+          <CardContent className="p-6">
+            <LoadingSkeleton />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Error State */}
+      {error && !isLoading && <ErrorDisplay />}
+
+      {/* Empty State */}
+      {!isLoading && !error && filteredNumbers.length === 0 && <EmptyState />}
 
       {/* Numbers Table */}
-      <Card className="bg-white border border-gray-200">
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="font-medium text-gray-700">Number</TableHead>
-                <TableHead className="font-medium text-gray-700">Type</TableHead>
-                <TableHead className="font-medium text-gray-700">Voice Settings</TableHead>
-                <TableHead className="font-medium text-gray-700">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {paginatedNumbers.map((number) => (
-                <TableRow key={number.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-gray-900">{number.number}</span>
-                      {number.isDefault && (
-                        <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200">
-                          Default
-                        </Badge>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-gray-600">{number.type}</TableCell>
-                  <TableCell className="text-gray-600">{number.voiceSettings}</TableCell>
-                  <TableCell>
-                    <Button variant="link" className="p-0 h-auto text-blue-600 hover:text-blue-700">
-                      View Settings
-                    </Button>
-                  </TableCell>
+      {!isLoading && !error && filteredNumbers.length > 0 && (
+        <Card className="bg-white border border-gray-200">
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="font-medium text-gray-700">Phone Number</TableHead>
+                  <TableHead className="font-medium text-gray-700">Messaging Profile</TableHead>
+                  <TableHead className="font-medium text-gray-700">Type</TableHead>
+                  <TableHead className="font-medium text-gray-700">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+              </TableHeader>
+              <TableBody>
+                {paginatedNumbers.map((number) => (
+                  <TableRow key={number.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-gray-900">
+                          {formatPhoneNumber(number.phone_number)}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-gray-600">
+                      {number.messaging_profile_name}
+                    </TableCell>
+                    <TableCell className="text-gray-600">{number.type}</TableCell>
+                    <TableCell>
+                      <Button variant="link" className="p-0 h-auto text-blue-600 hover:text-blue-700">
+                        View Settings
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Pagination */}
-      {totalPages > 1 && (
+      {!isLoading && !error && totalPages > 1 && (
         <div className="flex justify-center">
           <Pagination>
             <PaginationContent>
