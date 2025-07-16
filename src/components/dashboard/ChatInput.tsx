@@ -32,7 +32,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ contactId, contactPhone, onMessag
     if (!profileData?.textableNumber) {
       toast({
         title: 'No Textable Number Configured',
-        description: 'Please configure a textable number in Settings > Numbers before sending messages',
+        description: 'Please configure a textable number in Settings {">"}  Numbers before sending messages',
         variant: 'destructive'
       });
       return;
@@ -103,7 +103,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ contactId, contactPhone, onMessag
       {!profileData?.textableNumber && !profileLoading && (
         <div className="mb-3 p-2 bg-yellow-50 border border-yellow-200 rounded-md">
           <p className="text-sm text-yellow-800">
-            No textable number configured. Please go to Settings > Numbers to configure a textable number before sending messages.
+            No textable number configured. Please go to Settings {">"}  Numbers to configure a textable number before sending messages.
           </p>
         </div>
       )}

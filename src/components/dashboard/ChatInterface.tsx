@@ -157,7 +157,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
     if (activeChannel === 'sms' && !profileData?.textableNumber) {
       toast({
         title: 'No Textable Number Configured',
-        description: 'Please configure a textable number in Settings > Numbers before sending SMS messages',
+        description: 'Please configure a textable number in Settings {">"}  Numbers before sending SMS messages',
         variant: 'destructive'
       });
       return;
@@ -316,7 +316,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
   const getMissingInfoMessage = (channel: string) => {
     if (channel === 'sms') {
       if (!updatedContact.phone) return 'No phone number available';
-      if (!profileData?.textableNumber) return 'No textable number configured in Settings > Numbers';
+      if (!profileData?.textableNumber) return 'No textable number configured in Settings {">"}  Numbers';
     }
     if (channel === 'email' && !updatedContact.email) return 'No email address available';
     return '';
@@ -363,7 +363,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
             {activeChannel === 'sms' && !profileData?.textableNumber && !profileLoading && (
               <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <p className="text-sm text-yellow-800 font-medium">No textable number configured</p>
-                <p className="text-xs text-yellow-700">Please go to Settings > Numbers to configure a textable number before sending SMS messages.</p>
+                <p className="text-xs text-yellow-700">Please go to Settings {">"}  Numbers to configure a textable number before sending SMS messages.</p>
               </div>
             )}
 

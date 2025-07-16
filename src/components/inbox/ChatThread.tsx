@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState } from 'react';
 import { useMessages } from '@/hooks/useMessages';
 import { useSendMessage } from '@/hooks/useSendMessage';
@@ -59,7 +60,7 @@ export const ChatThread: React.FC<ChatThreadProps> = ({ contactId }) => {
     if (!profileData?.textableNumber) {
       toast({
         title: 'No Textable Number Configured',
-        description: 'Please configure a textable number in Settings > Numbers before sending messages',
+        description: 'Please configure a textable number in Settings {">"}  Numbers before sending messages',
         variant: 'destructive'
       });
       return;
@@ -171,7 +172,7 @@ export const ChatThread: React.FC<ChatThreadProps> = ({ contactId }) => {
       {!profileData?.textableNumber && !profileLoading && (
         <div className="mx-4 mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
           <p className="text-sm text-yellow-800 font-medium">No textable number configured</p>
-          <p className="text-xs text-yellow-700">Please go to Settings > Numbers to configure a textable number before sending messages.</p>
+          <p className="text-xs text-yellow-700">Please go to Settings {">"}  Numbers to configure a textable number before sending messages.</p>
         </div>
       )}
 
