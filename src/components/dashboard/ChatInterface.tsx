@@ -8,6 +8,7 @@ import { toast } from '@/hooks/use-toast';
 import { logContactAction } from '@/utils/contactLogger';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { getFullName } from '@/utils/contactHelpers';
+import { useProfile } from '@/hooks/useProfile';
 import {
   MessageSquare,
   Mail,
@@ -46,6 +47,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
   const [updatedContact, setUpdatedContact] = useState<Contact>(contact);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollAreaContainerRef = useRef<HTMLDivElement>(null);
+  const { profileData, loading: profileLoading } = useProfile();
 
   const scrollToBottom = () => {
     if (messagesEndRef.current) {
@@ -151,6 +153,15 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
     e.preventDefault();
     
     if (!messageText.trim()) return;
+
+    if (activeChannel === 'sms' && !profileData?.textableNumber) {
+      toast({
+        title: 'No Textable Number Configured',
+        description: 'Please configure a textable number in Settings > Numbers before sending SMS messages',
+        variant: 'destructive'
+      });
+      return;
+    }
     
     const tempId = Date.now().toString();
     const newMessage: Message = {
@@ -194,6 +205,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
         const { data: telnyxResponse, error: telnyxError } = await supabase.functions.invoke('send-via-telnyx', {
           body: {
             to: updatedContact.phone,
+            from: profileData?.textableNumber,
             text: messageText,
             schedule_type: 'now',
             contactId: updatedContact.id
@@ -296,13 +308,16 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
   };
 
   const isChannelDisabled = (channel: string) => {
-    if (channel === 'sms' && !updatedContact.phone) return true;
+    if (channel === 'sms' && (!updatedContact.phone || !profileData?.textableNumber)) return true;
     if (channel === 'email' && !updatedContact.email) return true;
     return false;
   };
 
   const getMissingInfoMessage = (channel: string) => {
-    if (channel === 'sms' && !updatedContact.phone) return 'No phone number available';
+    if (channel === 'sms') {
+      if (!updatedContact.phone) return 'No phone number available';
+      if (!profileData?.textableNumber) return 'No textable number configured in Settings > Numbers';
+    }
     if (channel === 'email' && !updatedContact.email) return 'No email address available';
     return '';
   };
@@ -344,6 +359,14 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
           </div>
 
           <div className="flex-1 overflow-hidden p-4 flex flex-col">
+            {/* Show warning if no textable number configured for SMS */}
+            {activeChannel === 'sms' && !profileData?.textableNumber && !profileLoading && (
+              <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-sm text-yellow-800 font-medium">No textable number configured</p>
+                <p className="text-xs text-yellow-700">Please go to Settings > Numbers to configure a textable number before sending SMS messages.</p>
+              </div>
+            )}
+
             <TabsContent value="sms" className="mt-0 h-full flex flex-col">
               {!contact.phone && (
                 <div className="flex items-center justify-center h-full">
@@ -469,7 +492,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
                   value={messageText}
                   onChange={(e) => setMessageText(e.target.value)}
                   onKeyDown={handleKeyPress}
-                  disabled={isChannelDisabled(activeChannel) || isLoading}
+                  disabled={isChannelDisabled(activeChannel) || isLoading || profileLoading}
                 />
                 <div className="flex flex-col gap-2">
                   <Button 
@@ -478,7 +501,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
                     size="sm" 
                     className="px-3" 
                     onClick={() => setMessageText('')}
-                    disabled={!messageText.trim() || isLoading}
+                    disabled={!messageText.trim() || isLoading || profileLoading}
                   >
                     Clear
                   </Button>
@@ -486,10 +509,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
                     type="submit"
                     size="sm" 
                     className="px-3" 
-                    disabled={!messageText.trim() || isChannelDisabled(activeChannel) || isLoading}
+                    disabled={!messageText.trim() || isChannelDisabled(activeChannel) || isLoading || profileLoading}
                   >
                     <Send size={14} className="mr-1" />
-                    {isLoading ? 'Sending...' : 'Send'}
+                    {isLoading ? 'Sending...' : profileLoading ? 'Loading...' : 'Send'}
                   </Button>
                 </div>
               </div>

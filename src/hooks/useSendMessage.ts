@@ -1,6 +1,7 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useProfile } from '@/hooks/useProfile';
 
 interface SendMessageProps {
   contactId: string;
@@ -12,10 +13,16 @@ interface SendMessageProps {
 
 export const useSendMessage = () => {
   const queryClient = useQueryClient();
+  const { profileData } = useProfile();
 
   return useMutation({
     mutationFn: async ({ contactId, content, channel, contactPhone, media_url }: SendMessageProps) => {
       console.log('Sending message:', { contactId, content, channel, contactPhone, media_url });
+
+      // Check if textable number is configured for SMS
+      if (channel === 'sms' && !profileData?.textableNumber) {
+        throw new Error('No textable number configured. Please configure a textable number in Settings > Numbers before sending SMS messages.');
+      }
 
       // First insert message into database as outbound and read
       const { data: messageData, error: messageError } = await supabase
@@ -44,6 +51,7 @@ export const useSendMessage = () => {
           
           const telnyxPayload: any = {
             to: contactPhone,
+            from: profileData?.textableNumber,
             text: content,
             schedule_type: 'now'
           };

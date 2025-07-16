@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import { useMessages } from '@/hooks/useMessages';
 import { useSendMessage } from '@/hooks/useSendMessage';
@@ -11,6 +10,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { getFullName } from '@/utils/contactHelpers';
 import { MessageHelpers } from './MessageHelpers';
 import { MessageBubble } from './MessageBubble';
+import { useProfile } from '@/hooks/useProfile';
+import { useToast } from '@/hooks/use-toast';
 
 interface ChatThreadProps {
   contactId: string;
@@ -21,6 +22,8 @@ export const ChatThread: React.FC<ChatThreadProps> = ({ contactId }) => {
   const [attachedImageUrl, setAttachedImageUrl] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const { profileData, loading: profileLoading } = useProfile();
+  const { toast } = useToast();
   
   const { data: messages = [], isLoading: messagesLoading } = useMessages(contactId);
   const sendMessage = useSendMessage();
@@ -52,6 +55,15 @@ export const ChatThread: React.FC<ChatThreadProps> = ({ contactId }) => {
     e.preventDefault();
     
     if ((!messageText.trim() && !attachedImageUrl) || !contact) return;
+
+    if (!profileData?.textableNumber) {
+      toast({
+        title: 'No Textable Number Configured',
+        description: 'Please configure a textable number in Settings > Numbers before sending messages',
+        variant: 'destructive'
+      });
+      return;
+    }
 
     try {
       const payload = {
@@ -114,6 +126,8 @@ export const ChatThread: React.FC<ChatThreadProps> = ({ contactId }) => {
     }
   };
 
+  const isDisabled = sendMessage.isPending || profileLoading || !profileData?.textableNumber;
+
   if (!contact) {
     return (
       <div className="flex-1 flex items-center justify-center">
@@ -152,6 +166,14 @@ export const ChatThread: React.FC<ChatThreadProps> = ({ contactId }) => {
           </button>
         </div>
       </div>
+
+      {/* Warning if no textable number configured */}
+      {!profileData?.textableNumber && !profileLoading && (
+        <div className="mx-4 mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <p className="text-sm text-yellow-800 font-medium">No textable number configured</p>
+          <p className="text-xs text-yellow-700">Please go to Settings > Numbers to configure a textable number before sending messages.</p>
+        </div>
+      )}
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
@@ -198,7 +220,7 @@ export const ChatThread: React.FC<ChatThreadProps> = ({ contactId }) => {
               onKeyDown={handleKeyPress}
               placeholder="Type your SMS message..."
               className="w-full px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              disabled={sendMessage.isPending}
+              disabled={isDisabled}
             />
             <span className="absolute right-4 bottom-1 text-xs text-gray-400">
               {messageText.length}/160 characters
@@ -209,6 +231,7 @@ export const ChatThread: React.FC<ChatThreadProps> = ({ contactId }) => {
             type="button"
             onClick={() => setMessageText('')}
             className="text-sm text-blue-600 hover:bg-blue-50 px-3 py-1 rounded"
+            disabled={isDisabled}
           >
             Clear
           </button>
@@ -216,11 +239,13 @@ export const ChatThread: React.FC<ChatThreadProps> = ({ contactId }) => {
           <Button
             type="submit"
             size="sm"
-            disabled={(!messageText.trim() && !attachedImageUrl) || sendMessage.isPending}
+            disabled={(!messageText.trim() && !attachedImageUrl) || isDisabled}
             className="bg-blue-600 hover:bg-blue-700 rounded-full px-6"
           >
             {sendMessage.isPending ? (
               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : profileLoading ? (
+              'Loading...'
             ) : (
               <Send className="h-4 w-4" />
             )}
