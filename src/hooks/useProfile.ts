@@ -1,7 +1,7 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/useAuth';
 
 export interface ProfileData {
   id: string;
@@ -18,9 +18,7 @@ export const useProfile = () => {
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
-  const [updatingPassword, setUpdatingPassword] = useState(false);
   const { toast } = useToast();
-  const { user, isAuthenticated } = useAuth();
 
   const formatPhoneNumber = (phone: string): string => {
     if (!phone) return '';
@@ -35,19 +33,28 @@ export const useProfile = () => {
   };
 
   const fetchProfile = async () => {
-    if (!user || !isAuthenticated) {
-      setLoading(false);
-      return;
-    }
-
     try {
       setLoading(true);
+      
+      // For now, use the known user ID directly since we don't have auth implemented
+      const userId = '03aa1bcd-5cb3-47b3-b5af-138bc4802f2b';
+
+      // Get user login info (for email)
+      const { data: loginData, error: loginError } = await supabase
+        .from('user_logins')
+        .select('login_email')
+        .eq('id', userId)
+        .single();
+
+      if (loginError) {
+        console.error('Error fetching login data:', loginError);
+      }
 
       // Get user profile
       const { data: profile, error: profileError } = await supabase
         .from('user_profiles')
         .select('*')
-        .eq('id', user.id)
+        .eq('id', userId)
         .single();
 
       if (profileError && profileError.code !== 'PGRST116') {
@@ -55,12 +62,12 @@ export const useProfile = () => {
         console.error('Error fetching profile:', profileError);
       }
 
-      console.log('Profile data fetched:', { user, profile });
+      console.log('Profile data fetched:', { loginData, profile });
 
       // Set profile data
       setProfileData({
-        id: user.id,
-        email: user.email,
+        id: userId,
+        email: loginData?.login_email || '',
         firstName: profile?.first_name || '',
         lastName: profile?.last_name || '',
         company: profile?.company || '',
@@ -81,7 +88,7 @@ export const useProfile = () => {
   };
 
   const updateProfile = async (updates: Partial<Omit<ProfileData, 'id' | 'email'>>) => {
-    if (!profileData || !user) return;
+    if (!profileData) return;
 
     try {
       setUpdating(true);
@@ -139,135 +146,15 @@ export const useProfile = () => {
     }
   };
 
-  const updatePassword = async (currentPassword: string, newPassword: string) => {
-    if (!user) {
-      console.error('Password Update Debug: No user found');
-      return false;
-    }
-
-    try {
-      setUpdatingPassword(true);
-      console.log('Password Update Debug: Starting password update for user:', user.email);
-
-      // First verify the current password
-      console.log('Password Update Debug: Fetching current login data...');
-      const { data: loginData, error: fetchError } = await supabase
-        .from('user_logins')
-        .select('login_password, id, login_email')
-        .eq('login_email', user.email)
-        .single();
-
-      console.log('Password Update Debug: Fetch response:', { 
-        data: loginData, 
-        error: fetchError,
-        userEmail: user.email 
-      });
-
-      if (fetchError) {
-        console.error('Password Update Debug: Error fetching login data:', fetchError);
-        toast({
-          title: 'Error',
-          description: `Failed to verify current password: ${fetchError.message}`,
-          variant: 'destructive',
-        });
-        return false;
-      }
-
-      if (!loginData) {
-        console.error('Password Update Debug: No login data found for user:', user.email);
-        toast({
-          title: 'Error',
-          description: 'User login record not found',
-          variant: 'destructive',
-        });
-        return false;
-      }
-
-      // Verify current password matches
-      console.log('Password Update Debug: Verifying current password...');
-      console.log('Password Update Debug: Stored password:', loginData.login_password);
-      console.log('Password Update Debug: Provided password:', currentPassword);
-      
-      if (loginData.login_password !== currentPassword) {
-        console.error('Password Update Debug: Current password mismatch');
-        toast({
-          title: 'Error',
-          description: 'Current password is incorrect',
-          variant: 'destructive',
-        });
-        return false;
-      }
-
-      // Update password in user_logins table
-      console.log('Password Update Debug: Updating password in database...');
-      const { data: updateData, error: updateError } = await supabase
-        .from('user_logins')
-        .update({ 'login_password': newPassword })
-        .eq('login_email', user.email)
-        .select();
-
-      console.log('Password Update Debug: Update response:', { 
-        data: updateData, 
-        error: updateError,
-        userEmail: user.email,
-        newPassword: newPassword
-      });
-
-      if (updateError) {
-        console.error('Password Update Debug: Error updating password:', updateError);
-        toast({
-          title: 'Error',
-          description: `Failed to update password: ${updateError.message}`,
-          variant: 'destructive',
-        });
-        return false;
-      }
-
-      if (!updateData || updateData.length === 0) {
-        console.error('Password Update Debug: No rows were updated');
-        toast({
-          title: 'Error',
-          description: 'Password update failed - no records updated',
-          variant: 'destructive',
-        });
-        return false;
-      }
-
-      console.log('Password Update Debug: Password updated successfully');
-      toast({
-        title: 'Success',
-        description: 'Password updated successfully',
-      });
-      return true;
-    } catch (error) {
-      console.error('Password Update Debug: Unexpected error in updatePassword:', error);
-      toast({
-        title: 'Error',
-        description: `Failed to update password: ${error.message || 'Unknown error'}`,
-        variant: 'destructive',
-      });
-      return false;
-    } finally {
-      setUpdatingPassword(false);
-    }
-  };
-
   useEffect(() => {
-    if (isAuthenticated && user) {
-      fetchProfile();
-    } else {
-      setLoading(false);
-      setProfileData(null);
-    }
-  }, [user, isAuthenticated]);
+    fetchProfile();
+  }, []);
 
   return {
     profileData,
     loading,
     updating,
-    updatingPassword,
     updateProfile,
-    updatePassword,
     refetch: fetchProfile,
   };
 };

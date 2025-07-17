@@ -1,7 +1,6 @@
-
-import React, { useState } from 'react';
+import React from 'react';
 import { cn } from '@/lib/utils';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { 
   Grid, 
   User, 
@@ -9,17 +8,8 @@ import {
   Archive, 
   List, 
   Settings,
-  ChevronDown,
-  LogOut
+  ChevronDown
 } from 'lucide-react';
-import { useProfile } from '@/hooks/useProfile';
-import { useAuth } from '@/hooks/useAuth';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 
 type SidebarProps = {
   collapsed?: boolean;
@@ -31,39 +21,9 @@ const Sidebar: React.FC<SidebarProps> = ({
   onToggle 
 }) => {
   const location = useLocation();
-  const navigate = useNavigate();
-  const { profileData } = useProfile();
-  const { logout } = useAuth();
 
   const isActive = (path: string) => {
     return location.pathname === path;
-  };
-
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
-
-  const getDisplayName = () => {
-    if (!profileData) return 'User';
-    const firstName = profileData.firstName || '';
-    const lastName = profileData.lastName || '';
-    return firstName && lastName ? `${firstName} ${lastName}` : profileData.email || 'User';
-  };
-
-  const getInitials = () => {
-    if (!profileData) return 'U';
-    const firstName = profileData.firstName || '';
-    const lastName = profileData.lastName || '';
-    
-    if (firstName && lastName) {
-      return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
-    } else if (firstName) {
-      return firstName.substring(0, 2).toUpperCase();
-    } else if (profileData.email) {
-      return profileData.email.substring(0, 2).toUpperCase();
-    }
-    return 'U';
   };
 
   if (collapsed) {
@@ -78,6 +38,13 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
         
         <nav className="flex-1 px-3 space-y-2">
+          {/* <SidebarLink 
+            icon={<Grid size={20} />} 
+            label="Dashboard" 
+            to="/" 
+            collapsed={true}
+            active={isActive('/')}
+          /> */}
           <SidebarLink 
             icon={<User size={20} />} 
             label="Contacts" 
@@ -117,19 +84,9 @@ const Sidebar: React.FC<SidebarProps> = ({
             active={isActive('/settings')}
           />
           <div className="flex items-center justify-center mt-4">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <div className="bg-purple-600 h-8 w-8 rounded-full flex items-center justify-center text-white font-medium text-sm cursor-pointer hover:bg-purple-700 transition-colors">
-                  {getInitials()}
-                </div>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent side="right" align="end" className="w-48">
-                <DropdownMenuItem onClick={handleLogout} className="text-red-600 cursor-pointer">
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Logout
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <div className="bg-purple-600 h-8 w-8 rounded-full flex items-center justify-center text-white font-medium text-sm">
+              JD
+            </div>
           </div>
         </div>
       </aside>
@@ -150,6 +107,12 @@ const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Main Nav */}
         <nav className="px-3 space-y-2 text-sm">
+          {/* <SidebarLink 
+            icon={<Grid size={20} />} 
+            label="Dashboard" 
+            to="/" 
+            active={isActive('/')}
+          /> */}
           <SidebarLink 
             icon={<User size={20} />} 
             label="Contacts" 
@@ -185,28 +148,16 @@ const Sidebar: React.FC<SidebarProps> = ({
           to="/settings" 
           active={isActive('/settings')}
         />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <div className="flex items-center gap-3 px-2 py-2 text-sm cursor-pointer hover:bg-slate-800 rounded-md transition-colors">
-              <div className="bg-purple-600 h-8 w-8 rounded-full flex items-center justify-center text-white font-medium">
-                {getInitials()}
-              </div>
-              <div className="flex flex-col text-white flex-1">
-                <span className="font-medium">{getDisplayName()}</span>
-                <span className="text-xs text-slate-400">
-                  {profileData?.company || 'User'}
-                </span>
-              </div>
-              <ChevronDown className="h-4 w-4 text-slate-400" />
-            </div>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent side="right" align="end" className="w-48">
-            <DropdownMenuItem onClick={handleLogout} className="text-red-600 cursor-pointer">
-              <LogOut className="h-4 w-4 mr-2" />
-              Logout
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex items-center gap-3 px-2 py-2 text-sm cursor-pointer hover:bg-slate-800 rounded-md transition-colors">
+          <div className="bg-purple-600 h-8 w-8 rounded-full flex items-center justify-center text-white font-medium">
+            JD
+          </div>
+          <div className="flex flex-col text-white flex-1">
+            <span className="font-medium">John Doe</span>
+            <span className="text-xs text-slate-400">Admin</span>
+          </div>
+          <ChevronDown className="h-4 w-4 text-slate-400" />
+        </div>
       </div>
     </aside>
   );

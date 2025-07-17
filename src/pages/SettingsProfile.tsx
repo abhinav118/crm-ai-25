@@ -9,7 +9,7 @@ import { Eye, EyeOff } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
 
 const SettingsProfile: React.FC = () => {
-  const { profileData, loading, updating, updatingPassword, updateProfile, updatePassword } = useProfile();
+  const { profileData, loading, updating, updateProfile } = useProfile();
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [passwords, setPasswords] = useState({
@@ -51,24 +51,9 @@ const SettingsProfile: React.FC = () => {
     await updateProfile(formData);
   };
 
-  const handleUpdatePassword = async () => {
-    if (!passwords.currentPassword || !passwords.newPassword) {
-      return;
-    }
-
-    if (passwords.newPassword.length < 6) {
-      return;
-    }
-
-    const success = await updatePassword(passwords.currentPassword, passwords.newPassword);
-    
-    if (success) {
-      // Clear password fields on success
-      setPasswords({
-        currentPassword: '',
-        newPassword: ''
-      });
-    }
+  const handleUpdatePassword = () => {
+    console.log('Updating password - this feature needs to be implemented');
+    // TODO: Implement password update functionality
   };
 
   if (loading) {
@@ -253,16 +238,17 @@ const SettingsProfile: React.FC = () => {
                   )}
                 </button>
               </div>
-              <p className="text-xs text-gray-500">Password must be at least 6 characters long</p>
             </div>
 
             <Button 
               onClick={handleUpdatePassword}
-              disabled={updatingPassword || !passwords.currentPassword || !passwords.newPassword || passwords.newPassword.length < 6}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white disabled:bg-gray-400"
+              className="bg-gray-400 hover:bg-gray-500 text-white"
             >
-              {updatingPassword ? 'UPDATING...' : 'UPDATE PASSWORD'}
+              UPDATE PASSWORD
             </Button>
+            <p className="text-xs text-gray-500 mt-2">
+              Password update functionality coming soon
+            </p>
           </CardContent>
         </Card>
       </div>
