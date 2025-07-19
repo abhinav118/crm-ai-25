@@ -14,6 +14,129 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_image_chat_users: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          email: string
+          id: string
+          user_type: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          email: string
+          id: string
+          user_type?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          user_type?: string
+        }
+        Relationships: []
+      }
+      campaigns: {
+        Row: {
+          campaign_name: string
+          category: string | null
+          created_at: string | null
+          discount_price: number | null
+          discount_type: string | null
+          email_content: string | null
+          email_subject: string | null
+          id: string
+          image_url: string | null
+          location_id: string | null
+          merchant_id: string | null
+          min_item_count: number | null
+          number_of_days: number | null
+          sms_content: string | null
+          status: string | null
+          total_redemptions: number | null
+          updated_at: string | null
+          user_id: string
+          valid_till: string | null
+        }
+        Insert: {
+          campaign_name: string
+          category?: string | null
+          created_at?: string | null
+          discount_price?: number | null
+          discount_type?: string | null
+          email_content?: string | null
+          email_subject?: string | null
+          id?: string
+          image_url?: string | null
+          location_id?: string | null
+          merchant_id?: string | null
+          min_item_count?: number | null
+          number_of_days?: number | null
+          sms_content?: string | null
+          status?: string | null
+          total_redemptions?: number | null
+          updated_at?: string | null
+          user_id: string
+          valid_till?: string | null
+        }
+        Update: {
+          campaign_name?: string
+          category?: string | null
+          created_at?: string | null
+          discount_price?: number | null
+          discount_type?: string | null
+          email_content?: string | null
+          email_subject?: string | null
+          id?: string
+          image_url?: string | null
+          location_id?: string | null
+          merchant_id?: string | null
+          min_item_count?: number | null
+          number_of_days?: number | null
+          sms_content?: string | null
+          status?: string | null
+          total_redemptions?: number | null
+          updated_at?: string | null
+          user_id?: string
+          valid_till?: string | null
+        }
+        Relationships: []
+      }
+      chat_logs: {
+        Row: {
+          goals_reference: string[] | null
+          id: string
+          message: string
+          response: string
+          session_id: string | null
+          timestamp: string
+          voice_response_duration: number | null
+          voice_response_used: boolean | null
+        }
+        Insert: {
+          goals_reference?: string[] | null
+          id?: string
+          message: string
+          response: string
+          session_id?: string | null
+          timestamp?: string
+          voice_response_duration?: number | null
+          voice_response_used?: boolean | null
+        }
+        Update: {
+          goals_reference?: string[] | null
+          id?: string
+          message?: string
+          response?: string
+          session_id?: string | null
+          timestamp?: string
+          voice_response_duration?: number | null
+          voice_response_used?: boolean | null
+        }
+        Relationships: []
+      }
       contact_logs: {
         Row: {
           action: string
@@ -89,6 +212,48 @@ export type Database = {
         }
         Relationships: []
       }
+      contacts_old: {
+        Row: {
+          company: string | null
+          created_at: string
+          email: string | null
+          id: string
+          last_activity: string | null
+          name: string
+          notes: string | null
+          phone: string | null
+          status: string | null
+          tags: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          company?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          last_activity?: string | null
+          name: string
+          notes?: string | null
+          phone?: string | null
+          status?: string | null
+          tags?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          company?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          last_activity?: string | null
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          status?: string | null
+          tags?: string[] | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       contacts_segments: {
         Row: {
           contacts_membership: Json
@@ -151,6 +316,198 @@ export type Database = {
           },
         ]
       }
+      favorite_recipes: {
+        Row: {
+          calories: number | null
+          created_at: string
+          id: string
+          image_url: string | null
+          macros: Json | null
+          recipe_id: string
+          recipe_ingredients: string | null
+          recipe_instructions: string | null
+          recipe_title: string
+          session_id: string
+          slug: string | null
+          source: string | null
+        }
+        Insert: {
+          calories?: number | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          macros?: Json | null
+          recipe_id: string
+          recipe_ingredients?: string | null
+          recipe_instructions?: string | null
+          recipe_title: string
+          session_id: string
+          slug?: string | null
+          source?: string | null
+        }
+        Update: {
+          calories?: number | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          macros?: Json | null
+          recipe_id?: string
+          recipe_ingredients?: string | null
+          recipe_instructions?: string | null
+          recipe_title?: string
+          session_id?: string
+          slug?: string | null
+          source?: string | null
+        }
+        Relationships: []
+      }
+      favorites: {
+        Row: {
+          created_at: string | null
+          id: string
+          image_id: string | null
+          image_url: string
+          prompt: string | null
+          title: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          image_id?: string | null
+          image_url: string
+          prompt?: string | null
+          title?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          image_id?: string | null
+          image_url?: string
+          prompt?: string | null
+          title?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      fi_ai_chat_logs: {
+        Row: {
+          ai_chat_response: string
+          created_at: string | null
+          has_graph: boolean | null
+          id: string
+          session_id: string
+          stock_symbol: string | null
+          tier: string | null
+          user_chat: string
+        }
+        Insert: {
+          ai_chat_response: string
+          created_at?: string | null
+          has_graph?: boolean | null
+          id?: string
+          session_id: string
+          stock_symbol?: string | null
+          tier?: string | null
+          user_chat: string
+        }
+        Update: {
+          ai_chat_response?: string
+          created_at?: string | null
+          has_graph?: boolean | null
+          id?: string
+          session_id?: string
+          stock_symbol?: string | null
+          tier?: string | null
+          user_chat?: string
+        }
+        Relationships: []
+      }
+      fridge_inventory: {
+        Row: {
+          created_at: string
+          expiry_date: string | null
+          id: string
+          ingredient_name: string
+          quantity: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expiry_date?: string | null
+          id?: string
+          ingredient_name: string
+          quantity?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expiry_date?: string | null
+          id?: string
+          ingredient_name?: string
+          quantity?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      grocery_items: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          ingredient_name: string
+          meal_plan_id: string | null
+          meal_title: string | null
+          owned: boolean
+          quantity: string | null
+          recipe_id: string | null
+          session_id: string | null
+          source: string
+          source_id: string | null
+          source_type: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          id?: string
+          ingredient_name: string
+          meal_plan_id?: string | null
+          meal_title?: string | null
+          owned?: boolean
+          quantity?: string | null
+          recipe_id?: string | null
+          session_id?: string | null
+          source?: string
+          source_id?: string | null
+          source_type?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          ingredient_name?: string
+          meal_plan_id?: string | null
+          meal_title?: string | null
+          owned?: boolean
+          quantity?: string | null
+          recipe_id?: string | null
+          session_id?: string | null
+          source?: string
+          source_id?: string | null
+          source_type?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           channel: string
@@ -194,6 +551,399 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      outfit_analyses: {
+        Row: {
+          cohesion_score: number
+          colors: Json
+          created_at: string
+          id: string
+          image_url: string
+          items: Json
+          original_filename: string | null
+          season: string
+          style: string
+          suggestions: Json
+          user_id: string | null
+        }
+        Insert: {
+          cohesion_score: number
+          colors: Json
+          created_at?: string
+          id?: string
+          image_url: string
+          items: Json
+          original_filename?: string | null
+          season: string
+          style: string
+          suggestions: Json
+          user_id?: string | null
+        }
+        Update: {
+          cohesion_score?: number
+          colors?: Json
+          created_at?: string
+          id?: string
+          image_url?: string
+          items?: Json
+          original_filename?: string | null
+          season?: string
+          style?: string
+          suggestions?: Json
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      privacy_chat_sessions: {
+        Row: {
+          created_at: string | null
+          id: string
+          messages: Json | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          messages?: Json | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          messages?: Json | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      privacy_users: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          email: string | null
+          google_user_id: string | null
+          id: string
+          last_scan_date: string | null
+          name: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email?: string | null
+          google_user_id?: string | null
+          id?: string
+          last_scan_date?: string | null
+          name?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email?: string | null
+          google_user_id?: string | null
+          id?: string
+          last_scan_date?: string | null
+          name?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      recipes: {
+        Row: {
+          calories: number | null
+          cost_per_serving: string | null
+          created_at: string | null
+          description: string | null
+          difficulty: string | null
+          id: string
+          image_url: string | null
+          ingredients: string | null
+          instructions: string | null
+          macros: Json | null
+          slug: string
+          time_minutes: number | null
+          title: string
+        }
+        Insert: {
+          calories?: number | null
+          cost_per_serving?: string | null
+          created_at?: string | null
+          description?: string | null
+          difficulty?: string | null
+          id?: string
+          image_url?: string | null
+          ingredients?: string | null
+          instructions?: string | null
+          macros?: Json | null
+          slug: string
+          time_minutes?: number | null
+          title: string
+        }
+        Update: {
+          calories?: number | null
+          cost_per_serving?: string | null
+          created_at?: string | null
+          description?: string | null
+          difficulty?: string | null
+          id?: string
+          image_url?: string | null
+          ingredients?: string | null
+          instructions?: string | null
+          macros?: Json | null
+          slug?: string
+          time_minutes?: number | null
+          title?: string
+        }
+        Relationships: []
+      }
+      recommend_recipes: {
+        Row: {
+          calories: number | null
+          carbs: string | null
+          cost: string | null
+          created_at: string
+          difficulty: string | null
+          fat: string | null
+          id: string
+          image_url: string | null
+          ingredients: Json | null
+          instructions: Json | null
+          protein: string | null
+          session_id: string
+          slug: string
+          time: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          calories?: number | null
+          carbs?: string | null
+          cost?: string | null
+          created_at?: string
+          difficulty?: string | null
+          fat?: string | null
+          id?: string
+          image_url?: string | null
+          ingredients?: Json | null
+          instructions?: Json | null
+          protein?: string | null
+          session_id: string
+          slug: string
+          time?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          calories?: number | null
+          carbs?: string | null
+          cost?: string | null
+          created_at?: string
+          difficulty?: string | null
+          fat?: string | null
+          id?: string
+          image_url?: string | null
+          ingredients?: Json | null
+          instructions?: Json | null
+          protein?: string | null
+          session_id?: string
+          slug?: string
+          time?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      reservations: {
+        Row: {
+          created_at: string
+          customer_name: string
+          email: string
+          id: string
+          party_size: number
+          phone: string | null
+          reservation_date: string
+          reservation_time: string
+          special_requests: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          customer_name: string
+          email: string
+          id?: string
+          party_size: number
+          phone?: string | null
+          reservation_date: string
+          reservation_time: string
+          special_requests?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          customer_name?: string
+          email?: string
+          id?: string
+          party_size?: number
+          phone?: string | null
+          reservation_date?: string
+          reservation_time?: string
+          special_requests?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      saved_sessions: {
+        Row: {
+          created_at: string
+          data: Json | null
+          id: string
+          title: string
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          title: string
+          type: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          title?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      scan_summaries: {
+        Row: {
+          created_at: string | null
+          high_permission_apps: number | null
+          id: string
+          inactive_apps: number | null
+          risky_apps: number | null
+          scan_date: string | null
+          total_apps: number | null
+          unknown_publisher_apps: number | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          high_permission_apps?: number | null
+          id?: string
+          inactive_apps?: number | null
+          risky_apps?: number | null
+          scan_date?: string | null
+          total_apps?: number | null
+          unknown_publisher_apps?: number | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          high_permission_apps?: number | null
+          id?: string
+          inactive_apps?: number | null
+          risky_apps?: number | null
+          scan_date?: string | null
+          total_apps?: number | null
+          unknown_publisher_apps?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      scanned_apps: {
+        Row: {
+          app_id: string
+          app_name: string
+          category: Database["public"]["Enums"]["app_category"] | null
+          created_at: string | null
+          id: string
+          last_used: string | null
+          permissions: Json | null
+          publisher: string | null
+          risk_level: Database["public"]["Enums"]["app_risk_level"] | null
+          risk_reasons: string[] | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          app_id: string
+          app_name: string
+          category?: Database["public"]["Enums"]["app_category"] | null
+          created_at?: string | null
+          id?: string
+          last_used?: string | null
+          permissions?: Json | null
+          publisher?: string | null
+          risk_level?: Database["public"]["Enums"]["app_risk_level"] | null
+          risk_reasons?: string[] | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          app_id?: string
+          app_name?: string
+          category?: Database["public"]["Enums"]["app_category"] | null
+          created_at?: string | null
+          id?: string
+          last_used?: string | null
+          permissions?: Json | null
+          publisher?: string | null
+          risk_level?: Database["public"]["Enums"]["app_risk_level"] | null
+          risk_reasons?: string[] | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      scheduled_jobs: {
+        Row: {
+          created_at: string | null
+          error_message: string | null
+          id: string
+          payload: Json
+          scheduled_at: string
+          status: string | null
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          payload: Json
+          scheduled_at: string
+          status?: string | null
+          type: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          payload?: Json
+          scheduled_at?: string
+          status?: string | null
+          type?: string
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       sms_analytics: {
         Row: {
@@ -288,6 +1038,114 @@ export type Database = {
         }
         Relationships: []
       }
+      trending_recipes: {
+        Row: {
+          calories: number | null
+          created_at: string
+          difficulty: string | null
+          id: string
+          image_url: string | null
+          ingredients: string | null
+          instructions: string | null
+          macros: Json | null
+          region: string
+          slug: string
+          source_url: string | null
+          time_minutes: number | null
+          title: string
+          trend_type: string
+          updated_at: string
+        }
+        Insert: {
+          calories?: number | null
+          created_at?: string
+          difficulty?: string | null
+          id?: string
+          image_url?: string | null
+          ingredients?: string | null
+          instructions?: string | null
+          macros?: Json | null
+          region?: string
+          slug: string
+          source_url?: string | null
+          time_minutes?: number | null
+          title: string
+          trend_type: string
+          updated_at?: string
+        }
+        Update: {
+          calories?: number | null
+          created_at?: string
+          difficulty?: string | null
+          id?: string
+          image_url?: string | null
+          ingredients?: string | null
+          instructions?: string | null
+          macros?: Json | null
+          region?: string
+          slug?: string
+          source_url?: string | null
+          time_minutes?: number | null
+          title?: string
+          trend_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_chat_history: {
+        Row: {
+          created_at: string
+          id: string
+          messages: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          messages?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          messages?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_generated_images: {
+        Row: {
+          created_at: string
+          id: string
+          image_url: string
+          prompt: string | null
+          size: string | null
+          style: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          image_url: string
+          prompt?: string | null
+          size?: string | null
+          style?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          image_url?: string
+          prompt?: string | null
+          size?: string | null
+          style?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_logins: {
         Row: {
           created_at: string
@@ -323,50 +1181,39 @@ export type Database = {
       }
       user_profiles: {
         Row: {
-          company: string | null
           created_at: string | null
-          email: string | null
-          first_name: string | null
+          experience_level: string | null
+          goals: string[] | null
           id: string
-          last_name: string | null
-          mobile_number: string | null
-          textable_number: string | null
-          time_zone: string | null
+          onboarding_completed: boolean | null
+          preferences: Json
+          preferred_communication_style: string | null
           updated_at: string | null
+          user_id: string
         }
         Insert: {
-          company?: string | null
           created_at?: string | null
-          email?: string | null
-          first_name?: string | null
-          id: string
-          last_name?: string | null
-          mobile_number?: string | null
-          textable_number?: string | null
-          time_zone?: string | null
+          experience_level?: string | null
+          goals?: string[] | null
+          id?: string
+          onboarding_completed?: boolean | null
+          preferences?: Json
+          preferred_communication_style?: string | null
           updated_at?: string | null
+          user_id: string
         }
         Update: {
-          company?: string | null
           created_at?: string | null
-          email?: string | null
-          first_name?: string | null
+          experience_level?: string | null
+          goals?: string[] | null
           id?: string
-          last_name?: string | null
-          mobile_number?: string | null
-          textable_number?: string | null
-          time_zone?: string | null
+          onboarding_completed?: boolean | null
+          preferences?: Json
+          preferred_communication_style?: string | null
           updated_at?: string | null
+          user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "user_profile_id_fkey"
-            columns: ["id"]
-            isOneToOne: true
-            referencedRelation: "user_logins"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
     }
     Views: {
