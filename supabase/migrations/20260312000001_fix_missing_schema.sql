@@ -124,23 +124,26 @@ VALUES ('03aa1bcd-5cb3-47b3-b5af-138bc4802f2b', 'abhik.voice@gmail.com')
 ON CONFLICT (id) DO NOTHING;
 
 -- =============================================================================
--- FIX 4: Create user_profiles table (stores name, company, textable_number etc)
+-- FIX 4: Ensure user_profiles table exists with all required columns.
+-- The table may already exist (from a prior migration) but be missing columns.
+-- We use ADD COLUMN IF NOT EXISTS to safely backfill any gaps.
 -- The app (useProfile.ts) does: supabase.from('user_profiles').select('*').eq('id', userId)
--- The PGRST116 error ("0 rows") means the table either didn't exist or had no row for this user.
 -- =============================================================================
 
 CREATE TABLE IF NOT EXISTS public.user_profiles (
-  id               UUID PRIMARY KEY REFERENCES public.user_logins(id) ON DELETE CASCADE,
-  email            TEXT,
-  first_name       TEXT,
-  last_name        TEXT,
-  company          TEXT,
-  mobile_number    TEXT,
-  time_zone        TEXT DEFAULT 'America/New_York',
-  textable_number  TEXT,
+  id               UUID PRIMARY KEY,
   created_at       TIMESTAMP WITH TIME ZONE DEFAULT now(),
   updated_at       TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
+
+-- Add each column only if it doesn't already exist
+ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS email           TEXT;
+ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS first_name      TEXT;
+ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS last_name       TEXT;
+ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS company         TEXT;
+ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS mobile_number   TEXT;
+ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS time_zone       TEXT DEFAULT 'America/New_York';
+ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS textable_number TEXT;
 
 ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
 
@@ -148,7 +151,7 @@ DROP POLICY IF EXISTS "Allow all access to user_profiles" ON public.user_profile
 CREATE POLICY "Allow all access to user_profiles"
   ON public.user_profiles FOR ALL USING (true) WITH CHECK (true);
 
--- Seed the known user profile
+-- Seed the known user profile (insert only if not already present)
 INSERT INTO public.user_profiles (id, email, first_name, last_name, company, mobile_number, time_zone)
 VALUES (
   '03aa1bcd-5cb3-47b3-b5af-138bc4802f2b',
