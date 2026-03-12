@@ -33,7 +33,6 @@ export interface Database {
           tags?: string[] | null;
           created_at?: string;
           updated_at?: string;
-          segment_name?: string | null;
           notes?: string | null;
           last_activity?: string | null;
         };
