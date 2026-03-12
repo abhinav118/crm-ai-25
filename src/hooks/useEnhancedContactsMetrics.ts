@@ -97,7 +97,7 @@ export function useEnhancedContactsMetrics(dateRange: DateRange | undefined) {
       const { data: segments, error: segmentsError } = await supabase.from("contacts_segments").select("*");
 
       if (segmentsError) {
-        console.error("Error fetching segments: lol", segmentsError);
+        console.error("Error fetching lol segments: lol", segmentsError);
         throw segmentsError;
       }
 
