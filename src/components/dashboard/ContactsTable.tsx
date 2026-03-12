@@ -376,7 +376,7 @@ const ContactsTable: React.FC<DataTableProps> = ({ initialContacts }) => {
       <TableCell onClick={(e) => e.stopPropagation()}>
         <Checkbox checked={isContactSelected(contact)} onCheckedChange={() => toggleContactSelection(contact)} />
       </TableCell>
-      <TableCell className="font-medium">{getFullName(contact.name)}</TableCell>
+      <TableCell className="font-medium">{getFullName(contact)}</TableCell>
       <TableCell>{contact.email}</TableCell>
       <TableCell>{contact.phone}</TableCell>
       <TableCell>{contact.company}</TableCell>
