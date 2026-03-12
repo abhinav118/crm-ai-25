@@ -137,6 +137,7 @@ CREATE TABLE IF NOT EXISTS public.user_profiles (
 );
 
 -- Add each column only if it doesn't already exist
+ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS user_id         UUID;
 ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS email           TEXT;
 ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS first_name      TEXT;
 ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS last_name       TEXT;
@@ -152,8 +153,10 @@ CREATE POLICY "Allow all access to user_profiles"
   ON public.user_profiles FOR ALL USING (true) WITH CHECK (true);
 
 -- Seed the known user profile (insert only if not already present)
-INSERT INTO public.user_profiles (id, email, first_name, last_name, company, mobile_number, time_zone)
+-- user_id mirrors id (same UUID) as it's the auth user reference
+INSERT INTO public.user_profiles (id, user_id, email, first_name, last_name, company, mobile_number, time_zone)
 VALUES (
+  '03aa1bcd-5cb3-47b3-b5af-138bc4802f2b',
   '03aa1bcd-5cb3-47b3-b5af-138bc4802f2b',
   'abhik.voice@gmail.com',
   'Abhik',
