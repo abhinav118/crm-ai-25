@@ -2,11 +2,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useMessages } from '@/hooks/useMessages';
 import { useSendMessage } from '@/hooks/useSendMessage';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Send } from 'lucide-react';
+import { Send, FlaskConical } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getFullName } from '@/utils/contactHelpers';
 import { MessageHelpers } from './MessageHelpers';
@@ -21,10 +21,12 @@ interface ChatThreadProps {
 export const ChatThread: React.FC<ChatThreadProps> = ({ contactId }) => {
   const [messageText, setMessageText] = React.useState('');
   const [attachedImageUrl, setAttachedImageUrl] = useState<string | null>(null);
+  const [mockSending, setMockSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { profileData, loading: profileLoading } = useProfile();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   
   const { data: messages = [], isLoading: messagesLoading } = useMessages(contactId);
   const sendMessage = useSendMessage();
@@ -52,17 +54,40 @@ export const ChatThread: React.FC<ChatThreadProps> = ({ contactId }) => {
     }
   }, [messages]);
 
+  const isMockMode = !profileData?.textableNumber;
+
+  const handleMockSend = async () => {
+    if (!contact || (!messageText.trim() && !attachedImageUrl)) return;
+    setMockSending(true);
+    try {
+      const { error } = await supabase.from('messages').insert({
+        contact_id: contact.id,
+        content: messageText.trim() || '[image]',
+        sender: 'user',
+        channel: 'sms',
+        direction: 'outbound',
+        is_read: true,
+        ...(attachedImageUrl && { media_url: attachedImageUrl })
+      });
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['messages', contactId] });
+      setMessageText('');
+      setAttachedImageUrl(null);
+    } catch (err) {
+      console.error('Mock send failed:', err);
+      toast({ title: 'Error', description: 'Failed to save message', variant: 'destructive' });
+    } finally {
+      setMockSending(false);
+    }
+  };
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if ((!messageText.trim() && !attachedImageUrl) || !contact) return;
 
-    if (!profileData?.textableNumber) {
-      toast({
-        title: 'No Textable Number Configured',
-        description: 'Please configure a textable number in Settings {">"}  Numbers before sending messages',
-        variant: 'destructive'
-      });
+    if (isMockMode) {
+      await handleMockSend();
       return;
     }
 
@@ -127,7 +152,7 @@ export const ChatThread: React.FC<ChatThreadProps> = ({ contactId }) => {
     }
   };
 
-  const isDisabled = sendMessage.isPending || profileLoading || !profileData?.textableNumber;
+  const isDisabled = (isMockMode ? mockSending : sendMessage.isPending || profileLoading);
 
   if (!contact) {
     return (
@@ -168,11 +193,11 @@ export const ChatThread: React.FC<ChatThreadProps> = ({ contactId }) => {
         </div>
       </div>
 
-      {/* Warning if no textable number configured */}
-      {!profileData?.textableNumber && !profileLoading && (
-        <div className="mx-4 mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <p className="text-sm text-yellow-800 font-medium">No textable number configured</p>
-          <p className="text-xs text-yellow-700">Please go to Settings {">"}  Numbers to configure a textable number before sending messages.</p>
+      {/* Demo mode banner when no textable number is configured */}
+      {isMockMode && !profileLoading && (
+        <div className="mx-4 mt-3 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg flex items-center gap-2">
+          <FlaskConical className="h-4 w-4 text-blue-500 shrink-0" />
+          <p className="text-xs text-blue-700">Demo mode — messages are saved locally but not sent via SMS. Configure a number in Settings → Numbers to send real messages.</p>
         </div>
       )}
 
@@ -243,7 +268,7 @@ export const ChatThread: React.FC<ChatThreadProps> = ({ contactId }) => {
             disabled={(!messageText.trim() && !attachedImageUrl) || isDisabled}
             className="bg-blue-600 hover:bg-blue-700 rounded-full px-6"
           >
-            {sendMessage.isPending ? (
+            {(isMockMode ? mockSending : sendMessage.isPending) ? (
               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
             ) : profileLoading ? (
               'Loading...'
