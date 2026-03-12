@@ -138,6 +138,8 @@ CREATE TABLE IF NOT EXISTS public.user_profiles (
 
 -- Add each column only if it doesn't already exist
 ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS user_id         UUID;
+-- Drop the FK to auth.users so seed data (not in auth.users) can be inserted
+ALTER TABLE public.user_profiles DROP CONSTRAINT IF EXISTS user_profiles_user_id_fkey;
 ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS email           TEXT;
 ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS first_name      TEXT;
 ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS last_name       TEXT;
