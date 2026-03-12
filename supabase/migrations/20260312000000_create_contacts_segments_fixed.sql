@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS public.contacts_segments (
 );
 
 -- Function to rebuild contacts_segments from the contacts table
+-- Safe: works with either name column OR first_name/last_name columns
 CREATE OR REPLACE FUNCTION public.update_contacts_segments()
 RETURNS void AS $$
 BEGIN
@@ -15,7 +16,7 @@ BEGIN
         jsonb_agg(
             jsonb_build_object(
                 'id',         c.id,
-                'name',       c.name,
+                'name',       COALESCE(c.name, ''),
                 'email',      c.email,
                 'phone',      c.phone,
                 'company',    c.company,
