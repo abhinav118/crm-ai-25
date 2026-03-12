@@ -12,7 +12,7 @@ RETURNS void AS $$
 BEGIN
     INSERT INTO public.contacts_segments (segment_name, contacts_membership, updated_at)
     SELECT
-        COALESCE(c.stage, 'UNASSIGNED') AS segment_name,
+        COALESCE(c.stage::TEXT, 'UNASSIGNED') AS segment_name,
         jsonb_agg(
             jsonb_build_object(
                 'id',         c.id,
@@ -28,7 +28,7 @@ BEGIN
         ) AS contacts_membership,
         TIMEZONE('utc', NOW()) AS updated_at
     FROM public.contacts c
-    GROUP BY COALESCE(c.stage, 'UNASSIGNED')
+    GROUP BY COALESCE(c.stage::TEXT, 'UNASSIGNED')
     ON CONFLICT (segment_name) DO UPDATE
         SET contacts_membership = EXCLUDED.contacts_membership,
             updated_at          = EXCLUDED.updated_at;
