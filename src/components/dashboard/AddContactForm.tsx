@@ -87,7 +87,6 @@ const AddContactForm: React.FC<AddContactFormProps> = ({ open, onOpenChange, onS
         phone: data.phone?.trim() ? formatPhoneNumber(data.phone.trim()) : null,
         company: data.company?.trim() || null,
         status: "active" as const,
-        segment_name: selectedSegment,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         tags: [],
