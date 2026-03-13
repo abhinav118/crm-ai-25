@@ -153,15 +153,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
     e.preventDefault();
     
     if (!messageText.trim()) return;
-
-    if (activeChannel === 'sms' && !profileData?.textableNumber) {
-      toast({
-        title: 'No Textable Number Configured',
-        description: 'Please configure a textable number in Settings {">"}  Numbers before sending SMS messages',
-        variant: 'destructive'
-      });
-      return;
-    }
     
     const tempId = Date.now().toString();
     const newMessage: Message = {
@@ -183,7 +174,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
         contact_id: updatedContact.id,
         content: messageText,
         sender: 'user',
-        channel: activeChannel
+        channel: activeChannel,
+        direction: 'outbound',
+        is_read: true
       };
       
       console.log('Inserting message:', messageInsert);
@@ -199,7 +192,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
         throw messageError;
       }
       
-      if (activeChannel === 'sms' && updatedContact.phone) {
+      if (activeChannel === 'sms' && updatedContact.phone && profileData?.textableNumber) {
         console.log('Sending SMS via Telnyx Edge Function');
         
         const { data: telnyxResponse, error: telnyxError } = await supabase.functions.invoke('send-via-telnyx', {
@@ -215,12 +208,35 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
         console.log('Telnyx response:', telnyxResponse);
         
         if (telnyxError) {
-          throw new Error(`Failed to send SMS: ${telnyxError.message}`);
+          toast({
+            title: 'Message saved, SMS not delivered',
+            description: `Telnyx send failed: ${telnyxError.message}`,
+            variant: 'destructive'
+          });
+        } else if (telnyxResponse && !telnyxResponse.success) {
+          toast({
+            title: 'Message saved, SMS not delivered',
+            description: `Telnyx error: ${telnyxResponse.error || 'Unknown error'}`,
+            variant: 'destructive'
+          });
+        } else {
+          toast({
+            title: 'Message sent',
+            description: 'SMS sent successfully via Telnyx',
+          });
         }
-        
-        if (telnyxResponse && !telnyxResponse.success) {
-          throw new Error(`Telnyx error: ${telnyxResponse.error || 'Unknown error'}`);
-        }
+      } else if (activeChannel === 'sms' && !profileData?.textableNumber) {
+        toast({
+          title: 'Message saved locally',
+          description: 'No textable number is configured, so SMS delivery was skipped.',
+          variant: 'default'
+        });
+      } else if (activeChannel === 'sms' && !updatedContact.phone) {
+        toast({
+          title: 'Message saved locally',
+          description: 'Contact phone number is missing, so SMS delivery was skipped.',
+          variant: 'default'
+        });
       } else if (activeChannel === 'email' && updatedContact.email) {
         console.log('Email sending would happen here');
         toast({
@@ -255,19 +271,14 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
         );
       }
       
-      await supabase
-        .from('contacts')
-        .update({ last_activity: new Date().toISOString() })
-        .eq('id', updatedContact.id);
-      
-      toast({
-        title: 'Message sent',
-        description: activeChannel === 'sms' 
-          ? 'SMS sent successfully via Telnyx' 
-          : activeChannel === 'email'
-          ? 'Email saved successfully'
-          : 'Message saved successfully',
-      });
+      if (activeChannel !== 'sms') {
+        toast({
+          title: 'Message sent',
+          description: activeChannel === 'email'
+            ? 'Email saved successfully'
+            : 'Message saved successfully',
+        });
+      }
     } catch (error) {
       console.error('Error sending message:', error);
       
@@ -308,7 +319,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ contact, onClose }) => {
   };
 
   const isChannelDisabled = (channel: string) => {
-    if (channel === 'sms' && (!updatedContact.phone || !profileData?.textableNumber)) return true;
+    if (channel === 'sms' && !updatedContact.phone) return true;
     if (channel === 'email' && !updatedContact.email) return true;
     return false;
   };

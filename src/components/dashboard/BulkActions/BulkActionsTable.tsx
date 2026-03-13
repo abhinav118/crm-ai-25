@@ -63,7 +63,7 @@ const BulkActionsTable: React.FC<BulkActionsTableProps> = ({
         
         // Filter logs to only include activities related to contacts in the segment
         const filteredLogs = logs?.filter(log => {
-          const contactInfo = log.contact_info as ContactInfo;
+          const contactInfo = (log.contact_info ?? log.details) as ContactInfo;
           return contactInfo?.id && segmentContactIds.has(contactInfo.id);
         }) || [];
 
@@ -149,7 +149,7 @@ const BulkActionsTable: React.FC<BulkActionsTableProps> = ({
           ) : activityLogs && activityLogs.length > 0 ? (
             <div className="space-y-2">
               {activityLogs.map((log) => {
-                const contactInfo = log.contact_info as ContactInfo;
+                const contactInfo = (log.contact_info ?? log.details) as ContactInfo;
                 return (
                   <div key={log.id} className="p-3 border rounded hover:bg-gray-50">
                     <div className="flex items-center justify-between">

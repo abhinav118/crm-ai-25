@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { logContactAction } from '@/utils/contactLogger';
+import { syncContactToSegment } from '@/utils/segmentSync';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { getFullName } from '@/utils/contactHelpers';
 import { formatPhoneNumber } from '@/utils/phoneFormatter';
@@ -97,80 +98,33 @@ const UserProfile: React.FC<UserProfileProps> = ({ contact, onSave }) => {
     setIsUpdatingSegment(true);
     
     try {
-      // Update the contact's segment_name field
-      const { error: contactError } = await supabase
+      const updatedAt = new Date().toISOString();
+
+      // Update source of truth on contact record
+      const { data: updatedContactRow, error: contactError } = await supabase
         .from('contacts')
-        .update({ segment_name: formData.segment_name })
-        .eq('id', contact.id);
+        .update({ segment_name: formData.segment_name, updated_at: updatedAt })
+        .eq('id', contact.id)
+        .select()
+        .single();
 
       if (contactError) throw contactError;
 
-      // Remove contact from old segment if it exists
-      if (contact.segment_name && contact.segment_name !== formData.segment_name) {
-        const { data: oldSegmentData, error: fetchOldError } = await supabase
-          .from('contacts_segments')
-          .select('contacts_membership')
-          .eq('segment_name', contact.segment_name)
-          .single();
-
-        if (!fetchOldError && oldSegmentData) {
-          const currentMembers = Array.isArray(oldSegmentData.contacts_membership) 
-            ? oldSegmentData.contacts_membership 
-            : [];
-          
-          const updatedMembers = currentMembers.filter((member: any) => 
-            member && typeof member === 'object' && member.id !== contact.id
-          );
-
-          await supabase
-            .from('contacts_segments')
-            .update({ contacts_membership: updatedMembers })
-            .eq('segment_name', contact.segment_name);
-        }
-      }
-
-      // Add contact to new segment
-      const contactData = {
-        id: contact.id,
-        first_name: contact.first_name,
-        last_name: contact.last_name,
-        name: contact.first_name + ' '+ contact.last_name,
-        email: contact.email,
-        phone: contact.phone,
-        company: contact.company,
-        status: contact.status,
-        tags: contact.tags,
-        created_at: contact.createdAt,
-        updated_at: new Date().toISOString()
-      };
-
-      const { data: segmentData, error: fetchError } = await supabase
-        .from('contacts_segments')
-        .select('contacts_membership')
-        .eq('segment_name', formData.segment_name)
-        .single();
-
-      if (fetchError) throw fetchError;
-
-      const currentMembers = Array.isArray(segmentData?.contacts_membership) 
-        ? segmentData.contacts_membership 
-        : [];
-      
-      // Check if contact is already in the segment
-      const contactExists = currentMembers.some((member: any) => 
-        member && typeof member === 'object' && member.id === contact.id
-      );
-
-      if (!contactExists) {
-        const updatedMembers = [...currentMembers, contactData];
-
-        const { error: updateError } = await supabase
-          .from('contacts_segments')
-          .update({ contacts_membership: updatedMembers })
-          .eq('segment_name', formData.segment_name);
-
-        if (updateError) throw updateError;
-      }
+      // Keep membership view in sync via service-role edge function (avoids RLS writes from client)
+      const baseContact = updatedContactRow || contact;
+      await syncContactToSegment({
+        id: baseContact.id,
+        first_name: baseContact.first_name ?? contact.first_name,
+        last_name: baseContact.last_name ?? contact.last_name,
+        email: baseContact.email ?? contact.email,
+        phone: baseContact.phone ?? contact.phone,
+        company: baseContact.company ?? contact.company,
+        status: baseContact.status ?? contact.status,
+        tags: baseContact.tags ?? contact.tags ?? [],
+        created_at: (baseContact as any).created_at ?? contact.createdAt,
+        updated_at: updatedAt,
+        segment_name: formData.segment_name
+      });
 
       // Update local contact data
       const updatedContact = {

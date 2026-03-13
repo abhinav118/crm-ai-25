@@ -5,6 +5,84 @@ import { Contact } from '@/components/dashboard/ContactsTable';
 
 export type ContactAction = 'add' | 'update' | 'delete' | 'message_sent' | 'message_received';
 
+const isContactInfoMissingColumnError = (error: any) => {
+  return error?.code === 'PGRST204' && typeof error?.message === 'string' && error.message.includes('contact_info');
+};
+
+const isDetailsMissingColumnError = (error: any) => {
+  return error?.code === 'PGRST204' && typeof error?.message === 'string' && error.message.includes('details');
+};
+
+type ContactLogsPayloadKey = 'contact_info' | 'details';
+let contactLogsPayloadKey: ContactLogsPayloadKey | null = null;
+
+const setPayloadKeyOnError = (error: any): ContactLogsPayloadKey | null => {
+  if (isContactInfoMissingColumnError(error)) {
+    contactLogsPayloadKey = 'details';
+    return contactLogsPayloadKey;
+  }
+  if (isDetailsMissingColumnError(error)) {
+    contactLogsPayloadKey = 'contact_info';
+    return contactLogsPayloadKey;
+  }
+  return null;
+};
+
+const withPayloadKey = (entry: any, key: ContactLogsPayloadKey) => {
+  if (!entry || typeof entry !== 'object') return entry;
+  if (!('contact_info' in entry) && !('details' in entry)) return entry;
+
+  const { contact_info, details, ...rest } = entry;
+  const value = key === 'details' ? (details ?? contact_info) : (contact_info ?? details);
+  return {
+    ...rest,
+    [key]: value
+  };
+};
+
+const resolveContactLogsPayloadKey = async (): Promise<ContactLogsPayloadKey> => {
+  if (contactLogsPayloadKey) return contactLogsPayloadKey;
+
+  const { error: detailsError } = await supabase.from('contact_logs').select('details').limit(1);
+  if (!detailsError) {
+    contactLogsPayloadKey = 'details';
+    return contactLogsPayloadKey;
+  }
+
+  if (!isDetailsMissingColumnError(detailsError)) {
+    const resolved = setPayloadKeyOnError(detailsError);
+    if (resolved) return resolved;
+  }
+
+  const { error: infoError } = await supabase.from('contact_logs').select('contact_info').limit(1);
+  if (!infoError) {
+    contactLogsPayloadKey = 'contact_info';
+    return contactLogsPayloadKey;
+  }
+
+  setPayloadKeyOnError(infoError);
+  return contactLogsPayloadKey || 'details';
+};
+
+const insertContactLogsWithFallback = async (entries: any | any[]) => {
+  const payload = Array.isArray(entries) ? entries : [entries];
+  const payloadKey = await resolveContactLogsPayloadKey();
+  const normalizedPayload = payload.map((entry) => withPayloadKey(entry, payloadKey));
+
+  const { error } = await supabase.from('contact_logs').insert(normalizedPayload as any);
+  if (!error) return;
+
+  const alternateKey = setPayloadKeyOnError(error);
+  if (alternateKey) {
+    const fallbackPayload = payload.map((entry) => withPayloadKey(entry, alternateKey));
+    const { error: fallbackError } = await supabase.from('contact_logs').insert(fallbackPayload as any);
+    if (fallbackError) throw fallbackError;
+    return;
+  }
+
+  throw error;
+};
+
 export const logContactAction = async (
   action: ContactAction,
   contactInfo: ContactData | Contact | Partial<Contact> | any
@@ -18,17 +96,10 @@ export const logContactAction = async (
       jsonContactInfo.timestamp = new Date().toISOString();
     }
     
-    const { error } = await supabase
-      .from('contact_logs')
-      .insert({
-        action,
-        contact_info: jsonContactInfo
-      });
-
-    if (error) {
-      console.error(`Error logging ${action} contact action:`, error);
-      throw error;
-    }
+    await insertContactLogsWithFallback({
+      action,
+      contact_info: jsonContactInfo
+    });
     
     console.log(`Contact ${action} action logged successfully`);
   } catch (error) {
@@ -74,14 +145,7 @@ export const logBatchAction = async (
     });
     
     // Insert all log entries
-    const { error } = await supabase
-      .from('contact_logs')
-      .insert(logEntries);
-    
-    if (error) {
-      console.error(`Error logging batch ${action} action:`, error);
-      throw error;
-    }
+    await insertContactLogsWithFallback(logEntries);
     
     console.log(`Batch ${action} action logged successfully for ${contactsInfo.length} contacts`);
   } catch (error) {
@@ -115,11 +179,11 @@ export const fetchContactLogs = async () => {
 
 // Helper to format log entries for display
 export const formatLogEntry = (log: any) => {
-  const { action, contact_info, created_at } = log;
+  const { action, contact_info, details, created_at } = log;
   const date = new Date(created_at);
   
   let description = '';
-  let contact = contact_info || {};
+  let contact = contact_info || details || {};
   
   switch (action) {
     case 'add':
@@ -207,11 +271,7 @@ export const bulkLogAction = async (action: string, contactIds: string[], detail
     });
     
     // Insert the logs
-    const { error } = await supabase
-      .from('contact_logs')
-      .insert(logEntries);
-    
-    if (error) throw error;
+    await insertContactLogsWithFallback(logEntries);
     
     console.log(`Bulk logged ${action} for ${contactIds.length} contacts`);
     

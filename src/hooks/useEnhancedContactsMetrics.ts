@@ -232,12 +232,16 @@ export function useEnhancedContactsMetrics(dateRange: DateRange | undefined) {
           const segmentContactIds = segmentContacts.map((contact: Contact) => contact.id);
           const segmentResponses =
             contactLogs?.filter(
-              (log) =>
+              (log) => {
+                const contactInfo = (log.contact_info ?? log.details) as any;
+                return (
                 log.action === "message_received" &&
-                log.contact_info &&
-                typeof log.contact_info === "object" &&
-                "id" in log.contact_info &&
-                segmentContactIds.includes(log.contact_info.id as string),
+                contactInfo &&
+                typeof contactInfo === "object" &&
+                "id" in contactInfo &&
+                segmentContactIds.includes(contactInfo.id as string)
+                );
+              },
             ) || [];
 
           const responseRate = campaignsSent > 0 ? ((segmentResponses.length / campaignsSent) * 100).toFixed(1) : "0.0";
@@ -292,11 +296,15 @@ export function useEnhancedContactsMetrics(dateRange: DateRange | undefined) {
           const segmentContactIds = segmentContacts.map((contact: Contact) => contact.id);
           const segmentLogs =
             contactLogs?.filter(
-              (log) =>
-                log.contact_info &&
-                typeof log.contact_info === "object" &&
-                "id" in log.contact_info &&
-                segmentContactIds.includes(log.contact_info.id as string),
+              (log) => {
+                const contactInfo = (log.contact_info ?? log.details) as any;
+                return (
+                  contactInfo &&
+                  typeof contactInfo === "object" &&
+                  "id" in contactInfo &&
+                  segmentContactIds.includes(contactInfo.id as string)
+                );
+              },
             ) || [];
 
           const engagementRate =

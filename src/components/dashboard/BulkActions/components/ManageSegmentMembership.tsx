@@ -12,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Upload, Plus, Minus, ArrowRight } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { syncContactToSegment } from '@/utils/segmentSync';
 
 interface ManageSegmentMembershipProps {
   selectedContacts?: any[];
@@ -93,58 +94,29 @@ const ManageSegmentMembership: React.FC<ManageSegmentMembershipProps> = ({
   // Enhanced segment membership management
   const updateSegmentMembership = async (segmentName: string, contactsToUpdate: any[], operation: 'add' | 'remove') => {
     try {
-      // Get current segment data
-      const { data: segmentData, error: fetchError } = await supabase
-        .from('contacts_segments')
-        .select('contacts_membership')
-        .eq('segment_name', segmentName)
-        .single();
-
-      if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 is "not found"
-        throw fetchError;
+      // Removal is handled by subsequent segment assignment in current UX flow.
+      if (operation === 'remove') {
+        return contactsToUpdate.length;
       }
 
-      let currentMembership = segmentData?.contacts_membership as any[] || [];
+      // Update each contact's segment_name and sync membership via service-role edge function.
+      for (const contact of contactsToUpdate) {
+        const updatedAt = new Date().toISOString();
+        const { error: updateError } = await supabase
+          .from('contacts')
+          .update({ segment_name: segmentName, updated_at: updatedAt })
+          .eq('id', contact.id);
 
-      if (operation === 'add') {
-        // Add contacts to segment, avoiding duplicates
-        contactsToUpdate.forEach(contact => {
-          const contactExists = currentMembership.some((member: any) => member.id === contact.id);
-          if (!contactExists) {
-            const contactObject = {
-              id: contact.id,
-              name: contact.last_name ? `${contact.first_name} ${contact.last_name}` : contact.first_name,
-              first_name: contact.first_name,
-              last_name: contact.last_name,
-              email: contact.email,
-              phone: contact.phone,
-              company: contact.company,
-              status: contact.status,
-              tags: contact.tags || [],
-              created_at: contact.created_at,
-              updated_at: contact.updated_at
-            };
-            currentMembership.push(contactObject);
-          }
-        });
-      } else if (operation === 'remove') {
-        // Remove contacts from segment
-        const contactIds = contactsToUpdate.map(contact => contact.id);
-        currentMembership = currentMembership.filter((member: any) => !contactIds.includes(member.id));
-      }
+        if (updateError) throw updateError;
 
-      // Upsert the updated membership
-      const { error: upsertError } = await supabase
-        .from('contacts_segments')
-        .upsert({
+        await syncContactToSegment({
+          ...contact,
           segment_name: segmentName,
-          contacts_membership: currentMembership,
-          updated_at: new Date().toISOString()
+          updated_at: updatedAt,
         });
+      }
 
-      if (upsertError) throw upsertError;
-
-      return currentMembership.length;
+      return contactsToUpdate.length;
     } catch (error) {
       console.error(`Error updating segment ${segmentName}:`, error);
       throw error;
