@@ -108,7 +108,7 @@ serve(async (req)=>{
       // Log the received message to contact_logs
       await supabase.from('contact_logs').insert({
         action: 'message_received',
-        contact_info: {
+        details: {
           id: contactId,
           message: incomingMessage,
           channel: 'sms',
@@ -161,7 +161,7 @@ serve(async (req)=>{
         // Log the received message
         await supabase.from('contact_logs').insert({
           action: 'message_received',
-          contact_info: {
+          details: {
             id: contactData.id,
             first_name: contactData.first_name,
             last_name: contactData.last_name,
@@ -204,7 +204,7 @@ serve(async (req)=>{
         // Log the received message for the new contact
         await supabase.from('contact_logs').insert({
           action: 'message_received',
-          contact_info: {
+          details: {
             id: newContact.id,
             first_name: newContact.first_name,
             last_name: newContact.last_name || '',

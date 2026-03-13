@@ -135,23 +135,8 @@ export const bulkActionsUtils = {
         
       if (error) throw error;
       
-      // Log the deletion for each contact
-      for (const contact of contacts) {
-        await supabase.from('contact_logs').insert({
-          action: 'delete',
-          contact_info: {
-            id: contact.id,
-            name: contact.name,
-            email: contact.email,
-            phone: contact.phone,
-            company: contact.company,
-            status: contact.status,
-            tags: contact.tags || [],
-            timestamp: new Date().toISOString()
-          },
-          created_at: new Date().toISOString()
-        });
-      }
+      // Log deletion via shared logger (handles schema differences safely)
+      await bulkLogAction('delete', contactIds, { action_name: 'Delete Contact' });
       
       return { success: true };
     } catch (error) {
